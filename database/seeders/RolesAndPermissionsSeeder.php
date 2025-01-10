@@ -21,6 +21,19 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete users']);
         Permission::firstOrCreate(['name' => 'approve requests']);
 
+        Permission::firstOrCreate(['name' => 'view supplier requests']);
+        Permission::firstOrCreate(['name' => 'create supplier requests']);
+        Permission::firstOrCreate(['name' => 'edit supplier requests']);
+        Permission::firstOrCreate(['name' => 'delete supplier requests']);
+        Permission::firstOrCreate(['name' => 'approve supplier requests']);
+        Permission::firstOrCreate(['name' => 'reject supplier requests']);
+
+        Permission::firstOrCreate(['name' => 'view suppliers']);
+        Permission::firstOrCreate(['name' => 'create suppliers']);
+        Permission::firstOrCreate(['name' => 'edit suppliers']);
+        Permission::firstOrCreate(['name' => 'delete suppliers']);
+        Permission::firstOrCreate(['name' => 'approve suppliers']);
+
         // Define roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $manager = Role::firstOrCreate(['name' => 'manager']);
