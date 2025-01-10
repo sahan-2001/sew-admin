@@ -54,27 +54,21 @@ class UserResource extends Resource
                 // Define your filters if needed
             ])
             ->actions([
-                // Edit Action - visible to Admins, Superusers, and Managers
                 Tables\Actions\EditAction::make()
-                    ->visible(fn (User $record) => auth()->user()->hasAnyRole(['admin', 'superuser', 'manager'])),
-
-                // Delete Action - visible only to Admins and Superusers
+                    ->visible(fn (User $record) => auth()->user()->can('edit users')),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (User $record) => auth()->user()->hasAnyRole(['admin', 'superuser'])),
-
-                // Reset Password Action - visible only to Admins and Managers
+                    ->visible(fn (User $record) => auth()->user()->can('delete users')),
                 Tables\Actions\Action::make('resetPassword')
                     ->label('Reset Password')
                     ->action(function (User $record) {
                         $record->password = bcrypt('12345678');
                         $record->save();
                     })
-                    ->visible(fn (User $record) => auth()->user()->hasAnyRole(['admin', 'manager'])),
+                    ->visible(fn (User $record) => auth()->user()->can('edit users')),
             ])
             ->bulkActions([
-                // Bulk delete action for Admins and Superusers
                 Tables\Actions\DeleteBulkAction::make()
-                    ->visible(fn () => auth()->user()->hasAnyRole(['admin', 'superuser'])),
+                    ->visible(fn () => auth()->user()->can('delete users')),
             ]);
     }
 
