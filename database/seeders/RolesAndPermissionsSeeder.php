@@ -49,7 +49,14 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'approve customer requests']);
         Permission::firstOrCreate(['name' => 'reject customer requests']);
 
-        // Define roles
+        // Inventory item permissions
+        Permission::firstOrCreate(['name' => 'view inventory items']);
+        Permission::firstOrCreate(['name' => 'create inventory items']);
+        Permission::firstOrCreate(['name' => 'edit inventory items']);
+        Permission::firstOrCreate(['name' => 'delete inventory items']);
+        Permission::firstOrCreate(['name' => 'add new category']);
+
+        // Roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $employee = Role::firstOrCreate(['name' => 'employee']);
