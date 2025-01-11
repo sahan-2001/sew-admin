@@ -2,18 +2,18 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\SupplierResource\Pages;
-use App\Models\Supplier;
+use App\Filament\Resources\CustomerResource\Pages;
+use App\Models\Customer;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 
-class SupplierResource extends Resource
+class CustomerResource extends Resource
 {
-    protected static ?string $model = Supplier::class;
+    protected static ?string $model = Customer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Traders Management';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationGroup = 'Customer Management';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -37,9 +37,9 @@ class SupplierResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('phone_2')
                     ->maxLength(255),
-                Forms\Components\Hidden::make('outstanding_balance')
+                Forms\Components\Hidden::make('remaining_balance')
                     ->default(0),
-                Forms\Components\Hidden::make('added_by')
+                Forms\Components\Hidden::make('requested_by')
                     ->default(fn () => auth()->user()->id),
                 Forms\Components\Hidden::make('approved_by'),
             ]);
@@ -49,15 +49,15 @@ class SupplierResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('supplier_id')->sortable(),
+                Tables\Columns\TextColumn::make('customer_id')->label('Customer ID')->sortable(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('address')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_2')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('outstanding_balance')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('addedBy.email')->label('Requested By Email')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('remaining_balance')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('requestedBy.email')->label('Requested By Email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('approvedBy.email')->label('Approved By Email')->sortable()->searchable(),
             ])
             ->filters([
@@ -65,13 +65,13 @@ class SupplierResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->visible(fn (Supplier $record) => auth()->user()->can('edit suppliers')),
+                    ->visible(fn (Customer $record) => auth()->user()->can('edit customers')),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (Supplier $record) => auth()->user()->can('delete suppliers')),
+                    ->visible(fn (Customer $record) => auth()->user()->can('delete customers')),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
-                    ->visible(fn () => auth()->user()->can('delete suppliers')),
+                    ->visible(fn () => auth()->user()->can('delete customers')),
             ]);
     }
 
@@ -85,9 +85,9 @@ class SupplierResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListSuppliers::route('/'),
-            'create' => Pages\CreateSupplier::route('/create'),
-            'edit' => Pages\EditSupplier::route('/{record}/edit'),
+            'index' => Pages\ListCustomers::route('/'),
+            'create' => Pages\CreateCustomer::route('/create'),
+            'edit' => Pages\EditCustomer::route('/{record}/edit'),
         ];
     }
 }

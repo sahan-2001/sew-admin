@@ -15,6 +15,7 @@ class UserResource extends Resource
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static ?string $navigationGroup = 'User Management';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -34,11 +35,11 @@ class UserResource extends Resource
                     ->maxLength(255)
                     ->dehydrateStateUsing(fn ($state) => $state ? bcrypt($state) : null), // Hash the password
                 Forms\Components\Select::make('roles')
-                    ->label('Assign Roles')
-                    ->relationship('roles', 'name')
+                    ->label('Roles')
                     ->multiple()
-                    ->required()
-                    ->options(Role::all()->pluck('name', 'id')), // Populating the dropdown with available roles
+                    ->relationship('roles', 'name')
+                    ->options(Role::all()->pluck('name', 'id'))
+                    ->preload(),
             ]);
     }
 
@@ -48,27 +49,17 @@ class UserResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
-                Tables\Columns\TagsColumn::make('roles.name')->label('Roles'),
+                Tables\Columns\TextColumn::make('roles.name')->label('Roles')->sortable()->searchable(),
             ])
             ->filters([
                 // Define your filters if needed
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->visible(fn (User $record) => auth()->user()->can('edit users')),
-                Tables\Actions\DeleteAction::make()
-                    ->visible(fn (User $record) => auth()->user()->can('delete users')),
-                Tables\Actions\Action::make('resetPassword')
-                    ->label('Reset Password')
-                    ->action(function (User $record) {
-                        $record->password = bcrypt('12345678');
-                        $record->save();
-                    })
-                    ->visible(fn (User $record) => auth()->user()->can('edit users')),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make()
-                    ->visible(fn () => auth()->user()->can('delete users')),
+                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 

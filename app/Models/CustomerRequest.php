@@ -7,11 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 
-class Supplier extends Model
+class CustomerRequest extends Model
 {
     use HasFactory, SoftDeletes;
-
-    protected $primaryKey = 'supplier_id'; // Set the primary key to 'supplier_id'
 
     protected $fillable = [
         'name',
@@ -20,14 +18,15 @@ class Supplier extends Model
         'email',
         'phone_1',
         'phone_2',
-        'outstanding_balance',
-        'added_by',
+        'remaining_balance',
+        'requested_by',
         'approved_by',
+        'status',
     ];
 
-    public function addedBy()
+    public function requestedBy()
     {
-        return $this->belongsTo(User::class, 'added_by');
+        return $this->belongsTo(User::class, 'requested_by');
     }
 
     public function approvedBy()

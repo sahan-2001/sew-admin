@@ -21,6 +21,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete users']);
         Permission::firstOrCreate(['name' => 'approve requests']);
 
+        // Customer request permissions
         Permission::firstOrCreate(['name' => 'view supplier requests']);
         Permission::firstOrCreate(['name' => 'create supplier requests']);
         Permission::firstOrCreate(['name' => 'edit supplier requests']);
@@ -28,11 +29,25 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'approve supplier requests']);
         Permission::firstOrCreate(['name' => 'reject supplier requests']);
 
+        // Customer permissions
         Permission::firstOrCreate(['name' => 'view suppliers']);
         Permission::firstOrCreate(['name' => 'create suppliers']);
         Permission::firstOrCreate(['name' => 'edit suppliers']);
         Permission::firstOrCreate(['name' => 'delete suppliers']);
-        Permission::firstOrCreate(['name' => 'approve suppliers']);
+
+        // Customer permissions
+        Permission::firstOrCreate(['name' => 'view customers']);
+        Permission::firstOrCreate(['name' => 'create customers']);
+        Permission::firstOrCreate(['name' => 'edit customers']);
+        Permission::firstOrCreate(['name' => 'delete customers']);
+
+        // Customer request permissions
+        Permission::firstOrCreate(['name' => 'view customer requests']);
+        Permission::firstOrCreate(['name' => 'create customer requests']);
+        Permission::firstOrCreate(['name' => 'edit customer requests']);
+        Permission::firstOrCreate(['name' => 'delete customer requests']);
+        Permission::firstOrCreate(['name' => 'approve customer requests']);
+        Permission::firstOrCreate(['name' => 'reject customer requests']);
 
         // Define roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
@@ -47,13 +62,13 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Create a Superuser and assign role
         $superuser = User::firstOrCreate([
-            'email' => 'superuser@example.com',
+            'email' => 'admin@example.com',
         ], [
-            'name' => 'Super User',
+            'name' => 'admin',
             'password' => bcrypt('12345678'), // Hash the password
         ]);
         
         // Assign all permissions to the superuser role
-        $superuser->assignRole('superuser');  // Assigning the superuser role
+        $superuser->assignRole('admin');  // Assigning the superuser role
     }
 }

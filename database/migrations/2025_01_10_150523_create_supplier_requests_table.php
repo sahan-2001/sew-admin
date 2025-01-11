@@ -22,6 +22,7 @@ class CreateSupplierRequestsTable extends Migration
             $table->text('note')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
