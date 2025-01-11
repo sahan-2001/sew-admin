@@ -31,10 +31,12 @@ class SupplierResource extends Resource
                 Forms\Components\TextInput::make('email')
                     ->required()
                     ->email()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(Supplier::class, 'email', ignoreRecord: true),
                 Forms\Components\TextInput::make('phone_1')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(Supplier::class, 'phone_1', ignoreRecord: true),
                 Forms\Components\TextInput::make('phone_2')
                     ->maxLength(255),
                 Forms\Components\Hidden::make('outstanding_balance')

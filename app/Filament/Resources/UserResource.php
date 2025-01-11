@@ -3,12 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Spatie\Permission\Models\Role;
 
 class UserResource extends Resource
 {
@@ -27,7 +25,8 @@ class UserResource extends Resource
                 Forms\Components\TextInput::make('email')
                     ->required()
                     ->email()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(User::class, 'email', ignoreRecord: true),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->default('12345678') // Default password for new users
@@ -38,7 +37,7 @@ class UserResource extends Resource
                     ->label('Roles')
                     ->multiple()
                     ->relationship('roles', 'name')
-                    ->options(Role::all()->pluck('name', 'id'))
+                    ->options(\Spatie\Permission\Models\Role::all()->pluck('name', 'id'))
                     ->preload(),
             ]);
     }

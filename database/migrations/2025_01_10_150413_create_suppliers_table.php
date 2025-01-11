@@ -14,7 +14,7 @@ class CreateSuppliersTable extends Migration
     public function up()
     {
         Schema::create('suppliers', function (Blueprint $table) {
-            $table->id(); // This adds the 'id' column as the primary key
+            $table->id('supplier_id'); // This adds the 'id' column as the primary key
             $table->string('name');
             $table->string('shop_name');
             $table->string('address');

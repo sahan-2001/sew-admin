@@ -57,8 +57,8 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Assign permissions to roles
         $admin->givePermissionTo(Permission::all());
-        $manager->givePermissionTo(['create users', 'edit users', 'approve requests']);
-        $employee->givePermissionTo(['create users']);
+        $manager->givePermissionTo(['view users', 'create users', 'edit users', 'approve requests']);
+        $employee->givePermissionTo(['view users']);
 
         // Create a Superuser and assign role
         $superuser = User::firstOrCreate([
