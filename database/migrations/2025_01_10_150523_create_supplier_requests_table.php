@@ -9,7 +9,7 @@ class CreateSupplierRequestsTable extends Migration
     public function up()
     {
         Schema::create('supplier_requests', function (Blueprint $table) {
-            $table->id('supplier_id');
+            $table->id();
             $table->string('name');
             $table->string('shop_name');
             $table->string('address');
