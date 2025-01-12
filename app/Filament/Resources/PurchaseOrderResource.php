@@ -120,6 +120,7 @@ class PurchaseOrderResource extends Resource
             ->columns([
                 \Filament\Tables\Columns\TextColumn::make('id')->label('ID'),
                 \Filament\Tables\Columns\TextColumn::make('provider_type')->label('Provider Type'),
+                \Filament\Tables\Columns\TextColumn::make('provider_id')->label('Provider ID'),
                 \Filament\Tables\Columns\TextColumn::make('provider_name')->label('Provider Name'),
                 \Filament\Tables\Columns\TextColumn::make('provider_email')->label('Provider Email'),
                 \Filament\Tables\Columns\TextColumn::make('provider_phone')->label('Provider Phone'),
@@ -132,6 +133,10 @@ class PurchaseOrderResource extends Resource
                 // Define table filters here
             ])
             ->actions([
+                Action::make('pdf')
+                    ->label('Print PDF')
+                    ->url(fn ($record) => route('purchase-orders.pdf', $record))
+                    ->visible(fn ($record) => auth()->user()->can('view purchase orders')),
                 ViewAction::make()
                     ->visible(fn ($record) => auth()->user()->can('view purchase orders')),
                 EditAction::make()
