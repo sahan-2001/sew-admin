@@ -56,6 +56,12 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete inventory items']);
         Permission::firstOrCreate(['name' => 'add new category']);
 
+        // Purchase order permissions
+        Permission::firstOrCreate(['name' => 'view purchase orders']);
+        Permission::firstOrCreate(['name' => 'create purchase orders']);
+        Permission::firstOrCreate(['name' => 'edit purchase orders']);
+        Permission::firstOrCreate(['name' => 'delete purchase orders']);
+
         // Roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $manager = Role::firstOrCreate(['name' => 'manager']);
