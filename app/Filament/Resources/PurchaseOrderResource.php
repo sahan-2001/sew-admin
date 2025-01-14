@@ -25,7 +25,7 @@ class PurchaseOrderResource extends Resource
 {
     protected static ?string $model = PurchaseOrder::class;
 
-    protected static ?string $navigationGroup = 'Traders Management';
+    protected static ?string $navigationGroup = 'Procurement/Traders';
 
     protected static ?string $navigationLabel = 'Purchase Orders';
 

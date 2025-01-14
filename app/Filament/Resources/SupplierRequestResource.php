@@ -15,7 +15,7 @@ class SupplierRequestResource extends Resource
     protected static ?string $model = SupplierRequest::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document';
-    protected static ?string $navigationGroup = 'Traders Management';
+    protected static ?string $navigationGroup = 'Procurement/Traders';
 
     public static function form(Forms\Form $form): Forms\Form
     {
