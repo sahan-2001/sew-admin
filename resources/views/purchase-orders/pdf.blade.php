@@ -105,7 +105,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3"><strong>Total Amount</strong></td>
+                    <td colspan="3"><strong>Grand Total Amount</strong></td>
                     <td>
                         {{ number_format($purchaseOrder->items->sum(fn($item) => $item->quantity * $item->price), 2) ?? '0.00' }}
                     </td>
