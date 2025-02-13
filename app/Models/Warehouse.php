@@ -1,14 +1,17 @@
 <?php
 
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Warehouse extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     // Defining the fillable properties to allow mass assignment
     protected $fillable = [
@@ -58,5 +61,21 @@ class Warehouse extends Model
             'height' => $this->capacity_height,
             'measurement_unit' => $this->measurement_unit,
         ];
+    }
+
+    protected static $logAttributes = ['name', 'address_line_1', 'city', 'capacity_length', 'capacity_width', 'capacity_height', 'measurement_unit'];
+    protected static $logName = 'warehouse';
+
+    /**
+     * Get the options for activity logging.
+     *
+     * @return \Spatie\Activitylog\LogOptions
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'address_line_1', 'city', 'capacity_length', 'capacity_width', 'capacity_height', 'measurement_unit'])
+            ->useLogName('warehouse')
+            ->setDescriptionForEvent(fn(string $eventName) => "Warehouse {$this->id} has been {$eventName} by User {$this->user_id} ({$this->user->email})");
     }
 }

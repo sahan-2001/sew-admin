@@ -1,5 +1,5 @@
 <?php
-
+// filepath: /C:/Users/User/Desktop/Sahan_Personal Files/Academics/project/sew-admin/app/Filament/Resources/InventoryLocationResource.php
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\InventoryLocationResource\Pages;
@@ -18,8 +18,6 @@ class InventoryLocationResource extends Resource
     protected static ?string $navigationLabel = 'Inventory Locations';
     protected static ?string $navigationGroup = 'Inventory Management';
 
-    
-
     public static function form(Form $form): Form
     {
         return $form
@@ -29,17 +27,19 @@ class InventoryLocationResource extends Resource
                     ->options(function () {
                         return \App\Models\Warehouse::all()->pluck('name', 'id');
                     })
-                    ->required(),
-    
+                    ->required(), // Warehouse must be selected
+
+                // Name field (required, enforce uniqueness)
                 Forms\Components\TextInput::make('name')
                     ->label('Name')
                     ->required()
                     ->unique(
                         table: InventoryLocation::class,
                         column: 'name',
-                        ignoreRecord: true
+                        ignoreRecord: true // Allows editing without triggering uniqueness error for the same record
                     ),
-    
+
+                // Location Type (required)
                 Forms\Components\Select::make('location_type')
                     ->options([
                         'arrival' => 'Arrival',
@@ -47,18 +47,21 @@ class InventoryLocationResource extends Resource
                         'shipment' => 'Shipment',
                     ])
                     ->default('picking')
-                    ->required(),
-    
+                    ->required(), // Location type must be selected
+
+                // Note (required, default value to avoid null)
                 Forms\Components\TextInput::make('note')
                     ->label('Note')
                     ->required()
                     ->default('No notes provided'),
-    
+
+                // Capacity (required, default value to avoid null)
                 Forms\Components\TextInput::make('capacity')
                     ->label('Capacity')
                     ->required()
                     ->default('0'),
-    
+
+                // Measure of Capacity (required, default value to avoid null)
                 Forms\Components\Select::make('measure_of_capacity')
                     ->options([
                         'liters' => 'Liters',
@@ -70,36 +73,34 @@ class InventoryLocationResource extends Resource
                     ])
                     ->required()
                     ->default('liters'),
-    
+
+                // User ID will be set automatically to the logged-in user
                 Forms\Components\Hidden::make('created_by')
                     ->default(fn () => auth()->id()),
             ]);
     }
-    
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('warehouse.name')
                     ->label('Warehouse')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Name')
-                    ->sortable()
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('name') // Add name column to the table
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('location_type')
-                    ->label('Location Type')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('capacity')
-                    ->label('Capacity')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('measure_of_capacity')
-                    ->label('Measure of Capacity')
+                Tables\Columns\TextColumn::make('measurement_unit')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created At')
                     ->sortable()
                     ->dateTime(),
             ])
