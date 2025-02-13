@@ -18,6 +18,8 @@ class InventoryLocationResource extends Resource
     protected static ?string $navigationLabel = 'Inventory Locations';
     protected static ?string $navigationGroup = 'Inventory Management';
 
+    
+
     public static function form(Form $form): Form
     {
         return $form
@@ -27,19 +29,17 @@ class InventoryLocationResource extends Resource
                     ->options(function () {
                         return \App\Models\Warehouse::all()->pluck('name', 'id');
                     })
-                    ->required(), // Warehouse must be selected
+                    ->required(),
     
-                // Name field (required, enforce uniqueness)
                 Forms\Components\TextInput::make('name')
                     ->label('Name')
                     ->required()
                     ->unique(
                         table: InventoryLocation::class,
                         column: 'name',
-                        ignoreRecord: true // Allows editing without triggering uniqueness error for the same record
+                        ignoreRecord: true
                     ),
     
-                // Location Type (required)
                 Forms\Components\Select::make('location_type')
                     ->options([
                         'arrival' => 'Arrival',
@@ -47,21 +47,18 @@ class InventoryLocationResource extends Resource
                         'shipment' => 'Shipment',
                     ])
                     ->default('picking')
-                    ->required(), // Location type must be selected
+                    ->required(),
     
-                // Note (required, default value to avoid null)
                 Forms\Components\TextInput::make('note')
                     ->label('Note')
                     ->required()
                     ->default('No notes provided'),
     
-                // Capacity (required, default value to avoid null)
                 Forms\Components\TextInput::make('capacity')
                     ->label('Capacity')
                     ->required()
                     ->default('0'),
     
-                // Measure of Capacity (required, default value to avoid null)
                 Forms\Components\Select::make('measure_of_capacity')
                     ->options([
                         'liters' => 'Liters',
@@ -74,7 +71,6 @@ class InventoryLocationResource extends Resource
                     ->required()
                     ->default('liters'),
     
-                // User ID will be set automatically to the logged-in user
                 Forms\Components\Hidden::make('created_by')
                     ->default(fn () => auth()->id()),
             ]);
@@ -89,19 +85,35 @@ class InventoryLocationResource extends Resource
                     ->label('Warehouse')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name') // Add name column to the table
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Name')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('location_type')
+                    ->label('Location Type')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('capacity')
+                    ->label('Capacity')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('measurement_unit')
+                Tables\Columns\TextColumn::make('measure_of_capacity')
+                    ->label('Measure of Capacity')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created At')
                     ->sortable()
                     ->dateTime(),
             ])
-            ->filters([]);
+            ->filters([])
+            ->actions([
+                Tables\Actions\EditAction::make()
+                    ->visible(fn (InventoryLocation $record) => auth()->user()->can('edit inventory locations')),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (InventoryLocation $record) => auth()->user()->can('delete inventory locations')),
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn () => auth()->user()->can('delete inventory locations')),
+            ]);
     }
 
     public static function getPages(): array
