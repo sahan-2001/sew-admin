@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Hidden;
 use Filament\Navigation\NavigationItem;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\EditAction;
@@ -25,7 +26,7 @@ class PurchaseOrderResource extends Resource
 {
     protected static ?string $model = PurchaseOrder::class;
 
-    protected static ?string $navigationGroup = 'Procurement/Traders';
+    protected static ?string $navigationGroup = 'Orders';
 
     protected static ?string $navigationLabel = 'Purchase Orders';
 
@@ -62,6 +63,10 @@ class PurchaseOrderResource extends Resource
                                 $set('provider_name', $supplier->name);
                                 $set('provider_email', $supplier->email);
                                 $set('provider_phone', $supplier->phone_1);
+                            } else {
+                                $set('provider_name', null);
+                                $set('provider_email', null);
+                                $set('provider_phone', null);
                             }
                         } elseif ($get('provider_type') === 'customer') {
                             $customer = Customer::find($state);
@@ -69,6 +74,10 @@ class PurchaseOrderResource extends Resource
                                 $set('provider_name', $customer->name);
                                 $set('provider_email', $customer->email);
                                 $set('provider_phone', $customer->phone_1);
+                            } else {
+                                $set('provider_name', null);
+                                $set('provider_email', null);
+                                $set('provider_phone', null);
                             }
                         }
                     }),
@@ -111,6 +120,9 @@ class PurchaseOrderResource extends Resource
                             ->columns(3)
                             ->createItemButtonLabel('Add Item'),
                     ]),
+                // Set user_id to logged-in user
+                Hidden::make('user_id')
+                    ->default(fn () => auth()->id()),
             ]);
     }
 

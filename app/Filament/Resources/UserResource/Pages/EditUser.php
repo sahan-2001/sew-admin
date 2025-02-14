@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
@@ -28,6 +29,13 @@ class EditUser extends EditRecord
     protected static function canEdit($record): bool
     {
         return auth()->user()->hasAnyRole(['admin', 'superuser', 'manager']);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Set the password to the default value before saving
+        $data['password'] = bcrypt('12345678');
+        return $data;
     }
 
     public function resetPassword()

@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
@@ -27,15 +28,11 @@ class UserResource extends Resource
                     ->email()
                     ->maxLength(255)
                     ->unique(User::class, 'email', ignoreRecord: true),
-                Forms\Components\TextInput::make('password')
-                    ->password()
+                    Forms\Components\Hidden::make('password')
                     ->default('12345678') // Default password for new users
-                    ->required(fn ($record) => !$record) // Only required for new users
-                    ->maxLength(255)
-                    ->dehydrateStateUsing(fn ($state) => $state ? bcrypt($state) : null), // Hash the password
+                    ->dehydrateStateUsing(fn ($state) => bcrypt($state)),
                 Forms\Components\Select::make('roles')
                     ->label('Roles')
-                    ->multiple()
                     ->relationship('roles', 'name')
                     ->options(\Spatie\Permission\Models\Role::all()->pluck('name', 'id'))
                     ->preload(),

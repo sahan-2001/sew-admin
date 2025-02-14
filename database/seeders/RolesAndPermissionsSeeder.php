@@ -62,6 +62,17 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit purchase orders']);
         Permission::firstOrCreate(['name' => 'delete purchase orders']);
 
+        // Customer order permissions
+        Permission::firstOrCreate(['name' => 'view customer orders']);
+        Permission::firstOrCreate(['name' => 'create customer orders']);
+        Permission::firstOrCreate(['name' => 'edit customer orders']);
+        Permission::firstOrCreate(['name' => 'delete customer orders']);
+
+        // Activity log permissions
+        Permission::firstOrCreate(['name' => 'view self activity logs']);
+        Permission::firstOrCreate(['name' => 'view other users activity logs']);
+
+
         // Roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $manager = Role::firstOrCreate(['name' => 'manager']);
@@ -72,6 +83,8 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin->givePermissionTo(Permission::all());
         $manager->givePermissionTo(['view users', 'create users', 'edit users', 'approve requests']);
         $employee->givePermissionTo(['view users']);
+
+        
 
         // Create a Superuser and assign role
         $superuser = User::firstOrCreate([
