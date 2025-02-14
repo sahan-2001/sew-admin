@@ -1,5 +1,4 @@
 <?php
-// filepath: /C:/Users/User/Desktop/Sahan_Personal Files/Academics/project/sew-admin/app/Filament/Resources/WarehouseResource.php
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WarehouseResource\Pages;

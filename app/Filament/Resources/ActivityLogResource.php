@@ -48,6 +48,11 @@ class ActivityLogResource extends Resource
                     ->form([
                         Forms\Components\DatePicker::make('created_from')->label('Created From'),
                         Forms\Components\DatePicker::make('created_until')->label('Created Until'),
+                        Forms\Components\Checkbox::make('today')
+                            ->label('Today')
+                            ->reactive()
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('created_from', $state ? now()->startOfDay() : null))
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('created_until', $state ? now()->endOfDay() : null)),
                     ])
                     ->query(function ($query, array $data) {
                         return $query

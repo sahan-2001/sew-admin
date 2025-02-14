@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -54,6 +53,9 @@ class PurchaseOrderItem extends Model
                 'price',
             ])
             ->useLogName('purchase_order_item')
-            ->setDescriptionForEvent(fn(string $eventName) => "Purchase Order Item {$this->id} has been {$eventName} by User {$this->user_id} ({$this->user->email})");
+            ->setDescriptionForEvent(function (string $eventName) {
+                $userEmail = $this->purchaseOrder->user ? $this->purchaseOrder->user->email : 'unknown';
+                return "Purchase Order Item {$this->id} for Purchase Order {$this->purchase_order_id} has been {$eventName} by User {$this->purchaseOrder->user_id} ({$userEmail})";
+            });
     }
 }
