@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +19,7 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
+        'created_by', // Add created_by to fillable fields
     ];
 
     protected static function boot()
@@ -31,6 +31,7 @@ class InventoryItem extends Model
             $nextId = $lastItem ? $lastItem->id + 1 : 1;
             $categoryCode = strtoupper(substr($model->category, 0, 3)); // First 3 letters of the category
             $model->item_code = $categoryCode . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $model->created_by = auth()->id(); // Set the created_by field to the current user's ID
         });
     }
 
@@ -41,6 +42,7 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
+        'created_by', // Log the created_by field
     ];
 
     protected static $logName = 'inventory_item';
@@ -60,8 +62,15 @@ class InventoryItem extends Model
                 'special_note',
                 'uom',
                 'available_quantity',
+                'created_by', // Log the created_by field
             ])
             ->useLogName('inventory_item')
-            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName} by User {$this->user_id} ({$this->user->email})");
+            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName} by User " . ($this->createdBy ? $this->createdBy->email : 'Unknown'));
+    }
+
+    // Define the relationship to the User model
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
