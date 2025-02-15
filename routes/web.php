@@ -1,9 +1,15 @@
 <?php
 
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PurchaseOrderPdfController;
 use App\Filament\Resources\ActivityLogResource;
 use Filament\Facades\Filament; 
+use App\Models\CustomerOrder;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\CustomerOrderController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -25,3 +31,24 @@ Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderPdfController::c
 Route::middleware(['auth', 'verified'])->group(function () {
     ActivityLogResource::routes(Filament::getCurrentPanel());
 });
+
+Route::get('/customer-orders/{order}/pdf', function (CustomerOrder $order) {
+    // Load the order along with its order items and variations
+    $orderDescriptions = $order->orderItems()->with('variationItems')->get();
+
+    // Calculate the grand total by summing up the total of all order items and variations
+    $grandTotal = $order->orderItems->sum(function ($item) {
+        return $item->total + $item->variationItems->sum('total');
+    });
+
+    // Create the PDF and pass the data to the view
+    $pdf = Pdf::loadView('pdf.customer_order', [
+        'order' => $order,
+        'orderDescriptions' => $orderDescriptions,
+        'grandTotal' => $grandTotal,
+        'printedBy' => auth()->user()->id,
+    ]);
+
+    // Return the PDF as a response to stream it
+    return $pdf->stream('customer_order.pdf');
+})->name('customer-orders.pdf');

@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -45,5 +46,15 @@ class CustomerOrderDescription extends Model
         $activity->properties = $activity->properties->merge([
             'attributes' => $this->getAttributes(),
         ]);
+    }
+
+    // Automatically calculate the total before saving
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            if (!$model->is_variation) {
+                $model->total = $model->quantity * $model->price;
+            }
+        });
     }
 }

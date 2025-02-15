@@ -68,6 +68,18 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit customer orders']);
         Permission::firstOrCreate(['name' => 'delete customer orders']);
 
+        // Warehouse permissions
+        Permission::firstOrCreate(['name' => 'view warehouses']);
+        Permission::firstOrCreate(['name' => 'create warehouses']);
+        Permission::firstOrCreate(['name' => 'edit warehouses']);
+        Permission::firstOrCreate(['name' => 'delete warehouses']);
+
+        // Inventory Location permissions
+        Permission::firstOrCreate(['name' => 'view inventory locations']);
+        Permission::firstOrCreate(['name' => 'create inventory locations']);
+        Permission::firstOrCreate(['name' => 'edit inventory locations']);
+        Permission::firstOrCreate(['name' => 'delete inventory locations']);
+
         // Activity log permissions
         Permission::firstOrCreate(['name' => 'view self activity logs']);
         Permission::firstOrCreate(['name' => 'view other users activity logs']);

@@ -1,5 +1,6 @@
 <?php
 
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,8 +16,11 @@ class AddUserIdToPurchaseOrdersTable extends Migration
         });
 
         // Set default user_id for existing records where it is null
-        $defaultUserId = User::first()->id; // You can change this to a specific user ID if needed
-        DB::table('purchase_orders')->whereNull('user_id')->update(['user_id' => $defaultUserId]);
+        $defaultUser = User::first();
+        if ($defaultUser) {
+            $defaultUserId = $defaultUser->id;
+            DB::table('purchase_orders')->whereNull('user_id')->update(['user_id' => $defaultUserId]);
+        }
     }
 
     public function down()
