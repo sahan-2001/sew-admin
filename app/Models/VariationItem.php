@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,15 +12,22 @@ class VariationItem extends Model
 
     protected $fillable = [
         'customer_order_description_id',
-        'item_name',
+        'variation_name',
         'quantity',
         'price',
         'total',
     ];
 
-    // Relationship to the CustomerOrderDescription model
     public function customerOrderDescription()
     {
-        return $this->belongsTo(CustomerOrderDescription::class);
+        return $this->belongsTo(CustomerOrderDescription::class, 'customer_order_description_id');
+    }
+
+    // Automatically calculate the total before saving
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            $model->total = $model->quantity * $model->price;
+        });
     }
 }

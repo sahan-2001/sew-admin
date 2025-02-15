@@ -11,8 +11,8 @@ class CreateVariationItemsTable extends Migration
         Schema::create('variation_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_order_description_id')->constrained()->onDelete('cascade'); // Foreign key for relationship
-            $table->string('item_name');
-            $table->integer('quantity');
+            $table->string('variation_name'); 
+            $table->integer('quantity'); // Add the quantity column
             $table->decimal('price', 10, 2);
             $table->decimal('total', 10, 2);
             $table->timestamps();

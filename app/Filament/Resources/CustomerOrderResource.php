@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerOrderResource\Pages;
@@ -13,13 +14,16 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Tables\Actions\Action;
 
 class CustomerOrderResource extends Resource
 {
@@ -33,10 +37,10 @@ class CustomerOrderResource extends Resource
     {
         return $form
             ->schema([
-                // Customer Select
+                // Customer Selection
                 Select::make('customer_id')
                     ->label('Customer')
-                    ->options(Customer::all()->pluck('name', 'customer_id'))
+                    ->options(fn () => Customer::pluck('name', 'customer_id')->toArray()) // Lazy loading for performance
                     ->searchable()
                     ->required()
                     ->reactive()
@@ -51,15 +55,10 @@ class CustomerOrderResource extends Resource
                         }
                     }),
 
-                // Customer details (Readonly fields)
-                Hidden::make('customer_id')
-                    ->label('Customer ID')
-                    ->default(fn ($get) => $get('customer_id')),
-
+                // Customer Details (Readonly Fields)
                 TextInput::make('customer_name')
                     ->label('Customer Name')
-                    ->disabled()
-                    ->default(fn ($get) => $get('customer_name')),
+                    ->disabled(),
 
                 TextInput::make('phone_1')
                     ->label('Phone 1')
@@ -73,7 +72,7 @@ class CustomerOrderResource extends Resource
                     ->label('Email')
                     ->nullable(),
 
-                // Order Name, Delivery Date, and Notes
+                // Order Details
                 TextInput::make('name')
                     ->label('Order Name')
                     ->required(),
@@ -86,135 +85,105 @@ class CustomerOrderResource extends Resource
                     ->label('Special Notes')
                     ->nullable(),
 
-                // Add added_by hidden field (tracks who added the order)
                 Hidden::make('added_by')
                     ->default(fn () => auth()->user()->id)
                     ->required(),
 
-                // Handle Customer Order Description (Line Items)
-                \Filament\Forms\Components\Section::make('Order Items')
+                // Order Items Section
+                Section::make('Order Items')
                     ->schema([
                         Repeater::make('order_items')
-                            ->relationship('orderItems') // Assuming 'orderItems' is the relationship method on CustomerOrder model
+                            ->relationship('orderItems') // Ensure this relationship is defined in the CustomerOrder model
                             ->schema([
-                                TextInput::make('item_name')
-                                    ->label('Item Name')
-                                    ->required(),
-
-                                // Main Item Fields (show when it's NOT a variation)
-                                TextInput::make('quantity')
-                                    ->label('Quantity')
-                                    ->required()
-                                    ->numeric()
-                                    ->visible(fn ($get) => !$get('is_variation')),
-
-                                TextInput::make('price')
-                                    ->label('Price')
-                                    ->required()
-                                    ->numeric()
-                                    ->visible(fn ($get) => !$get('is_variation')),
-
-                                TextInput::make('total')
-                                    ->label('Total')
-                                    ->required()
-                                    ->numeric()
-                                    ->default(function ($get) {
-                                        return $get('quantity') * $get('price');
-                                    })
-                                    ->disabled() // Set as read-only
-                                    ->visible(fn ($get) => !$get('is_variation')),
-
-                                // Variation Toggle
-                                Select::make('is_variation')
-                                    ->label('Is Variation')
-                                    ->options([0 => 'Normal Item', 1 => 'Variation Item'])
-                                    ->default(0)
-                                    ->reactive()
-                                    ->afterStateUpdated(function (callable $set, $state) {
-                                        if ($state) {
-                                            $set('quantity', 0); // Reset quantity
-                                            $set('price', 0); // Reset price
-                                            $set('total', 0); // Reset total
-                                        }
-                                    }),
-
-                                    \Filament\Forms\Components\Repeater::make('sub_items')
-                                    ->label('Variation Items')
+                                // Row 1: Item Name and Is Variation Toggle
+                                Grid::make(2)
                                     ->schema([
-                                        // Define your table schema here
                                         TextInput::make('item_name')
                                             ->label('Item Name')
                                             ->required(),
-                                
+
+                                        Toggle::make('is_variation')
+                                            ->label('Is Variation')
+                                            ->default(false)
+                                            ->reactive()
+                                            ->afterStateUpdated(function (callable $set, $state) {
+                                                if ($state) {
+                                                    $set('quantity', 0);
+                                                    $set('price', 0);
+                                                    $set('total', 0);
+                                                }
+                                            }),
+                                    ]),
+
+                                // Row 2: Quantity, Price, and Total (For Non-Variation Items)
+                                Grid::make(3)
+                                    ->schema([
                                         TextInput::make('quantity')
                                             ->label('Quantity')
                                             ->numeric()
-                                            ->required(),
-                                
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(function (callable $set, $state, $get) {
+                                                $set('total', $state * $get('price'));
+                                            })
+                                            ->visible(fn ($get) => !$get('is_variation')),
+
                                         TextInput::make('price')
                                             ->label('Price')
                                             ->numeric()
-                                            ->required(),
-                                
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(function (callable $set, $state, $get) {
+                                                $set('total', $state * $get('quantity'));
+                                            })
+                                            ->visible(fn ($get) => !$get('is_variation')),
+
                                         TextInput::make('total')
                                             ->label('Total')
                                             ->numeric()
+                                            ->disabled()
+                                            ->default(fn ($get) => $get('quantity') * $get('price'))
+                                            ->visible(fn ($get) => !$get('is_variation')),
+                                    ]),
+
+                                // Variation Items Table (For Variation Items)
+                                Repeater::make('sub_items')
+                                    ->label('Variation Items')
+                                    ->relationship('variationItems') // Ensure this relationship is defined in the CustomerOrderDescription model
+                                    ->schema([
+                                        TextInput::make('variation_name')
+                                            ->label('Variation Name')
+                                            ->required(),
+
+                                        TextInput::make('quantity')
+                                            ->label('Quantity')
+                                            ->numeric()
                                             ->required()
-                                            ->disabled() // Read-only
-                                            ->default(function ($get) {
-                                                return $get('quantity') * $get('price');
-                                            }),
+                                            ->reactive(),
+
+                                        TextInput::make('price')
+                                            ->label('Price')
+                                            ->numeric()
+                                            ->required()
+                                            ->reactive(),
+
+                                        TextInput::make('total')
+                                            ->label('Total')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->default(fn ($get) => $get('quantity') * $get('price')),
                                     ])
-                                    ->columns(4) // This controls the number of columns in the layout
-                                    ->visible(fn ($get) => $get('is_variation') == 1) // Only show when it's a variation
-                                    ->reactive()
-                                    ->addable() // Adds the ability to add new rows
-                                    ->reorderable() // Allows rows to be reordered
+                                    ->columns(4)
+                                    ->visible(fn ($get) => $get('is_variation') == true)
+                                    ->addable()
+                                    ->reorderable()
                                     ->createItemButtonLabel('Add Variation Item'),
-                                
                             ])
-                            ->columns(3)
+                            ->columns(1)
                             ->createItemButtonLabel('Add Order Item'),
                     ]),
             ]);
     }
-
-    // Overriding the create method to handle saving order items and variations
-    public static function create(array $data)
-    {
-        // Create the main customer order
-        $customerOrder = CustomerOrder::create($data);
-
-        // Process each order item
-        foreach ($data['order_items'] as $itemData) {
-            // Create the main order description
-            $orderDescription = $customerOrder->orderDescriptions()->create([
-                'item_name' => $itemData['item_name'],
-                'variation_name' => $itemData['is_variation'] ? $itemData['item_name'] : null,
-                'quantity' => $itemData['quantity'],
-                'price' => $itemData['price'],
-                'total' => $itemData['total'],
-                'note' => $itemData['note'],
-                'is_variation' => $itemData['is_variation'],
-            ]);
-
-            // If it's a variation, create the variation items
-            if ($itemData['is_variation'] == 1 && isset($itemData['sub_items'])) {
-                foreach ($itemData['sub_items'] as $subItemData) {
-                    // Create the variation item
-                    $orderDescription->variationItems()->create([
-                        'item_name' => $subItemData['item_name'],
-                        'quantity' => $subItemData['quantity'],
-                        'price' => $subItemData['price'],
-                        'total' => $subItemData['total'],
-                    ]);
-                }
-            }
-        }
-
-        return $customerOrder;
-    }
-
 
     public static function table(Table $table): Table
     {
@@ -224,13 +193,25 @@ class CustomerOrderResource extends Resource
                 TextColumn::make('customer.name')->label('Customer Name'),
                 TextColumn::make('name')->label('Order Name'),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
-                BadgeColumn::make('status')->label('Status'),
+                BadgeColumn::make('status')
+                    ->label('Status')
+                    ->colors([
+                        'gray' => fn ($state): bool => $state === 'planned',
+                        'blue' => fn ($state): bool => $state === 'in_progress',
+                        'green' => fn ($state): bool => $state === 'completed',
+                    ])
+                    ->getStateUsing(fn ($record) => $record->status),
                 TextColumn::make('created_at')->label('Created Date')->dateTime(),
             ])
             ->actions([
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
+                Action::make('view_pdf')
+                    ->label('View PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn ($record) => route('customer-orders.pdf', $record))
+                    ->openUrlInNewTab(),
             ]);
     }
 

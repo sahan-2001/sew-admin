@@ -1,21 +1,28 @@
 <?php
 
+namespace App\Http\Controllers;
+
 use App\Models\CustomerOrder;
 use Illuminate\Http\Request;
 
 class CustomerOrderController extends Controller
 {
-    public function store(Request $request)
+    public function show($orderId)
     {
-        // The logic you posted here
-        $data = $request->all(); // or custom validation if needed
-        $customerOrder = CustomerOrder::create($data);
+        // Load the order along with its customer, order items, and variation items
+        $order = CustomerOrder::with('customer', 'orderItems', 'orderItems.variationItems')->findOrFail($orderId);
 
-        // Handle order descriptions and variations (same as in your code)
-        foreach ($data['order_items'] as $itemData) {
-            // Add logic to save order items and variations as needed
-        }
+        // Calculate the grand total by summing up the total of all order items and variations
+        $grandTotal = $order->orderItems->sum(function ($item) {
+            return $item->total + $item->variationItems->sum('total');
+        });
 
-        return redirect()->route('customer_orders.index');
+        // Pass the data to the view
+        return view('customer-order.show', [
+            'order' => $order,
+            'orderDescriptions' => $order->orderItems,
+            'grandTotal' => $grandTotal,
+            'printedBy' => auth()->user()->id,
+        ]);
     }
 }

@@ -9,6 +9,8 @@
         "althinect/filament-spatie-roles-permissions": "^2.2",
         "barryvdh/laravel-dompdf": "^3.1",
         "filament/filament": "^3.2",
+        "filament/forms": "^3.2",
+        "filament/tables": "^3.2",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
