@@ -18,6 +18,7 @@ class RegisterArrivalItemDescription extends Model
         'price',
         'total',
         'status',
+        'is_po_item',
     ];
 
     protected static $logAttributes = [
@@ -27,6 +28,7 @@ class RegisterArrivalItemDescription extends Model
         'price',
         'total',
         'status',
+        'is_po_item',
     ];
 
     protected static $logName = 'register_arrival_item_description';
@@ -46,6 +48,7 @@ class RegisterArrivalItemDescription extends Model
                 'price',
                 'total',
                 'status',
+                'is_po_item',
             ])
             ->useLogName('register_arrival_item_description')
             ->setDescriptionForEvent(function (string $eventName) {

@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegisterArrivalItemResource\Pages;
 use App\Models\RegisterArrivalItem;
+use App\Models\RegisterArrivalItemDescription;
 use App\Models\PurchaseOrder;
+use App\Models\InventoryItem;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
@@ -37,7 +40,7 @@ class RegisterArrivalItemResource extends Resource
                     ->required()
                     ->reactive()
                     ->afterStateUpdated(function (callable $set, $state) {
-                        $purchaseOrder = PurchaseOrder::find($state);
+                        $purchaseOrder = PurchaseOrder::with('items.inventoryItem')->find($state);
 
                         if ($purchaseOrder) {
                             $set('provider_type', $purchaseOrder->provider_type);
@@ -45,45 +48,33 @@ class RegisterArrivalItemResource extends Resource
                             $set('provider_name', $purchaseOrder->provider_name);
                             $set('provider_email', $purchaseOrder->provider_email);
                             $set('provider_phone', $purchaseOrder->provider_phone);
-                            $set('items', $purchaseOrder->items);
+
+                            // Prefill items from the purchase order
+                            $set('purchase_order_items', $purchaseOrder->items->map(function ($item) {
+                                return [
+                                    'item_code' => $item->inventoryItem->item_code,
+                                    'item_name' => $item->inventoryItem->name,
+                                    'quantity' => $item->quantity,
+                                    'price' => $item->price,
+                                    'total' => $item->quantity * $item->price,
+                                    'is_po_item' => 'yes', // Mark as purchase order item
+                                ];
+                            })->toArray());
+                        } else {
+                            $set('purchase_order_items', []);
                         }
                     }),
 
-                TextInput::make('provider_type')
-                    ->label('Provider Type')
-                    ->disabled(),
+                TextInput::make('provider_type')->label('Provider Type')->disabled(),
+                TextInput::make('provider_id')->label('Provider ID')->disabled(),
+                TextInput::make('provider_name')->label('Provider Name')->disabled(),
+                TextInput::make('provider_email')->label('Provider Email')->disabled(),
+                TextInput::make('provider_phone')->label('Provider Phone')->disabled(),
 
-                TextInput::make('provider_id')
-                    ->label('Provider ID')
-                    ->disabled(),
-
-                TextInput::make('provider_name')
-                    ->label('Provider Name')
-                    ->disabled(),
-
-                TextInput::make('provider_email')
-                    ->label('Provider Email')
-                    ->disabled(),
-
-                TextInput::make('provider_phone')
-                    ->label('Provider Phone')
-                    ->disabled(),
-
-                DatePicker::make('received_date')
-                    ->label('Received Date')
-                    ->required(),
-
-                TextInput::make('invoice_number')
-                    ->label('Invoice Number')
-                    ->required(),
-
-                FileUpload::make('invoice_image')
-                    ->label('Invoice Image')
-                    ->image(),
-
-                Textarea::make('note')
-                    ->label('Note')
-                    ->nullable(),
+                DatePicker::make('received_date')->label('Received Date')->required(),
+                TextInput::make('invoice_number')->label('Invoice Number')->required(),
+                FileUpload::make('invoice_image')->label('Invoice Image')->nullable(),
+                Textarea::make('note')->label('Note')->nullable(),
 
                 Select::make('location_status')
                     ->label('Location Status')
@@ -92,45 +83,61 @@ class RegisterArrivalItemResource extends Resource
                         'picking' => 'Picking',
                         'shipment' => 'Shipment',
                     ])
-                    ->required(),
+                    ->default('arrival'),
 
-                Section::make('Items')
+                Section::make('Purchase Order Items')
+                    ->hidden(fn ($get) => empty($get('purchase_order_id')))
                     ->schema([
-                        Repeater::make('items')
-                            ->relationship('descriptions')
+                        Repeater::make('purchase_order_items')
                             ->schema([
-                                TextInput::make('item_code')
-                                    ->label('Item Code')
-                                    ->required(),
-
-                                TextInput::make('quantity')
-                                    ->label('Quantity')
-                                    ->numeric()
-                                    ->required(),
-
-                                TextInput::make('price')
-                                    ->label('Price')
-                                    ->numeric()
-                                    ->required(),
-
-                                TextInput::make('total')
-                                    ->label('Total')
-                                    ->numeric()
-                                    ->disabled()
-                                    ->default(fn ($get) => $get('quantity') * $get('price')),
-
-                                Select::make('status')
-                                    ->label('Status')
-                                    ->options([
-                                        'to be inspected' => 'To be Inspected',
-                                        'approved' => 'Approved',
-                                        'return' => 'Return',
-                                        'scrap' => 'Scrap',
-                                    ])
-                                    ->required(),
+                                Grid::make(5)
+                                    ->schema([
+                                        TextInput::make('item_code')->label('Item Code')->disabled(),
+                                        TextInput::make('item_name')->label('Item Name')->disabled(),
+                                        TextInput::make('quantity')->label('Quantity')->numeric()->required(),
+                                        TextInput::make('price')->label('Price')->numeric()->required(),
+                                        TextInput::make('total')
+                                            ->label('Total')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->default(fn ($get) => $get('quantity') * $get('price')),
+                                    ]),
                             ])
                             ->columns(1)
-                            ->createItemButtonLabel('Add Item'),
+                            ->disableItemCreation()
+                            ->disableItemMovement()
+                            ->disableItemDeletion(),
+                    ]),
+
+                Section::make('Items Not in the Purchase Order')
+                    ->schema([
+                        Repeater::make('additional_items')
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        Select::make('item_name')
+                                            ->label('Item Name')
+                                            ->options(InventoryItem::pluck('name', 'id'))
+                                            ->searchable()
+                                            ->reactive()
+                                            ->afterStateUpdated(function (callable $set, $state) {
+                                                $inventoryItem = InventoryItem::find($state);
+                                                if ($inventoryItem) {
+                                                    $set('item_code', $inventoryItem->item_code);
+                                                }
+                                            }),
+                                        TextInput::make('item_code')->label('Item Code')->disabled(),
+                                        TextInput::make('quantity')->label('Quantity')->numeric()->required(),
+                                        TextInput::make('price')->label('Price')->numeric()->required(),
+                                        TextInput::make('total')
+                                            ->label('Total')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->default(fn ($get) => $get('quantity') * $get('price')),
+                                    ]),
+                            ])
+                            ->columns(1)
+                            ->createItemButtonLabel('Add New Item'),
                     ]),
             ]);
     }
@@ -161,4 +168,6 @@ class RegisterArrivalItemResource extends Resource
             'edit' => Pages\EditRegisterArrivalItem::route('/{record}/edit'),
         ];
     }
+
+    
 }

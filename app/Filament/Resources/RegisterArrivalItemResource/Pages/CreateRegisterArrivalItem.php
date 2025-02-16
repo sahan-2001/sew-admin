@@ -3,11 +3,10 @@
 namespace App\Filament\Resources\RegisterArrivalItemResource\Pages;
 
 use App\Filament\Resources\RegisterArrivalItemResource;
-use Filament\Resources\Pages\Page;
+use Filament\Actions;
+use Filament\Resources\Pages\CreateRecord;
 
-class RegisterArrivalItemCreate extends Page
+class CreateRegisterArrivalItem extends CreateRecord
 {
     protected static string $resource = RegisterArrivalItemResource::class;
-
-    protected static string $view = 'filament.resources.register-arrival-item-resource.pages.register-arrival-item-create';
 }

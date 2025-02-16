@@ -18,7 +18,8 @@ return new class extends Migration
             $table->integer('quantity');
             $table->decimal('price', 10, 2);
             $table->decimal('total', 10, 2);
-            $table->enum('status', ['to be inspected', 'approved', 'return', 'scrap']);
+            $table->enum('status', ['to be inspected', 'approved', 'return', 'scrap', 'received']);
+            $table->string('is_po_item')->default('no');
             $table->timestamps();
 
             $table->foreign('register_arrival_item_id', 'fk_register_arrival_item_id')
