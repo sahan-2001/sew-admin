@@ -10,10 +10,5 @@ class EditSupplierRequest extends EditRecord
 {
     protected static string $resource = SupplierRequestResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+    
 }

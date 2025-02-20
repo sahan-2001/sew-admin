@@ -10,10 +10,5 @@ class EditInventoryLocation extends EditRecord
 {
     protected static string $resource = InventoryLocationResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+    
 }

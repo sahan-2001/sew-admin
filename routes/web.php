@@ -9,6 +9,7 @@ use App\Models\CustomerOrder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CustomerOrderController;
+use App\Http\Controllers\SampleOrderController;
 
 
 /*
@@ -52,3 +53,20 @@ Route::get('/customer-orders/{order}/pdf', function (CustomerOrder $order) {
     // Return the PDF as a response to stream it
     return $pdf->stream('customer_order.pdf');
 })->name('customer-orders.pdf');
+
+
+Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrder) {
+    $orderDescriptions = $sampleOrder->items()->with('variations')->get();
+    $grandTotal = $sampleOrder->items->sum(function ($item) {
+        return $item->total + $item->variations->sum('total');
+    });
+
+    $pdf = Pdf::loadView('pdf.sample_order', [
+        'sampleOrder' => $sampleOrder,
+        'orderDescriptions' => $orderDescriptions,
+        'grandTotal' => $grandTotal,
+        'printedBy' => auth()->user()->email,
+    ]);
+
+    return $pdf->stream('sample_order.pdf');
+})->name('sample-orders.pdf');
