@@ -10,10 +10,5 @@ class EditActivityLog extends EditRecord
 {
     protected static string $resource = ActivityLogResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+    
 }

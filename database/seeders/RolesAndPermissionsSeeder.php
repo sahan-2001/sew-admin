@@ -68,6 +68,12 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit customer orders']);
         Permission::firstOrCreate(['name' => 'delete customer orders']);
 
+        // Sample order permissions
+        Permission::firstOrCreate(['name' => 'view sample orders']);
+        Permission::firstOrCreate(['name' => 'create sample orders']);
+        Permission::firstOrCreate(['name' => 'edit sample orders']);
+        Permission::firstOrCreate(['name' => 'delete sample orders']);
+
         // Warehouse permissions
         Permission::firstOrCreate(['name' => 'view warehouses']);
         Permission::firstOrCreate(['name' => 'create warehouses']);

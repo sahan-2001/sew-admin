@@ -1,10 +1,9 @@
 <?php
 
-
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CustomerOrderResource\Pages;
-use App\Models\CustomerOrder;
+use App\Filament\Resources\SampleOrderResource\Pages;
+use App\Models\SampleOrder;
 use App\Models\Customer;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
@@ -25,12 +24,14 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Actions\Action;
 
-class CustomerOrderResource extends Resource
+
+
+class SampleOrderResource extends Resource
 {
-    protected static ?string $model = CustomerOrder::class;
+    protected static ?string $model = SampleOrder::class;
 
     protected static ?string $navigationGroup = 'Orders';
-    protected static ?string $navigationLabel = 'Customer Orders';
+    protected static ?string $navigationLabel = 'Sample Customer Orders';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     public static function form(Form $form): Form
@@ -40,7 +41,7 @@ class CustomerOrderResource extends Resource
                 // Customer Selection
                 Select::make('customer_id')
                     ->label('Customer')
-                    ->options(fn () => Customer::pluck('name', 'customer_id')->toArray()) // Lazy loading for performance
+                    ->options(fn () => Customer::pluck('name', 'customer_id')->toArray())
                     ->searchable()
                     ->required()
                     ->reactive()
@@ -89,13 +90,11 @@ class CustomerOrderResource extends Resource
                     ->default(fn () => auth()->user()->id)
                     ->required(),
 
-                // Order Items Section
                 Section::make('Order Items')
                     ->schema([
-                        Repeater::make('order_items')
-                            ->relationship('orderItems') // Ensure this relationship is defined in the CustomerOrder model
+                        Repeater::make('sample_order_items')
+                            ->relationship('items')
                             ->schema([
-                                // Row 1: Item Name and Is Variation Toggle
                                 Grid::make(2)
                                     ->schema([
                                         TextInput::make('item_name')
@@ -115,7 +114,6 @@ class CustomerOrderResource extends Resource
                                             }),
                                     ]),
 
-                                // Row 2: Quantity, Price, and Total (For Non-Variation Items)
                                 Grid::make(3)
                                     ->schema([
                                         TextInput::make('quantity')
@@ -146,10 +144,9 @@ class CustomerOrderResource extends Resource
                                             ->visible(fn ($get) => !$get('is_variation')),
                                     ]),
 
-                                // Variation Items Table (For Variation Items)
-                                Repeater::make('sub_items')
+                                Repeater::make('sample_order_variations')
                                     ->label('Variation Items')
-                                    ->relationship('variationItems') // Ensure this relationship is defined in the CustomerOrderDescription model
+                                    ->relationship('variations')
                                     ->schema([
                                         TextInput::make('variation_name')
                                             ->label('Variation Name')
@@ -189,7 +186,7 @@ class CustomerOrderResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('order_id')->label('ID'),
+                TextColumn::make('id')->label('ID'),
                 TextColumn::make('customer.name')->label('Customer Name'),
                 TextColumn::make('name')->label('Order Name'),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
@@ -205,15 +202,14 @@ class CustomerOrderResource extends Resource
             ])
             ->actions([
                 ViewAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('view customer orders')),
+                    ->visible(fn ($record) => auth()->user()->can('view sample orders')),
                 EditAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('edit customer orders')),
+                    ->visible(fn ($record) => auth()->user()->can('edit sample orders')),
                 DeleteAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('delete customer orders')),
-                Action::make('view_pdf')
-                    ->label('View PDF')
-                    ->icon('heroicon-o-document-text')
-                    ->url(fn ($record) => route('customer-orders.pdf', $record))
+                    ->visible(fn ($record) => auth()->user()->can('delete sample orders')),
+                Action::make('download_pdf')
+                    ->label('Download PDF')
+                    ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
                     ->openUrlInNewTab(),
             ]);
     }
@@ -221,9 +217,9 @@ class CustomerOrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCustomerOrders::route('/'),
-            'create' => Pages\CreateCustomerOrder::route('/create'),
-            'edit' => Pages\EditCustomerOrder::route('/{record}/edit'),
+            'index' => Pages\ListSampleOrders::route('/'),
+            'create' => Pages\CreateSampleOrder::route('/create'),
+            'edit' => Pages\EditSampleOrder::route('/{record}/edit'),
         ];
     }
 }

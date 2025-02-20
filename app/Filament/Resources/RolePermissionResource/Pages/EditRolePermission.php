@@ -10,10 +10,5 @@ class EditRolePermission extends EditRecord
 {
     protected static string $resource = RolePermissionResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+    
 }
