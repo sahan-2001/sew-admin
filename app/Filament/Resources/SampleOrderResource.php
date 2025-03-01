@@ -63,15 +63,18 @@ class SampleOrderResource extends Resource
 
                 TextInput::make('phone_1')
                     ->label('Phone 1')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 TextInput::make('phone_2')
                     ->label('Phone 2')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 TextInput::make('email')
                     ->label('Email')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 // Order Details
                 TextInput::make('name')
@@ -186,7 +189,7 @@ class SampleOrderResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('ID'),
+                TextColumn::make('order_id')->label('ID'),
                 TextColumn::make('customer.name')->label('Customer Name'),
                 TextColumn::make('name')->label('Order Name'),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
