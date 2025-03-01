@@ -62,15 +62,18 @@ class CustomerOrderResource extends Resource
 
                 TextInput::make('phone_1')
                     ->label('Phone 1')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 TextInput::make('phone_2')
                     ->label('Phone 2')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 TextInput::make('email')
                     ->label('Email')
-                    ->nullable(),
+                    ->nullable()
+                    ->disabled(),
 
                 // Order Details
                 TextInput::make('name')
