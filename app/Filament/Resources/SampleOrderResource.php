@@ -214,6 +214,11 @@ class SampleOrderResource extends Resource
                     ->label('Download PDF')
                     ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
                     ->openUrlInNewTab(),
+                Action::make('handle')
+                    ->label('Handle')
+                    ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
+                    ->openUrlInNewTab(false),
+                
             ]);
     }
 
@@ -223,6 +228,7 @@ class SampleOrderResource extends Resource
             'index' => Pages\ListSampleOrders::route('/'),
             'create' => Pages\CreateSampleOrder::route('/create'),
             'edit' => Pages\EditSampleOrder::route('/{record}/edit'),
+            'handle' => Pages\HandleSampleOrder::route('/{record}/handle'),
         ];
     }
 }
