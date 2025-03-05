@@ -204,22 +204,21 @@ class SampleOrderResource extends Resource
                 TextColumn::make('created_at')->label('Created Date')->dateTime(),
             ])
             ->actions([
-                ViewAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('view sample orders')),
                 EditAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('edit sample orders')),
+                    ->visible(fn ($record) => auth()->user()->can('edit sample orders') && $record->status !== 'released'),  // Hide Edit button if status is 'released'
                 DeleteAction::make()
                     ->visible(fn ($record) => auth()->user()->can('delete sample orders')),
                 Action::make('download_pdf')
-                    ->label('Download PDF')
+                    ->label('View')
                     ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => $record->status !== 'planned'),  // Hide View button if status is 'planned'
                 Action::make('handle')
                     ->label('Handle')
                     ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
                     ->openUrlInNewTab(false),
-                
             ]);
+            
     }
 
     public static function getPages(): array

@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,7 +23,7 @@ class CustomerOrder extends Model
         'added_by',  // Add added_by to fillable fields
     ];
 
-    // Relationship with CustomerOrderDescription
+    // Relationship with CustomerOrderDescription (OrderItems)
     public function orderItems()
     {
         return $this->hasMany(CustomerOrderDescription::class, 'customer_order_id', 'order_id');
@@ -40,6 +39,19 @@ class CustomerOrder extends Model
     public function addedBy()
     {
         return $this->belongsTo(User::class, 'added_by'); // 'added_by' references the 'id' field in the users table
+    }
+
+    // Relationship with VariationItems (if required)
+    public function variationItems()
+    {
+        return $this->hasManyThrough(
+            VariationItem::class,
+            CustomerOrderDescription::class,
+            'customer_order_id', // Foreign key on CustomerOrderDescription
+            'order_description_id', // Foreign key on VariationItem
+            'order_id', // Local key on CustomerOrder
+            'order_description_id' // Local key on CustomerOrderDescription
+        );
     }
 
     // Configure activity log options
