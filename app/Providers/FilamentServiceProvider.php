@@ -5,6 +5,8 @@ namespace App\Providers;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationItem;
 use Filament\Providers\FilamentServiceProvider as BaseServiceProvider;
+use App\Filament\Resources\SampleOrderResource;
+
 
 class FilamentServiceProvider extends BaseServiceProvider
 {
@@ -23,4 +25,5 @@ class FilamentServiceProvider extends BaseServiceProvider
             });
         });
     }
+    
 }

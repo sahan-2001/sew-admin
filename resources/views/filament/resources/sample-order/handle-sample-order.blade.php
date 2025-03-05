@@ -1,18 +1,27 @@
 <x-filament::page>
-    
+
     <!-- Progress Bar with Status Circle -->
     <div class="mt-4 relative">
+
         <!-- Progress Bar -->
         <div class="progress-bar-container w-full bg-gray-200 rounded-full overflow-hidden">
-            <div class="progress-bar h-2 rounded-full bg-blue-600" style="width: {{ $record->status == 'planned' ? '25%' : ($record->status == 'in_progress' ? '50%' : ($record->status == 'completed' ? '100%' : '0%')) }}"></div>
+            <div class="progress-bar h-2 rounded-full bg-blue-600"
+                 style="width: {{ $record->status == 'planned' ? '20%' : 
+                                ($record->status == 'in_progress' ? '40%' : 
+                                ($record->status == 'completed' ? '80%' : 
+                                ($record->status == 'released' ? '100%' : '0%'))) }}">
+            </div>
         </div>
 
         <!-- Status Circle -->
         <div class="status-circle absolute top-1/2 transform -translate-y-1/2" 
-             style="left: {{ $record->status == 'planned' ? '25%' : ($record->status == 'in_progress' ? '50%' : ($record->status == 'completed' ? '100%' : '0%')) }}; 
-                    width: {{ $record->status == 'completed' ? '30px' : '20px' }}; 
-                    height: {{ $record->status == 'completed' ? '30px' : '20px' }}; 
-                    background-color: {{ $record->status == 'completed' ? '#f59e0b' : '#f59e0b' }}; 
+             style="left: {{ $record->status == 'planned' ? '20%' : 
+                            ($record->status == 'released' ? '40%' : 
+                            ($record->status == 'in_progress' ? '80%' : 
+                            ($record->status == 'completed' ? '100%' : '0%'))) }};
+                    width: 20px; 
+                    height: 20px; 
+                    background-color: {{ $record->status == 'released' ? '#f59e0b' : ($record->status == 'completed' ? '#10b981' : '#f59e0b') }}; 
                     border-radius: 50%;">
         </div>
     </div>
@@ -20,8 +29,9 @@
     <!-- Status Labels -->
     <div class="flex justify-between mt-2 text-xs font-medium text-gray-600">
         <span class="status-label {{ $record->status == 'planned' ? 'text-blue-600' : '' }}">Planned</span>
+        <span class="status-label {{ $record->status == 'released' ? 'text-yellow-600' : '' }}">Released</span>
         <span class="status-label {{ $record->status == 'in_progress' ? 'text-blue-600' : '' }}">In Progress</span>
-        <span class="status-label {{ $record->status == 'completed' ? 'text-blue-600' : '' }}">Completed</span>
+        <span class="status-label {{ $record->status == 'completed' ? 'text-green-600' : '' }}">Completed</span>
     </div>
 
     <!-- Order Details (2 Columns) -->
@@ -102,34 +112,9 @@
         <p>Grand Total: {{ $grandTotal }}</p>
     </div>
 
-    <!-- Convert to a Customer Order Button -->
-    <div class="mt-6 text-right">
-    <x-filament::button color="danger" icon="heroicon-o-x-circle" wire:click="releaseOrder">
-    Release Order
-</x-filament::button>
-    </div>
 
-    <div>
-    <!-- Order Status -->
-    <div>
-        <h3>{{ $record->status }}</h3>
 
-        <!-- Release Button -->
-        <div class="mt-4 text-right">
-            <x-filament::button color="danger" icon="heroicon-o-x-circle" wire:click="releaseOrder">
-                Release Order
-            </x-filament::button>
-        </div>
-
-        <!-- Success Message -->
-        @if (session()->has('message'))
-            <div class="mt-4 text-green-600">
-                {{ session('message') }}
-            </div>
-        @endif
-    </div>
-</div>
-
+    
 
     <style>
         /* Progress Bar Container */
@@ -153,7 +138,7 @@
         /* Status Labels */
         .status-label {
             display: inline-block;
-            width: 33.33%;
+            width: 25%;
             text-align: center;
         }
 
@@ -161,6 +146,11 @@
         .status-label.text-blue-600 {
             font-weight: bold;
             color: #3b82f6; /* Blue color */
+        }
+
+        .status-label.text-green-600 {
+            font-weight: bold;
+            color: #10b981; /* Green color */
         }
 
         /* Set the close button color to yellow */
