@@ -1,38 +1,47 @@
 <x-filament::page>
 
-    <!-- Progress Bar with Status Circle -->
-    <div class="mt-4 relative">
+    <br>
+    <div class="flex items-center gap-4 w-full md:w-1/2">
+        
+        <!-- Blinking Status Text (Left) -->
+        <div class="text-lg font-semibold text-gray-700 animate-blink whitespace-nowrap">
+            {{ ucfirst($record->status) }}
+        </div>
 
-        <!-- Progress Bar -->
-        <div class="progress-bar-container w-full bg-gray-200 rounded-full overflow-hidden">
-            <div class="progress-bar h-2 rounded-full bg-blue-600"
-                 style="width: {{ $record->status == 'planned' ? '20%' : 
-                                ($record->status == 'in_progress' ? '40%' : 
-                                ($record->status == 'completed' ? '80%' : 
-                                ($record->status == 'released' ? '100%' : '0%'))) }}">
+        <!-- Filled Progress Bar -->
+        <div class="w-full bg-gray-200 rounded-md overflow-hidden">
+            @php
+                $status = $record->status;
+                $progressValue = match($status) {
+                    'planned' => 25,
+                    'released' => 50,
+                    'rejected' => 75,
+                    'accepted' => 100,
+                    default => 0
+                };
+
+                $color = match($status) {
+                    'planned' => '#3b82f6',
+                    'released' => '#f59e0b',
+                    'rejected' => '#ef4444',
+                    'accepted' => '#10b981',
+                    default => '#e5e7eb'
+                };
+            @endphp
+
+            <div class="h-3 rounded-md transition-all duration-500 ease-in-out"
+                style="width: {{ $progressValue }}%; background-color: {{ $color }};">
             </div>
         </div>
 
-        <!-- Status Circle -->
-        <div class="status-circle absolute top-1/2 transform -translate-y-1/2" 
-             style="left: {{ $record->status == 'planned' ? '20%' : 
-                            ($record->status == 'released' ? '40%' : 
-                            ($record->status == 'in_progress' ? '80%' : 
-                            ($record->status == 'completed' ? '100%' : '0%'))) }};
-                    width: 20px; 
-                    height: 20px; 
-                    background-color: {{ $record->status == 'released' ? '#f59e0b' : ($record->status == 'completed' ? '#10b981' : '#f59e0b') }}; 
-                    border-radius: 50%;">
+        <!-- Progress Percentage -->
+        <div class="text-lg font-semibold text-gray-700">
+            {{ $progressValue }}%
         </div>
+
     </div>
 
-    <!-- Status Labels -->
-    <div class="flex justify-between mt-2 text-xs font-medium text-gray-600">
-        <span class="status-label {{ $record->status == 'planned' ? 'text-blue-600' : '' }}">Planned</span>
-        <span class="status-label {{ $record->status == 'released' ? 'text-yellow-600' : '' }}">Released</span>
-        <span class="status-label {{ $record->status == 'in_progress' ? 'text-blue-600' : '' }}">In Progress</span>
-        <span class="status-label {{ $record->status == 'completed' ? 'text-green-600' : '' }}">Completed</span>
-    </div>
+    <br>
 
     <!-- Order Details (2 Columns) -->
     <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -112,27 +121,16 @@
         <p>Grand Total: {{ $grandTotal }}</p>
     </div>
 
-
-
-    
-
     <style>
-        /* Progress Bar Container */
         .progress-bar-container {
-            height: 6px;
-            background-color: #e5e7eb; /* Light gray background */
-            border-radius: 9999px; /* Fully rounded */
+            height: 10px;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
             overflow: hidden;
         }
 
-        /* Progress Bar Style */
         .progress-bar {
-            transition: width 0.5s ease-in-out; /* Smooth transition */
-        }
-
-        /* Status Circle */
-        .status-circle {
-            transition: width 0.5s ease-in-out, height 0.5s ease-in-out;
+            transition: width 0.5s ease-in-out;
         }
 
         /* Status Labels */
@@ -153,15 +151,26 @@
             color: #10b981; /* Green color */
         }
 
-        /* Set the close button color to yellow */
-        .filament-modal .modal-close {
-            background-color: #f59e0b !important; /* Yellow background */
-            color: white !important; /* White icon color */
+        .status-label.text-red-600 {
+            font-weight: bold;
+            color: #ef4444; /* Red color */
         }
 
-        /* Optional: Add hover effect for the close button */
-        .filament-modal .modal-close:hover {
-            background-color: #fbbf24 !important; /* Slightly darker yellow on hover */
+        .status-label.text-yellow-600 {
+            font-weight: bold;
+            color: #f59e0b; /* Yellow color */
+        }
+
+        /* Blinking Status */
+        @keyframes blink {
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .animate-blink {
+            animation: blink 1s infinite;
+            font-weight: bold;
         }
     </style>
 
