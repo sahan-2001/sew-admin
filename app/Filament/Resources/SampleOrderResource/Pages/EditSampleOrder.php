@@ -88,9 +88,7 @@ class EditSampleOrder extends EditRecord
                                             ->numeric()
                                             ->required()
                                             ->reactive()
-                                            ->afterStateUpdated(function (callable $set, $state, $get) {
-                                                $set('total', $state * $get('price'));
-                                            })
+                                            ->afterStateUpdated(fn (callable $set, $state, $get) => $set('total', $state * $get('price')))
                                             ->visible(fn ($get) => !$get('is_variation')),
 
                                         TextInput::make('price')
@@ -98,9 +96,7 @@ class EditSampleOrder extends EditRecord
                                             ->numeric()
                                             ->required()
                                             ->reactive()
-                                            ->afterStateUpdated(function (callable $set, $state, $get) {
-                                                $set('total', $state * $get('quantity'));
-                                            })
+                                            ->afterStateUpdated(fn (callable $set, $state, $get) => $set('total', $state * $get('quantity')))
                                             ->visible(fn ($get) => !$get('is_variation')),
 
                                         TextInput::make('total')
@@ -110,6 +106,39 @@ class EditSampleOrder extends EditRecord
                                             ->default(fn ($get) => $get('quantity') * $get('price'))
                                             ->visible(fn ($get) => !$get('is_variation')),
                                     ]),
+                                
+                                // Variation Items (Editable)
+                                Repeater::make('sample_order_variations')
+                                    ->label('Variation Items')
+                                    ->relationship('variations')
+                                    ->schema([
+                                        TextInput::make('variation_name')
+                                            ->label('Variation Name')
+                                            ->required(),
+
+                                        TextInput::make('quantity')
+                                            ->label('Quantity')
+                                            ->numeric()
+                                            ->required()
+                                            ->reactive(),
+
+                                        TextInput::make('price')
+                                            ->label('Price')
+                                            ->numeric()
+                                            ->required()
+                                            ->reactive(),
+
+                                        TextInput::make('total')
+                                            ->label('Total')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->default(fn ($get) => $get('quantity') * $get('price')),
+                                    ])
+                                    ->columns(4)
+                                    ->visible(fn ($get) => $get('is_variation') == true)
+                                    ->addable()
+                                    ->reorderable()
+                                    ->createItemButtonLabel('Add Variation Item'),
                             ])
                             ->columns(1)
                             ->createItemButtonLabel('Add Order Item'),

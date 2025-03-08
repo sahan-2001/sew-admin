@@ -55,6 +55,13 @@ class HandleSampleOrder extends Page
     public function acceptSampleOrder($confirmationMessage = null)
     {
         try {
+            // Clear the rejected fields first
+            $this->record->update([
+                'rejected_by' => null,               
+                'rejection_message' => null,         
+            ]);
+
+            // Then update the order with accepted status and confirmation message
             $this->record->update([
                 'status' => 'accepted',
                 'confirmation_message' => $confirmationMessage,
@@ -76,17 +83,26 @@ class HandleSampleOrder extends Page
     }
 
     // Reject Sample Order
-    public function rejectSampleOrder()
+    public function rejectSampleOrder($rejectionMessage = null)
     {
         try {
+            // Clear the accepted fields first
+            $this->record->update([
+                'accepted_by' => null,               
+                'confirmation_message' => null,     
+            ]);
+
+            // Then update the order with rejected status and rejection message
             $this->record->update([
                 'status' => 'rejected',
+                'rejected_by' => auth()->id(),  
+                'rejection_message' => $rejectionMessage,
             ]);
 
             Notification::make()
                 ->title('Sample Order Rejected')
                 ->warning()
-                ->body('The sample order has been rejected.')
+                ->body('The sample order has been rejected. Rejection message: ' . $rejectionMessage)
                 ->send();
         } catch (\Exception $e) {
             Notification::make()
@@ -97,10 +113,22 @@ class HandleSampleOrder extends Page
         }
     }
 
+
+
+
     // Plan Order (Change status back to "planned" with confirmation)
     public function planOrder()
     {
         try {
+            // Clear all the relevant fields
+            $this->record->update([
+                'accepted_by' => null,             
+                'confirmation_message' => null,      
+                'rejected_by' => null,             
+                'rejection_message' => null,        
+            ]);
+
+            // Then update the order with "planned" status
             $this->record->update([
                 'status' => 'planned',
             ]);
@@ -108,7 +136,7 @@ class HandleSampleOrder extends Page
             Notification::make()
                 ->title('Order Planned Again')
                 ->info()
-                ->body('The sample order has been set back to "planned" status.')
+                ->body('The sample order has been set back to "planned" status. All acceptance/rejection data has been cleared.')
                 ->send();
         } catch (\Exception $e) {
             Notification::make()
@@ -118,6 +146,7 @@ class HandleSampleOrder extends Page
                 ->send();
         }
     }
+
 
     protected function getHeaderActions(): array
     {
@@ -129,8 +158,8 @@ class HandleSampleOrder extends Page
                 ->openUrlInNewTab(false),
         ];
 
-        // Only add "Release Sample Order" action if the status is not 'released'
-        if ($this->record->status != 'released') {
+        // Only add "Release Sample Order" action if the status is 'planned' and not 'accepted'
+        if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_sample_order')
                 ->label('Release Sample Order')
                 ->color('warning')
@@ -158,10 +187,33 @@ class HandleSampleOrder extends Page
                         ->nullable(),
                 ])
                 ->modalButton('Accept Order')
-                ->action(fn (array $data) => $this->acceptSampleOrder($data['confirmation_message'] ?? ''));
+                ->action(fn (array $data) => $this->acceptSampleOrder($data['confirmation_message'] ?? null))
+                ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
         }
 
-        if (in_array($this->record->status, ['released', 'rejected', 'converted'])) {
+        // Reject Sample Order
+        if ($this->record->status === 'released') {
+            $actions[] = Action::make('reject_sample_order')
+                ->label('Reject Sample Order')
+                ->color('danger')
+                ->icon('heroicon-o-x-circle')
+                ->requiresConfirmation()
+                ->modalHeading('Reject Sample Order')
+                ->modalDescription('Please enter a rejection message (optional) for this sample order.')
+                ->form([
+                    \Filament\Forms\Components\Textarea::make('rejection_message')
+                        ->label('Rejection Message')
+                        ->nullable(),
+                ])
+                ->modalButton('Reject Order')
+                ->action(fn (array $data) => $this->rejectSampleOrder($data['rejection_message'] ?? null))
+                ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
+        }
+
+
+
+        // Plan Order (Change status back to "planned") for 'released', 'accepted', 'rejected' statuses
+        if (in_array($this->record->status, ['released', 'accepted', 'rejected'])) {
             $actions[] = Action::make('plan_order')
                 ->label('Plan Order')
                 ->color('gray')

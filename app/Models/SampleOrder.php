@@ -24,7 +24,11 @@ class SampleOrder extends Model
         'wanted_delivery_date',
         'special_notes',
         'status',
-        'added_by', // Track the user who created the order
+        'added_by', 
+        'accepted_by',
+        'confirmation_message',
+        'rejected_by',
+        'rejection_message',
     ];
 
     public function customer()
