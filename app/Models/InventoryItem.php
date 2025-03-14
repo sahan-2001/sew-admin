@@ -73,4 +73,9 @@ class InventoryItem extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function registerArrivalItems()
+    {
+        return $this->hasMany(RegisterArrivalItem::class, 'item_id');
+    }
 }
