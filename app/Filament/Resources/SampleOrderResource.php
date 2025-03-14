@@ -225,7 +225,8 @@ class SampleOrderResource extends Resource
                     ->label('Handle')
                     ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
                     ->openUrlInNewTab(false),
-            ]);
+            ])
+            ->recordUrl(null);
             
     }
 

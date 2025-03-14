@@ -79,7 +79,8 @@ class WarehouseResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete warehouses')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

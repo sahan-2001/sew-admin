@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,7 +19,8 @@ class PurchaseOrder extends Model
         'provider_phone',
         'wanted_date',
         'special_note',
-        'user_id', 
+        'user_id',
+        'status', // Add status to fillable
     ];
 
     protected static $logName = 'purchase_order';
@@ -41,11 +41,19 @@ class PurchaseOrder extends Model
                 'provider_phone',
                 'wanted_date',
                 'special_note',
+                'status', // Log changes to status
             ])
             ->useLogName('purchase_order')
             ->setDescriptionForEvent(function (string $eventName) {
                 $userEmail = $this->user ? $this->user->email : 'unknown';
-                return "Purchase Order {$this->id} has been {$eventName} by User {$this->user_id}";
+                $description = "Purchase Order {$this->id} has been {$eventName} by User {$this->user_id}";
+
+                // Add updated status to the description if status is changed
+                if ($this->isDirty('status')) {
+                    $description .= ". New status: {$this->status}";
+                }
+
+                return $description;
             });
     }
 

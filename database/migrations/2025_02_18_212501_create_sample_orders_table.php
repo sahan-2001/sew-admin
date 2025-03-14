@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-
     public function up(): void
     {
         Schema::create('sample_orders', function (Blueprint $table) {
@@ -24,6 +23,7 @@ return new class extends Migration
             $table->timestamps(); 
             $table->softDeletes(); 
 
+            // Foreign keys
             $table->foreign('customer_id')
                   ->references('customer_id')
                   ->on('customers')
@@ -45,7 +45,6 @@ return new class extends Migration
                   ->onDelete('set null'); 
         });
     }
-
 
     public function down(): void
     {

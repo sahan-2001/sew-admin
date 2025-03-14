@@ -218,7 +218,8 @@ class CustomerOrderResource extends Resource
                     ->icon('heroicon-o-document-text')
                     ->url(fn ($record) => route('customer-orders.pdf', $record))
                     ->openUrlInNewTab(),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

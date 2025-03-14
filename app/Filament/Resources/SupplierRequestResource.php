@@ -85,7 +85,8 @@ class SupplierRequestResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete supplier requests')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     protected static function approveRequest(SupplierRequest $record)

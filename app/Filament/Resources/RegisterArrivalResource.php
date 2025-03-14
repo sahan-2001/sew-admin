@@ -9,13 +9,14 @@ use App\Models\PurchaseOrderItem;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use Filament\Forms;
-use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Toggle, Grid, Section, Repeater};
+use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Grid, Section, Repeater};
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\{TextColumn, BadgeColumn};
+use Filament\Tables\Columns\{TextColumn};
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 
 class RegisterArrivalResource extends Resource
 {
@@ -107,17 +108,17 @@ class RegisterArrivalResource extends Resource
                         ->createItemButtonLabel('Add Item')
                         ->afterStateHydrated(function ($state, $get, $set) {
                             $purchaseOrderId = $get('purchase_order_id'); // Accessing the state correctly
-            
+
                             if ($purchaseOrderId) {
                                 // Load the related PurchaseOrder
                                 $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-            
-                                if ($purchaseOrder) {
+
+                                if ($purchaseOrder && $purchaseOrder->status === 'released') {
                                     // Get related items
                                     $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
                                         ->with('inventoryItem') // Eager load inventory items
                                         ->get();
-            
+
                                     // Prepare the repeater data with the fetched items
                                     $itemsData = $items->map(function ($item) {
                                         return [
@@ -129,9 +130,15 @@ class RegisterArrivalResource extends Resource
                                             'total' => $item->quantity * $item->price,
                                         ];
                                     })->toArray();
-            
+
                                     // Update the state of the repeater field with the prepared items data
                                     $set('purchase_order_items', $itemsData); // This is the correct way to set the repeater data
+                                } else {
+                                    Notification::make()
+                                        ->title('Invalid Purchase Order')
+                                        ->danger()
+                                        ->body('The selected purchase order is not in a released status.')
+                                        ->send();
                                 }
                             } else {
                                 // Reset repeater if no purchase_order_id
@@ -192,7 +199,7 @@ class RegisterArrivalResource extends Resource
 
         $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
 
-        if ($purchaseOrder) {
+        if ($purchaseOrder && $purchaseOrder->status === 'released') {
             // Populate the fields with the corresponding data
             $set('provider_name', $purchaseOrder->provider_name);
             $set('provider_phone', $purchaseOrder->provider_phone);
@@ -218,7 +225,13 @@ class RegisterArrivalResource extends Resource
             // Update the state of the repeater field with the prepared items data
             $set('purchase_order_items', $itemsData); // This is the correct way to set the repeater data
         } else {
-            // Reset fields if purchase order is not found
+            Notification::make()
+                ->title('Invalid Purchase Order')
+                ->danger()
+                ->body('The selected purchase order is not in a released status.')
+                ->send();
+
+            // Reset fields if purchase order is not found or not in released status
             $set('provider_name', null);
             $set('provider_phone', null);
             $set('due_date', null);
@@ -228,18 +241,23 @@ class RegisterArrivalResource extends Resource
 
     public static function table(Tables\Table $table): Tables\Table
     {
-        return $table
-            ->columns([
-                TextColumn::make('purchase_order_id')->sortable()->searchable(),
-                TextColumn::make('location.name')->sortable(),
-                TextColumn::make('received_date')->sortable(),
-                TextColumn::make('invoice_number')->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('purchase_order_id')
-                    ->label('Purchase Order')
-                    ->relationship('purchaseOrder', 'id'),
-            ]);
+    return $table
+        ->columns([
+            TextColumn::make('id')->sortable()->searchable(), 
+            TextColumn::make('purchase_order_id')->sortable()->searchable(), 
+            TextColumn::make('invoice_number')->sortable()->searchable(), 
+            TextColumn::make('received_date')->sortable()->searchable(),
+            TextColumn::make('location_id')->sortable(),
+            TextColumn::make('location.name')->sortable(),
+
+        ])
+        ->filters([
+            SelectFilter::make('purchase_order_id')
+                ->label('Purchase Order')
+                ->relationship('purchaseOrder', 'id'),
+        ])
+        ->defaultSort('received_date', 'desc')
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

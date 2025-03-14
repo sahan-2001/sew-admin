@@ -56,7 +56,8 @@ class UserResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getRelations(): array
