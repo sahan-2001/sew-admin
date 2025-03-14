@@ -59,6 +59,16 @@ class SampleOrder extends Model
             ->logAll()
             ->logOnlyDirty()
             ->useLogName('sample_order')
-            ->setDescriptionForEvent(fn(string $eventName) => "Sample order with ID {$this->order_id} has been {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                $description = "Sample order with ID {$this->order_id} has been {$eventName}";
+
+                // Add updated status to the description if status is changed
+                if ($this->isDirty('status')) {
+                    $description .= ". New status: {$this->status}";
+                }
+
+                return $description;
+            });
     }
+
 }
