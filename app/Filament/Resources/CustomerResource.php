@@ -72,7 +72,8 @@ class CustomerResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete customers')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getRelations(): array

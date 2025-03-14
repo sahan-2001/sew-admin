@@ -74,7 +74,8 @@ class SupplierResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete suppliers')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getRelations(): array

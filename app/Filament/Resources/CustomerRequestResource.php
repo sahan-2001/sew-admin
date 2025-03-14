@@ -84,7 +84,8 @@ class CustomerRequestResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete customer requests')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     protected static function approveRequest(CustomerRequest $record)

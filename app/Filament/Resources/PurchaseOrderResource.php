@@ -16,20 +16,20 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Hidden;
-use Filament\Navigation\NavigationItem;
-use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\Action;
 
 class PurchaseOrderResource extends Resource
 {
     protected static ?string $model = PurchaseOrder::class;
 
     protected static ?string $navigationGroup = 'Orders';
-
     protected static ?string $navigationLabel = 'Purchase Orders';
-
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     public static function form(Form $form): Form
@@ -99,64 +99,78 @@ class PurchaseOrderResource extends Resource
                 Textarea::make('special_note')
                     ->label('Special Note')
                     ->nullable(),
-                // Break section for inventory items
-                \Filament\Forms\Components\Section::make('Select Inventory Items')
+                Section::make('Order Items')
                     ->schema([
                         Repeater::make('items')
                             ->relationship('items')
                             ->schema([
-                                Select::make('inventory_item_id')
-                                    ->label('Inventory Item')
-                                    ->options(fn () => InventoryItem::all()->pluck('name', 'id'))
-                                    ->searchable()
-                                    ->required(),
-                                TextInput::make('quantity')
-                                    ->label('Quantity')
-                                    ->required(),
-                                TextInput::make('price')
-                                    ->label('Price')
-                                    ->required(),
+                                Grid::make(2)
+                                    ->schema([
+                                        Select::make('inventory_item_id')
+                                            ->label('Item')
+                                            ->relationship('inventoryItem', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(),
+                                        TextInput::make('quantity')
+                                            ->label('Quantity')
+                                            ->numeric()
+                                            ->required(),
+                                        TextInput::make('price')
+                                            ->label('Price')
+                                            ->numeric()
+                                            ->required(),
+                                    ]),
                             ])
-                            ->columns(3)
-                            ->createItemButtonLabel('Add Item'),
+                            ->columns(1)
+                            ->createItemButtonLabel('Add Order Item'),
                     ]),
-                // Set user_id to logged-in user
                 Hidden::make('user_id')
                     ->default(fn () => auth()->id()),
             ]);
     }
 
     public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                \Filament\Tables\Columns\TextColumn::make('id')->label('ID'),
-                \Filament\Tables\Columns\TextColumn::make('provider_type')->label('Provider Type'),
-                \Filament\Tables\Columns\TextColumn::make('provider_id')->label('Provider ID'),
-                \Filament\Tables\Columns\TextColumn::make('provider_name')->label('Provider Name'),
-                \Filament\Tables\Columns\TextColumn::make('provider_email')->label('Provider Email'),
-                \Filament\Tables\Columns\TextColumn::make('provider_phone')->label('Provider Phone'),
-                \Filament\Tables\Columns\TextColumn::make('wanted_date')->label('Wanted Date'),
-                \Filament\Tables\Columns\TextColumn::make('special_note')->label('Special Note')->limit(50),
-                \Filament\Tables\Columns\TextColumn::make('created_at')->label('Created At')->dateTime(),
-                \Filament\Tables\Columns\TextColumn::make('updated_at')->label('Updated At')->dateTime(),
-            ])
-            ->filters([
-                // Define table filters here
-            ])
-            ->actions([
-                Action::make('pdf')
-                    ->label('Print PDF')
-                    ->url(fn ($record) => route('purchase-orders.pdf', $record))
-                    ->visible(fn ($record) => auth()->user()->can('view purchase orders')),
-                ViewAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('view purchase orders')),
-                EditAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('edit purchase orders')),
-                DeleteAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('delete purchase orders')),
-            ]);
-    }
+{
+    return $table
+        ->columns([
+            TextColumn::make('provider_type')->label('Provider Type'),
+            TextColumn::make('provider_id')->label('Provider ID'),
+            TextColumn::make('provider_name')->label('Provider Name'),
+            TextColumn::make('wanted_date')->label('Wanted Date')->date(),
+            TextColumn::make('status')->label('Status')
+                ->badge()
+                ->colors([
+                    'planned' => 'gray',
+                    'released' => 'blue',
+                    'cancelled' => 'red',
+                    'completed' => 'green',
+                ]),
+        ])
+        ->actions([
+            Action::make('handle')
+                ->label('Handle')
+                ->url(fn ($record) => PurchaseOrderResource::getUrl('handle', ['record' => $record]))
+                ->openUrlInNewTab(false),
+
+            EditAction::make()
+                ->visible(fn ($record) => 
+                    auth()->user()->can('edit purchase orders') &&
+                    $record->status === 'planned'
+                ),
+
+            DeleteAction::make()
+                ->visible(fn ($record) => 
+                    auth()->user()->can('delete purchase orders') &&
+                    in_array($record->status, ['planned', 'released'])
+                ),
+        ])
+        ->defaultSort('wanted_date', 'desc')
+        ->recordUrl(null);
+}
+
+
+
 
     public static function getPages(): array
     {
@@ -164,18 +178,7 @@ class PurchaseOrderResource extends Resource
             'index' => Pages\ListPurchaseOrders::route('/'),
             'create' => Pages\CreatePurchaseOrder::route('/create'),
             'edit' => Pages\EditPurchaseOrder::route('/{record}/edit'),
-        ];
-    }
-
-    public static function getNavigationItems(): array
-    {
-        return [
-            NavigationItem::make()
-                ->label(static::$navigationLabel)
-                ->icon(static::$navigationIcon)
-                ->group(static::$navigationGroup)
-                ->url(static::getUrl('index'))
-                ->visible(fn () => auth()->user()->can('view purchase orders')),
+            'handle' => Pages\HandlePurchaseOrder::route('/{record}/handle'),
         ];
     }
 }

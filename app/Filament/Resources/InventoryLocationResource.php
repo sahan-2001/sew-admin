@@ -114,7 +114,8 @@ class InventoryLocationResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete inventory locations')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

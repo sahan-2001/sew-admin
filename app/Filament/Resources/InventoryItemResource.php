@@ -73,7 +73,8 @@ class InventoryItemResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete inventory items')),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getRelations(): array
