@@ -99,32 +99,46 @@ class PurchaseOrderResource extends Resource
                 Textarea::make('special_note')
                     ->label('Special Note')
                     ->nullable(),
+                
                 Section::make('Order Items')
-                    ->schema([
-                        Repeater::make('items')
-                            ->relationship('items')
-                            ->schema([
-                                Grid::make(2)
-                                    ->schema([
-                                        Select::make('inventory_item_id')
-                                            ->label('Item')
-                                            ->relationship('inventoryItem', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
-                                        TextInput::make('quantity')
-                                            ->label('Quantity')
-                                            ->numeric()
-                                            ->required(),
-                                        TextInput::make('price')
-                                            ->label('Price')
-                                            ->numeric()
-                                            ->required(),
-                                    ]),
-                            ])
-                            ->columns(1)
-                            ->createItemButtonLabel('Add Order Item'),
-                    ]),
+                ->schema([
+                    Repeater::make('items')
+                        ->relationship('items')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Select::make('inventory_item_id')
+                                        ->label('Item')
+                                        ->relationship('inventoryItem', 'name')
+                                        ->searchable()
+                                        ->preload()
+                                        ->required(),
+
+                                    TextInput::make('quantity')
+                                        ->label('Quantity')
+                                        ->numeric()
+                                        ->required()
+                                        ->live() // Ensures the state is updated immediately
+                                        ->afterStateUpdated(function ($state, callable $set) {
+                                            $set('remaining_quantity', $state); // Set remaining_quantity
+                                            $set('arrived_quantity', 0); // Default arrived_quantity to 0
+                                        }),
+
+                                    TextInput::make('price')
+                                        ->label('Price')
+                                        ->numeric()
+                                        ->required(),
+                                    
+                                    Hidden::make('remaining_quantity')
+                                        ->default(fn ($get) => $get('quantity')),
+                    
+                                    Hidden::make('arrived_quantity')
+                                        ->default(0),
+                                ]),
+                        ])
+                        ->columns(1)
+                        ->createItemButtonLabel('Add Order Item'),
+                ]),
                 Hidden::make('user_id')
                     ->default(fn () => auth()->id()),
             ]);
@@ -134,6 +148,7 @@ class PurchaseOrderResource extends Resource
 {
     return $table
         ->columns([
+            TextColumn::make('id')->label('Order ID'),
             TextColumn::make('provider_type')->label('Provider Type'),
             TextColumn::make('provider_id')->label('Provider ID'),
             TextColumn::make('provider_name')->label('Provider Name'),

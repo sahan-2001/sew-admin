@@ -17,6 +17,8 @@ class PurchaseOrderItem extends Model
         'inventory_item_id',
         'quantity',
         'price',
+        'arrived_quantity', // New column
+        'remaining_quantity', // New column
     ];
 
     public function purchaseOrder()
@@ -34,6 +36,8 @@ class PurchaseOrderItem extends Model
         'inventory_item_id',
         'quantity',
         'price',
+        'arrived_quantity', // New column
+        'remaining_quantity', // New column
     ];
 
     protected static $logName = 'purchase_order_item';
@@ -51,6 +55,8 @@ class PurchaseOrderItem extends Model
                 'inventory_item_id',
                 'quantity',
                 'price',
+                'arrived_quantity', // New column
+                'remaining_quantity', // New column
             ])
             ->useLogName('purchase_order_item')
             ->setDescriptionForEvent(function (string $eventName) {
