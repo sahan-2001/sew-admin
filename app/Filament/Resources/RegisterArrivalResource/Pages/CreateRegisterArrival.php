@@ -13,34 +13,9 @@ class CreateRegisterArrival extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Update the status of the related PurchaseOrder to 'arrived'
-        $purchaseOrderId = $this->record->purchase_order_id;
-        $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+        $registerArrival = $this->record;
 
-        if ($purchaseOrder) {
-            $purchaseOrder->update(['status' => 'arrived']);
-        }
-    }
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        if (!isset($data['purchase_order_id']) || empty($data['purchase_order_items'])) {
-            return $data; // No purchase order or items, skip update
-        }
-
-        foreach ($data['purchase_order_items'] as $item) {
-            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $data['purchase_order_id'])
-                ->where('inventory_item_id', $item['item_id'])
-                ->first();
-
-            if ($purchaseOrderItem) {
-                // Update arrived quantity and remaining quantity
-                $purchaseOrderItem->arrived_quantity += $item['quantity'];
-                $purchaseOrderItem->remaining_quantity -= $item['quantity'];
-                $purchaseOrderItem->save();
-            }
-        }
-
-        return $data;
+        // Update PurchaseOrder and PurchaseOrderItem quantities
+        RegisterArrivalResource::updatePurchaseOrderStatusAndItems($registerArrival);
     }
 }

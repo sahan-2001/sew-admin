@@ -27,11 +27,10 @@ class RegisterArrivalResource extends Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-
             // Section 1: Purchase Order Details
             Section::make('Purchase Order Details')
                 ->schema([
-                    Grid::make(2) // Two-column layout for this section
+                    Grid::make(2)
                         ->schema([
                             TextInput::make('purchase_order_id')
                                 ->label('Purchase Order ID')
@@ -54,15 +53,14 @@ class RegisterArrivalResource extends Resource
                                 ->disabled()
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
                         ]),
-
                 ]),
 
             // Section 2: Purchase Order Items
             Section::make('Purchase Order Items')
                 ->schema([
-                    Repeater::make('purchase_order_items') // Repeater component to show PO items
+                    Repeater::make('purchase_order_items')
                         ->schema([
-                            Grid::make(2) // Two-column layout for each item
+                            Grid::make(2)
                                 ->schema([
                                     Select::make('item_id')
                                         ->label('Item')
@@ -80,78 +78,89 @@ class RegisterArrivalResource extends Resource
                                                 $set('item_name', $item->name);
                                             }
                                         }),
-
+                    
                                     TextInput::make('item_code')->label('Item Code')->disabled(),
                                     TextInput::make('item_name')->label('Item Name')->disabled(),
                                 ]),
-                            Grid::make(3) // Three-column layout for each item
+                            Grid::make(3)
                                 ->schema([
-                                    TextInput::make('quantity')
+                                    TextInput::make('remaining_quantity')
                                         ->label('Quantity')
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
-                                            $set('total', $state * $price);
+                                            if ($price > 0) {
+                                                $set('total', $state * $price); // Update total when quantity changes
+                                            }
                                         }),
+                    
                                     TextInput::make('price')
                                         ->label('Price')
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $quantity = $get('quantity');
-                                            $set('total', $state * $quantity);
+                                            if ($quantity > 0) {
+                                                $set('total', $state * $quantity); // Update total when price changes
+                                            }
                                         }),
-                                    TextInput::make('total')->label('Total')->disabled(),
+                    
+                                    TextInput::make('total')
+                                        ->label('Total')
+                                        ->reactive()
+                                        ->disabled()
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            $price = $get('price');
+                                            if ($price > 0) {
+                                                $set('quantity', $state / $price); // Update quantity when total changes
+                                            }
+                                        }),
                                 ]),
                         ])
-                        ->disableItemCreation(false) // Allow adding new items directly in the form
-                        ->relationship('items') // Assuming 'items' relationship exists in RegisterArrival
+                        ->disableItemCreation(false)
+                        ->relationship('items')
                         ->createItemButtonLabel('Add Item')
                         ->afterStateHydrated(function ($state, $get, $set) {
-                            $purchaseOrderId = $get('purchase_order_id'); // Accessing the state correctly
-
+                            $purchaseOrderId = $get('purchase_order_id');
+                    
                             if ($purchaseOrderId) {
-                                // Load the related PurchaseOrder
                                 $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-
-                                if ($purchaseOrder && $purchaseOrder->status === 'released') {
-                                    // Get related items
+                    
+                                if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
                                     $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                                        ->with('inventoryItem') // Eager load inventory items
+                                        ->with('inventoryItem')
                                         ->get();
-
-                                    // Prepare the repeater data with the fetched items
+                    
                                     $itemsData = $items->map(function ($item) {
                                         return [
-                                            'item_id' => $item->inventoryItem->id, // Assuming 'id' in InventoryItem
-                                            'item_code' => $item->inventoryItem->item_code, // Assuming 'item_code' in InventoryItem
-                                            'item_name' => $item->inventoryItem->name, // Assuming 'name' in InventoryItem
-                                            'quantity' => $item->quantity,
+                                            'item_id' => $item->inventoryItem->id,
+                                            'item_code' => $item->inventoryItem->item_code,
+                                            'item_name' => $item->inventoryItem->name,
+                                            'quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity as quantity
                                             'price' => $item->price,
-                                            'total' => $item->quantity * $item->price,
+                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
                                         ];
                                     })->toArray();
-
-                                    // Update the state of the repeater field with the prepared items data
-                                    $set('purchase_order_items', $itemsData); // This is the correct way to set the repeater data
+                    
+                                    $set('purchase_order_items', $itemsData);
                                 } else {
                                     Notification::make()
                                         ->title('Invalid Purchase Order')
                                         ->danger()
-                                        ->body('The selected purchase order is not in a released status.')
+                                        ->body('The selected purchase order is not in a released or partially arrived status.')
                                         ->send();
+                    
+                                    $set('purchase_order_items', []);
                                 }
                             } else {
-                                // Reset repeater if no purchase_order_id
                                 $set('purchase_order_items', []);
                             }
                         }),
-
                 ]),
 
             // Section 3: Arrival Information and Invoice Upload
             Section::make('Arrival Information and Invoice Upload')
                 ->schema([
-                    Grid::make(2) // Two-column layout for this section
+                    Grid::make(2)
                         ->schema([
                             Select::make('location_id')
                                 ->label('Location')
@@ -161,12 +170,12 @@ class RegisterArrivalResource extends Resource
                                 ->preload()
                                 ->options(function () {
                                     return InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
-                                                        ->pluck('name', 'id');
+                                        ->pluck('name', 'id');
                                 }),
 
                             DatePicker::make('received_date')
                                 ->label('Received Date')
-                                ->default(now()) // Default to today's date
+                                ->default(now())
                                 ->required(),
 
                             TextInput::make('invoice_number')
@@ -183,7 +192,6 @@ class RegisterArrivalResource extends Resource
                                 ->nullable(),
                         ]),
                 ]),
-
         ]);
     }
 
@@ -199,39 +207,35 @@ class RegisterArrivalResource extends Resource
 
         $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
 
-        if ($purchaseOrder && $purchaseOrder->status === 'released') {
-            // Populate the fields with the corresponding data
+        if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
             $set('provider_name', $purchaseOrder->provider_name);
             $set('provider_phone', $purchaseOrder->provider_phone);
             $set('due_date', $purchaseOrder->wanted_date);
 
-            // Get related items
             $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                ->with('inventoryItem') // Eager load inventory items
+                ->with('inventoryItem')
                 ->get();
 
-            // Prepare the repeater data with the fetched items
             $itemsData = $items->map(function ($item) {
                 return [
-                    'item_id' => $item->inventoryItem->id, // Assuming 'id' in InventoryItem
-                    'item_code' => $item->inventoryItem->item_code, // Assuming 'item_code' in InventoryItem
-                    'item_name' => $item->inventoryItem->name, // Assuming 'name' in InventoryItem
-                    'quantity' => $item->quantity,
+                    'item_id' => $item->inventoryItem->id,
+                    'item_code' => $item->inventoryItem->item_code,
+                    'item_name' => $item->inventoryItem->name,
+                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity
+                    'arrived_quantity' => $item->arrived_quantity ?? 0, // Include arrived quantity
                     'price' => $item->price,
-                    'total' => $item->quantity * $item->price,
+                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
                 ];
             })->toArray();
 
-            // Update the state of the repeater field with the prepared items data
-            $set('purchase_order_items', $itemsData); // This is the correct way to set the repeater data
+            $set('purchase_order_items', $itemsData);
         } else {
             Notification::make()
                 ->title('Invalid Purchase Order')
                 ->danger()
-                ->body('The selected purchase order is not in a released status.')
+                ->body('The selected purchase order is not in a released or partially arrived status.')
                 ->send();
 
-            // Reset fields if purchase order is not found or not in released status
             $set('provider_name', null);
             $set('provider_phone', null);
             $set('due_date', null);
@@ -239,25 +243,66 @@ class RegisterArrivalResource extends Resource
         }
     }
 
+    public static function updatePurchaseOrderStatusAndItems($registerArrival)
+    {
+        $purchaseOrderId = $registerArrival->purchase_order_id;
+
+        if ($purchaseOrderId) {
+            // Update the arrived_quantity and remaining_quantity in PurchaseOrderItem
+            foreach ($registerArrival->items as $item) {
+                $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                    ->where('inventory_item_id', $item->item_id)
+                    ->first();
+
+                if ($purchaseOrderItem) {
+                    // Ensure arrived_quantity and remaining_quantity are initialized
+                    $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
+                    $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
+
+                    // Add the quantity from the RegisterArrivalItem to arrived_quantity
+                    $purchaseOrderItem->arrived_quantity += $item->quantity;
+
+                    // Subtract the arrived quantity from remaining_quantity
+                    $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
+
+                    // Save the updated PurchaseOrderItem
+                    $purchaseOrderItem->save();
+                }
+            }
+
+            // Check if all remaining_quantity values are 0
+            $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
+            $allRemainingZero = $allItems->every(function ($item) {
+                return $item->remaining_quantity === 0;
+            });
+
+            // Update the PurchaseOrder status based on remaining_quantity
+            $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+            if ($purchaseOrder) {
+                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                $purchaseOrder->save();
+            }
+        }
+    }
+
     public static function table(Tables\Table $table): Tables\Table
     {
-    return $table
-        ->columns([
-            TextColumn::make('id')->sortable()->searchable(), 
-            TextColumn::make('purchase_order_id')->sortable()->searchable(), 
-            TextColumn::make('invoice_number')->sortable()->searchable(), 
-            TextColumn::make('received_date')->sortable()->searchable(),
-            TextColumn::make('location_id')->sortable(),
-            TextColumn::make('location.name')->sortable(),
-
-        ])
-        ->filters([
-            SelectFilter::make('purchase_order_id')
-                ->label('Purchase Order')
-                ->relationship('purchaseOrder', 'id'),
-        ])
-        ->defaultSort('received_date', 'desc')
-        ->recordUrl(null);
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable()->searchable(),
+                TextColumn::make('purchase_order_id')->sortable()->searchable(),
+                TextColumn::make('invoice_number')->sortable()->searchable(),
+                TextColumn::make('received_date')->sortable()->searchable(),
+                TextColumn::make('location_id')->sortable(),
+                TextColumn::make('location.name')->sortable(),
+            ])
+            ->filters([
+                SelectFilter::make('purchase_order_id')
+                    ->label('Purchase Order')
+                    ->relationship('purchaseOrder', 'id'),
+            ])
+            ->defaultSort('received_date', 'desc')
+            ->recordUrl(null);
     }
 
     public static function getPages(): array
