@@ -78,21 +78,35 @@ class RegisterArrivalResource extends Resource
                                                 $set('item_name', $item->name);
                                             }
                                         }),
-                    
+
                                     TextInput::make('item_code')->label('Item Code')->disabled(),
                                     TextInput::make('item_name')->label('Item Name')->disabled(),
                                 ]),
                             Grid::make(3)
                                 ->schema([
+
+                                    TextInput::make('quantity')
+                                        ->label('Quantity')
+                                        ->reactive()
+                                        ->required() // Ensure the field is required
+
                                     TextInput::make('remaining_quantity')
                                         ->label('Quantity')
                                         ->reactive()
+
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
                                             if ($price > 0) {
                                                 $set('total', $state * $price); // Update total when quantity changes
                                             }
                                         }),
+
+
+                                    TextInput::make('price')
+                                        ->label('Price')
+                                        ->reactive()
+                                        ->required() // Ensure the field is required
+
                     
                                     TextInput::make('price')
                                         ->label('Price')
@@ -103,7 +117,6 @@ class RegisterArrivalResource extends Resource
                                                 $set('total', $state * $quantity); // Update total when price changes
                                             }
                                         }),
-                    
                                     TextInput::make('total')
                                         ->label('Total')
                                         ->reactive()
@@ -121,15 +134,22 @@ class RegisterArrivalResource extends Resource
                         ->createItemButtonLabel('Add Item')
                         ->afterStateHydrated(function ($state, $get, $set) {
                             $purchaseOrderId = $get('purchase_order_id');
+
+
+                            if ($purchaseOrderId) {
+                                $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+
+
                     
                             if ($purchaseOrderId) {
                                 $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
                     
+
                                 if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
                                     $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
                                         ->with('inventoryItem')
                                         ->get();
-                    
+
                                     $itemsData = $items->map(function ($item) {
                                         return [
                                             'item_id' => $item->inventoryItem->id,
@@ -140,7 +160,7 @@ class RegisterArrivalResource extends Resource
                                             'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
                                         ];
                                     })->toArray();
-                    
+
                                     $set('purchase_order_items', $itemsData);
                                 } else {
                                     Notification::make()
@@ -148,7 +168,7 @@ class RegisterArrivalResource extends Resource
                                         ->danger()
                                         ->body('The selected purchase order is not in a released or partially arrived status.')
                                         ->send();
-                    
+
                                     $set('purchase_order_items', []);
                                 }
                             } else {
