@@ -1,8 +1,11 @@
 <x-filament::page>
 
     <br>
+
     <br>
-    
+
+    <br>
+
     <div class="flex items-center gap-4 w-full md:w-1/2">
         
         <!-- Blinking Status Text (Left) -->

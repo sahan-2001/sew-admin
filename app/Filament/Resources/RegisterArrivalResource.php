@@ -84,10 +84,16 @@ class RegisterArrivalResource extends Resource
                                 ]),
                             Grid::make(3)
                                 ->schema([
+
                                     TextInput::make('quantity')
                                         ->label('Quantity')
                                         ->reactive()
                                         ->required() // Ensure the field is required
+
+                                    TextInput::make('remaining_quantity')
+                                        ->label('Quantity')
+                                        ->reactive()
+
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
                                             if ($price > 0) {
@@ -95,17 +101,22 @@ class RegisterArrivalResource extends Resource
                                             }
                                         }),
 
+
                                     TextInput::make('price')
                                         ->label('Price')
                                         ->reactive()
                                         ->required() // Ensure the field is required
+
+                    
+                                    TextInput::make('price')
+                                        ->label('Price')
+                                        ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $quantity = $get('quantity');
                                             if ($quantity > 0) {
                                                 $set('total', $state * $quantity); // Update total when price changes
                                             }
                                         }),
-
                                     TextInput::make('total')
                                         ->label('Total')
                                         ->reactive()
@@ -124,8 +135,15 @@ class RegisterArrivalResource extends Resource
                         ->afterStateHydrated(function ($state, $get, $set) {
                             $purchaseOrderId = $get('purchase_order_id');
 
+
                             if ($purchaseOrderId) {
                                 $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+
+
+                    
+                            if ($purchaseOrderId) {
+                                $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                    
 
                                 if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
                                     $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
