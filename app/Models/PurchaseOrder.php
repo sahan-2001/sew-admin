@@ -56,6 +56,7 @@ class PurchaseOrder extends Model
                 return $description;
             });
     }
+    
 
     /**
      * Get the user that owns the purchase order.

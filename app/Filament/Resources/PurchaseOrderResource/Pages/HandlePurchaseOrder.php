@@ -123,13 +123,14 @@ class HandlePurchaseOrder extends Page
     protected function getHeaderActions(): array
     {
         $actions = [
+            // First row of actions
             Action::make('Close')
                 ->label('Close')
                 ->color('primary')
                 ->url(fn () => PurchaseOrderResource::getUrl('index'))
                 ->openUrlInNewTab(false),
         ];
-
+    
         if ($this->record->status === 'arrived') {
             return $actions;
         }
@@ -186,6 +187,21 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->deleteOrder());
         }
 
+        // Second row of actions
+        $actions[] = Action::make('generateQrCode')
+            ->label('Generate QR Code')
+            ->url(fn () => route('generate.qr', ['purchase_order' => $this->record->id]))
+            ->icon('heroicon-o-document-text')
+            ->color('success')
+            ->openUrlInNewTab(true);
+
+        $actions[] = Action::make('printPdf')
+            ->label('Print PDF')
+            ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))
+            ->icon('heroicon-o-printer') 
+            ->color('secondary')
+            ->openUrlInNewTab(true);
+
         return $actions;
-    }
+        }
 }

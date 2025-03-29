@@ -10,7 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\SampleOrderController;
-
+use App\Http\Controllers\PurchaseOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,7 +27,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-orders.pdf');
+Route::get('/purchase-order/{purchase_order}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-order.pdf');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     ActivityLogResource::routes(Filament::getCurrentPanel());
@@ -70,3 +70,8 @@ Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrde
 
     return $pdf->stream('sample_order.pdf');
 })->name('sample-orders.pdf');
+
+
+// Generate and display the QR code
+Route::get('purchase-order/{purchase_order}/qr-code', [PurchaseOrderController::class, 'generateQrCode'])
+    ->name('generate.qr');

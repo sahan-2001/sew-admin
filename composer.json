@@ -8,6 +8,7 @@
         "php": "^8.1",
         "althinect/filament-spatie-roles-permissions": "^2.2",
         "barryvdh/laravel-dompdf": "^3.1",
+        "endroid/qr-code": "^6.0",
         "filament/filament": "^3.2",
         "filament/forms": "^3.2",
         "filament/tables": "^3.2",

@@ -1,124 +1,165 @@
+<!-- filepath: resources/views/purchase-orders/pdf.blade.php -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Order #{{ $purchaseOrder->id }}</title>
+    <title>Purchase Order</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            line-height: 1.6;
         }
-        header {
+        .header, .footer {
             text-align: center;
-            margin-bottom: 30px;
-        }
-        header h1 {
-            margin: 0;
-        }
-        header p {
-            margin: 5px 0;
-        }
-        .details, .footer {
-            margin-top: 20px;
         }
         .details {
-            padding: 10px;
-            border: 1px solid #ddd;
-            background-color: #f9f9f9;
-        }
-        table {
+            margin-top: 20px;
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
         }
-        table, th, td {
+        .details th, .details td{
             border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 8px;
+            padding: 10px;
             text-align: left;
         }
-        th {
-            background-color: #f4f4f4;
+        .details th {
+            background-color: #f2f2f2;
         }
-        .footer {
+        .items th {
+            text-align: center;
+        }
+        .qr-code {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .items table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .items th, .items td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .items th {
+            background-color: #f2f2f2;
+        }
+        .items tfoot th {
             text-align: right;
-            font-size: 0.9em;
-            color: #555;
+        }
+        .signature {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+        .signature div {
+            width: 45%;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid black;
+            margin: 10px auto;
+            width: 80%;
         }
     </style>
+
 </head>
 <body>
-    <!-- Company Header -->
-    <header>
-        <h1>ABC Apparels (Pvt) LTD</h1>
-        <p>Damunugolla, Ibbagamuwa, Kurunegala, Sri Lanka</p>
-        <p>Phone: 08634262829 | Email: abc@gmail.com</p>
-    </header>
-
-    <!-- Document Details -->
-    <div class="details">
-        <p><strong>Purchase Order #:</strong> {{ $purchaseOrder->id }}</p>
-        <p><strong>PDF Generated Date and Time:</strong> {{ now()->timezone('Asia/Kolkata')->format('Y-m-d H:i:s') }}</p>
+    <div class="header">
+        <h1>{{ $companyDetails['name'] }}</h1>
+        <p>{{ $companyDetails['address'] }}</p>
+        <p>Phone: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
     </div>
 
-    <!-- Provider Information -->
-    <section class="details">
-        <h2>Provider Details</h2>
-        <p><strong>Name:</strong> {{ $purchaseOrder->provider_name ?? 'N/A' }}</p>
-        <p><strong>ID:</strong> {{ $purchaseOrder->provider_id ?? 'N/A' }}</p>
-        <p><strong>Email:</strong> {{ $purchaseOrder->provider_email ?? 'N/A' }}</p>
-        <p><strong>Phone:</strong> {{ $purchaseOrder->provider_phone ?? 'N/A' }}</p>
-    </section>
+    <div class="details">
+        <h2>Purchase Order Details</h2>
+        <table>
+            <tr>
+                <th>Status</th>
+                <td>{{ $purchaseOrderDetails['status'] }}</td>
+            </tr>
+            
+            <tr>
+                <th>Purchase Order ID</th>
+                <td>{{ $purchaseOrderDetails['id'] }}</td>
+            </tr>
+            <tr>
+                <th>Provider Type</th>
+                <td>{{ $purchaseOrderDetails['provider_type'] }}</td>
+            </tr>
+            <tr>
+                <th>Provider ID</th>
+                <td>{{ $purchaseOrderDetails['provider_id'] }}</td>
+            </tr>
+            <tr>
+                <th>Provider Name</th>
+                <td>{{ $purchaseOrderDetails['provider_name'] }}</td>
+            </tr>
+            <tr>
+                <th>Wanted Date</th>
+                <td>{{ $purchaseOrderDetails['wanted_date'] }}</td>
+            </tr>
+            <tr>
+                <th>Created Date</th>
+                <td>{{ $purchaseOrderDetails['created_at'] }}</td>
+            </tr>
+        </table>
+    </div>
 
-    <!-- Wanted Delivery Date and Special Note -->
-    <section class="details">
-        <p><strong>Wanted Delivery Date:</strong> {{ $purchaseOrder->wanted_date ? \Carbon\Carbon::parse($purchaseOrder->wanted_date)->format('Y-m-d') : 'N/A' }}</p>
-        <p><strong>Special Note:</strong> {{ $purchaseOrder->special_note ?? 'None' }}</p>
-    </section>
-
-    <!-- Items Table -->
-    <h2>Item List</h2>
-    @if ($purchaseOrder->items->isNotEmpty())
+    <div class="items">
+        <h2>Purchase Order Items</h2>
         <table>
             <thead>
                 <tr>
-                    <th scope="col">Item Code</th>
-                    <th scope="col">Item Name</th>
-                    <th scope="col">Quantity</th>
-                    <th scope="col">Price</th>
-                    <th scope="col">Total</th>
+                    <th>Inventory Item ID</th>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($purchaseOrder->items as $item)
-                    <tr>
-                        <td>{{ $item->inventoryItem->item_code }}</td>
-                        <td>{{ $item->inventoryItem->name ?? 'Unnamed Item' }}</td>
-                        <td>{{ $item->quantity ?? 0 }}</td>
-                        <td>{{ number_format($item->price, 2) ?? '0.00' }}</td>
-                        <td>{{ number_format($item->quantity * $item->price, 2) ?? '0.00' }}</td>
-                    </tr>
+                @foreach ($purchaseOrderItems as $item)
+                <tr>
+                    <td>{{ $item->inventory_item_id }}</td>
+                    <td>{{ $item->inventoryItem->item_code ?? 'N/A' }}</td>
+                    <td>{{ $item->inventoryItem->name ?? 'N/A' }}</td>
+                    <td>{{ $item->quantity }}</td>
+                    <td>{{ number_format($item->price, 2) }}</td>
+                    <td>{{ number_format($item->quantity * $item->price, 2) }}</td>
+                </tr>
                 @endforeach
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3"><strong>Grand Total Amount</strong></td>
-                    <td>
-                        {{ number_format($purchaseOrder->items->sum(fn($item) => $item->quantity * $item->price), 2) ?? '0.00' }}
-                    </td>
+                    <th colspan="5" style="text-align: right;">Grand Total</th>
+                    <th>{{ number_format($grandTotal, 2) }}</th>
                 </tr>
             </tfoot>
         </table>
-    @else
-        <p>No items found for this purchase order.</p>
-    @endif
+    </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Thank you for dealing with us - ABC Apparels (Pvt) LTD</p>
-    </footer>
+    <div class="qr-code">
+    @if(isset($qrCodePath))
+        <img src="{{ $qrCodePath }}" alt="QR Code" style="width:150px; height:150px;">
+    @endif
+    </div>
+
+    <div class="signature">
+        <div>
+            <p>Authorized Signature</p>
+            <div class="signature-line"></div>
+        </div>
+        <div>
+            <p>Received By</p>
+            <div class="signature-line"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>
+    </div>
 </body>
 </html>

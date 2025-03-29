@@ -179,6 +179,7 @@ class PurchaseOrderResource extends Resource
                     auth()->user()->can('delete purchase orders') &&
                     in_array($record->status, ['planned', 'released'])
                 ),
+            
         ])
         ->defaultSort('wanted_date', 'desc')
         ->recordUrl(null);
