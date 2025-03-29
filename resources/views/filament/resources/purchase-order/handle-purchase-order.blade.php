@@ -1,8 +1,11 @@
 <x-filament::page>
 
     <br>
+<<<<<<< HEAD
     <br>
     
+=======
+>>>>>>> 9cebfb3b71ac9311a6d27cbb2c874f2fe1c8e64e
     <div class="flex items-center gap-4 w-full md:w-1/2">
         
         <!-- Blinking Status Text (Left) -->

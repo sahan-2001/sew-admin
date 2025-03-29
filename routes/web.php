@@ -10,7 +10,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\SampleOrderController;
+<<<<<<< HEAD
 use App\Http\Controllers\PurchaseOrderController;
+=======
+
+>>>>>>> 9cebfb3b71ac9311a6d27cbb2c874f2fe1c8e64e
 
 /*
 |--------------------------------------------------------------------------
@@ -70,8 +74,11 @@ Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrde
 
     return $pdf->stream('sample_order.pdf');
 })->name('sample-orders.pdf');
+<<<<<<< HEAD
 
 
 // Generate and display the QR code
 Route::get('purchase-order/{purchase_order}/qr-code', [PurchaseOrderController::class, 'generateQrCode'])
     ->name('generate.qr');
+=======
+>>>>>>> 9cebfb3b71ac9311a6d27cbb2c874f2fe1c8e64e
