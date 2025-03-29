@@ -27,6 +27,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+
 Route::get('/purchase-order/{purchase_order}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-order.pdf');
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -70,7 +71,6 @@ Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrde
 
     return $pdf->stream('sample_order.pdf');
 })->name('sample-orders.pdf');
-
 
 // Generate and display the QR code
 Route::get('purchase-order/{purchase_order}/qr-code', [PurchaseOrderController::class, 'generateQrCode'])
