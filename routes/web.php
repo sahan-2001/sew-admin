@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-<<<<<<< Updated upstream
-=======
 use App\Http\Controllers\PurchaseOrderPdfController;
 use App\Filament\Resources\ActivityLogResource;
 use Filament\Facades\Filament; 
@@ -13,7 +11,6 @@ use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\SampleOrderController;
 use App\Http\Controllers\PurchaseOrderController;
 
->>>>>>> Stashed changes
 
 /*
 |--------------------------------------------------------------------------
@@ -29,8 +26,6 @@ use App\Http\Controllers\PurchaseOrderController;
 Route::get('/', function () {
     return view('welcome');
 });
-<<<<<<< Updated upstream
-=======
 
 Route::get('/purchase-order/{purchase_order}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-order.pdf');
 
@@ -80,4 +75,3 @@ Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrde
 Route::get('purchase-order/{purchase_order}/qr-code', [PurchaseOrderController::class, 'generateQrCode'])
     ->name('generate.qr');
 
->>>>>>> Stashed changes
