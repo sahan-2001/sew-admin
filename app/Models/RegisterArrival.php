@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\InventoryLocation;
+use App\Models\InventoryItem;
 
 class RegisterArrival extends Model
 {
@@ -56,4 +58,5 @@ class RegisterArrival extends Model
                 return "Register Arrival record (ID: {$this->id}, Purchase Order ID: {$this->purchase_order_id}) has been {$eventName}.";
             });
     }
+
 }
