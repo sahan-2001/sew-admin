@@ -67,9 +67,7 @@ class RegisterArrivalResource extends Resource
                                         ->relationship('inventoryItem', 'name')
                                         ->searchable()
                                         ->preload()
-                                        ->options(function () {
-                                            return InventoryItem::all()->pluck('name', 'id');
-                                        })
+                                        ->options(fn () => InventoryItem::all()->pluck('name', 'id'))
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set) {
                                             $item = InventoryItem::find($state);
@@ -78,32 +76,34 @@ class RegisterArrivalResource extends Resource
                                                 $set('item_name', $item->name);
                                             }
                                         }),
-                    
+
                                     TextInput::make('item_code')->label('Item Code')->disabled(),
                                     TextInput::make('item_name')->label('Item Name')->disabled(),
                                 ]),
                             Grid::make(3)
                                 ->schema([
-                                    TextInput::make('remaining_quantity')
+                                    TextInput::make('quantity')
                                         ->label('Quantity')
                                         ->reactive()
+                                        ->required()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
                                             if ($price > 0) {
-                                                $set('total', $state * $price); // Update total when quantity changes
+                                                $set('total', $state * $price);
                                             }
                                         }),
-                    
+
                                     TextInput::make('price')
                                         ->label('Price')
                                         ->reactive()
+                                        ->required()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $quantity = $get('quantity');
                                             if ($quantity > 0) {
-                                                $set('total', $state * $quantity); // Update total when price changes
+                                                $set('total', $state * $quantity);
                                             }
                                         }),
-                    
+
                                     TextInput::make('total')
                                         ->label('Total')
                                         ->reactive()
@@ -111,7 +111,7 @@ class RegisterArrivalResource extends Resource
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
                                             if ($price > 0) {
-                                                $set('quantity', $state / $price); // Update quantity when total changes
+                                                $set('quantity', $state / $price);
                                             }
                                         }),
                                 ]),
@@ -121,26 +121,26 @@ class RegisterArrivalResource extends Resource
                         ->createItemButtonLabel('Add Item')
                         ->afterStateHydrated(function ($state, $get, $set) {
                             $purchaseOrderId = $get('purchase_order_id');
-                    
+
                             if ($purchaseOrderId) {
                                 $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-                    
+
                                 if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
                                     $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
                                         ->with('inventoryItem')
                                         ->get();
-                    
+
                                     $itemsData = $items->map(function ($item) {
                                         return [
                                             'item_id' => $item->inventoryItem->id,
                                             'item_code' => $item->inventoryItem->item_code,
                                             'item_name' => $item->inventoryItem->name,
-                                            'quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity as quantity
+                                            'quantity' => $item->remaining_quantity ?? $item->quantity,
                                             'price' => $item->price,
-                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
+                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
                                         ];
                                     })->toArray();
-                    
+
                                     $set('purchase_order_items', $itemsData);
                                 } else {
                                     Notification::make()
@@ -148,7 +148,7 @@ class RegisterArrivalResource extends Resource
                                         ->danger()
                                         ->body('The selected purchase order is not in a released or partially arrived status.')
                                         ->send();
-                    
+
                                     $set('purchase_order_items', []);
                                 }
                             } else {
@@ -168,10 +168,8 @@ class RegisterArrivalResource extends Resource
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->options(function () {
-                                    return InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
-                                        ->pluck('name', 'id');
-                                }),
+                                ->options(fn () => InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
+                                    ->pluck('name', 'id')),
 
                             DatePicker::make('received_date')
                                 ->label('Received Date')
@@ -221,10 +219,10 @@ class RegisterArrivalResource extends Resource
                     'item_id' => $item->inventoryItem->id,
                     'item_code' => $item->inventoryItem->item_code,
                     'item_name' => $item->inventoryItem->name,
-                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity
-                    'arrived_quantity' => $item->arrived_quantity ?? 0, // Include arrived quantity
+                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                    'arrived_quantity' => $item->arrived_quantity ?? 0,
                     'price' => $item->price,
-                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
+                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
                 ];
             })->toArray();
 
@@ -248,35 +246,25 @@ class RegisterArrivalResource extends Resource
         $purchaseOrderId = $registerArrival->purchase_order_id;
 
         if ($purchaseOrderId) {
-            // Update the arrived_quantity and remaining_quantity in PurchaseOrderItem
             foreach ($registerArrival->items as $item) {
                 $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
                     ->where('inventory_item_id', $item->item_id)
                     ->first();
 
                 if ($purchaseOrderItem) {
-                    // Ensure arrived_quantity and remaining_quantity are initialized
                     $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
                     $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
 
-                    // Add the quantity from the RegisterArrivalItem to arrived_quantity
                     $purchaseOrderItem->arrived_quantity += $item->quantity;
-
-                    // Subtract the arrived quantity from remaining_quantity
                     $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
 
-                    // Save the updated PurchaseOrderItem
                     $purchaseOrderItem->save();
                 }
             }
 
-            // Check if all remaining_quantity values are 0
             $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
-            $allRemainingZero = $allItems->every(function ($item) {
-                return $item->remaining_quantity === 0;
-            });
+            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
 
-            // Update the PurchaseOrder status based on remaining_quantity
             $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
             if ($purchaseOrder) {
                 $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
@@ -295,6 +283,13 @@ class RegisterArrivalResource extends Resource
                 TextColumn::make('received_date')->sortable()->searchable(),
                 TextColumn::make('location_id')->sortable(),
                 TextColumn::make('location.name')->sortable(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->getStateUsing(function ($record) {
+                        $statuses = $record->items->pluck('status')->unique()->toArray();
+                        return implode(', ', $statuses);
+                    })
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('purchase_order_id')
@@ -302,7 +297,54 @@ class RegisterArrivalResource extends Resource
                     ->relationship('purchaseOrder', 'id'),
             ])
             ->defaultSort('received_date', 'desc')
-            ->recordUrl(null);
+            ->recordUrl(null)
+            ->actions([
+                Tables\Actions\Action::make('re-correction')
+                    ->label('Re-correct')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function ($record, $livewire) {
+                        // Soft delete the RegisterArrival record
+                        $record->delete();
+
+                        // Revert the quantities in PurchaseOrderItem
+                        foreach ($record->items as $item) {
+                            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $record->purchase_order_id)
+                                ->where('inventory_item_id', $item->item_id)
+                                ->first();
+
+                            if ($purchaseOrderItem) {
+                                $purchaseOrderItem->arrived_quantity -= $item->quantity;
+                                $purchaseOrderItem->remaining_quantity += $item->quantity;
+
+                                // Ensure values are not negative
+                                $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
+                                $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
+
+                                $purchaseOrderItem->save();
+                            }
+                        }
+
+                        // Update the status of the PurchaseOrder
+                        $purchaseOrder = PurchaseOrder::find($record->purchase_order_id);
+                        if ($purchaseOrder) {
+                            $allItems = $purchaseOrder->items;
+                            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+                            $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
+
+                            if ($allArrivedZero) {
+                                $purchaseOrder->status = 'released';
+                            } else {
+                                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                            }
+
+                            $purchaseOrder->save();
+                        }
+
+                        $livewire->redirect(request()->header('Referer'));
+                    })
+                    ->icon('heroicon-o-trash'),
+            ]);
     }
 
     public static function getPages(): array

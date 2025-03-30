@@ -10,7 +10,7 @@ use Spatie\Activitylog\LogOptions;
 
 class PurchaseOrderItem extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'purchase_order_id',
@@ -47,21 +47,5 @@ class PurchaseOrderItem extends Model
      *
      * @return \Spatie\Activitylog\LogOptions
      */
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly([
-                'purchase_order_id',
-                'inventory_item_id',
-                'quantity',
-                'price',
-                'arrived_quantity', // New column
-                'remaining_quantity', // New column
-            ])
-            ->useLogName('purchase_order_item')
-            ->setDescriptionForEvent(function (string $eventName) {
-                $userEmail = $this->purchaseOrder->user ? $this->purchaseOrder->user->email : 'unknown';
-                return "Purchase Order Item {$this->id} for Purchase Order {$this->purchase_order_id} has been {$eventName} by User {$this->purchaseOrder->user_id} ({$userEmail})";
-            });
-    }
+    
 }

@@ -73,28 +73,28 @@ class HandlePurchaseOrder extends Page
         }
     }
 
-    // Cancel Purchase Order
-    public function cancelOrder()
+    // Pause Purchase Order
+    public function pauseOrder()
     {
         try {
             $this->record->update([
-                'status' => 'cancelled',
+                'status' => 'paused',
             ]);
 
             activity()
                 ->performedOn($this->record)
-                ->log('Purchase Order cancelled');
+                ->log('Purchase Order paused');
 
             Notification::make()
-                ->title('Purchase Order Cancelled')
+                ->title('Purchase Order Paused')
                 ->warning()
-                ->body('The purchase order has been cancelled.')
+                ->body('The purchase order has been paused.')
                 ->send();
 
             // Refresh the page
             return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
         } catch (\Exception $e) {
-
+            // Handle exception if needed
         }
     }
 
@@ -123,19 +123,15 @@ class HandlePurchaseOrder extends Page
     protected function getHeaderActions(): array
     {
         $actions = [
-            // First row of actions
+            // Close action
             Action::make('Close')
                 ->label('Close')
                 ->color('primary')
                 ->url(fn () => PurchaseOrderResource::getUrl('index'))
                 ->openUrlInNewTab(false),
         ];
-    
-        if ($this->record->status === 'arrived') {
-            return $actions;
-        }
 
-        // Only add "Release Purchase Order" action if the status is 'planned'
+        // Show "Release Purchase Order" action if the status is 'planned'
         if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_purchase_order')
                 ->label('Release Purchase Order')
@@ -148,8 +144,8 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->releasePurchaseOrder());
         }
 
-        // Plan Purchase Order (Change status back to "planned")
-        if (in_array($this->record->status, ['released', 'cancelled'])) {
+        // Show "Plan Order" action if the status is 'released' or 'cancelled'
+        if (in_array($this->record->status, ['released', 'paused'])) {
             $actions[] = Action::make('plan_order')
                 ->label('Plan Order')
                 ->color('gray')
@@ -161,21 +157,21 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->planOrder());
         }
 
-        // Cancel Purchase Order
-        if ($this->record->status !== 'cancelled') {
-            $actions[] = Action::make('cancel_order')
-                ->label('Cancel Order')
+        // Show "Pause Order" action if the status is 'planned', 'released', or 'partially arrived'
+        if (in_array($this->record->status, ['planned', 'released', 'partially arrived'])) {
+            $actions[] = Action::make('pause_order')
+                ->label('Pause Order')
                 ->color('danger')
-                ->icon('heroicon-o-x-circle')
+                ->icon('heroicon-o-pause-circle')
                 ->requiresConfirmation()
-                ->modalHeading('Confirm Cancellation')
-                ->modalDescription('Are you sure you want to cancel this purchase order?')
-                ->modalButton('Yes, Cancel Order')
-                ->action(fn () => $this->cancelOrder());
+                ->modalHeading('Confirm Pause')
+                ->modalDescription('Are you sure you want to pause this purchase order?')
+                ->modalButton('Yes, Pause Order')
+                ->action(fn () => $this->pauseOrder());
         }
 
-        // Delete Purchase Order
-        if (!in_array($this->record->status, ['cancelled', 'completed'])) {
+        // Show "Delete Order" action if the status is 'planned' or 'released'
+        if (in_array($this->record->status, ['planned', 'released'])) {
             $actions[] = Action::make('delete_order')
                 ->label('Delete Order')
                 ->color('danger')
@@ -187,7 +183,7 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->deleteOrder());
         }
 
-        // Second row of actions
+        // Show "Generate QR Code" action for all statuses
         $actions[] = Action::make('generateQrCode')
             ->label('Generate QR Code')
             ->url(fn () => route('generate.qr', ['purchase_order' => $this->record->id]))
@@ -195,13 +191,14 @@ class HandlePurchaseOrder extends Page
             ->color('success')
             ->openUrlInNewTab(true);
 
+        // Show "Print PDF" action for all statuses
         $actions[] = Action::make('printPdf')
             ->label('Print PDF')
             ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))
-            ->icon('heroicon-o-printer') 
+            ->icon('heroicon-o-printer')
             ->color('secondary')
             ->openUrlInNewTab(true);
 
         return $actions;
-        }
+    }
 }

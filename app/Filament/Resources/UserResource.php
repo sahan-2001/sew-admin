@@ -28,14 +28,17 @@ class UserResource extends Resource
                     ->email()
                     ->maxLength(255)
                     ->unique(User::class, 'email', ignoreRecord: true),
-                    Forms\Components\Hidden::make('password')
+                Forms\Components\Hidden::make('password')
                     ->default('12345678') // Default password for new users
                     ->dehydrateStateUsing(fn ($state) => bcrypt($state)),
                 Forms\Components\Select::make('roles')
                     ->label('Roles')
                     ->relationship('roles', 'name')
                     ->options(\Spatie\Permission\Models\Role::all()->pluck('name', 'id'))
-                    ->preload(),
+                    ->preload()
+                    ->multiple()
+                    ->required()
+                    ->visible(fn () => auth()->user()->hasRole('admin')),
             ]);
     }
 

@@ -8,7 +8,7 @@ use App\Models\PurchaseOrder;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-
+use Illuminate\Http\Request;
 
 class PurchaseOrderPdfController extends Controller
 {
@@ -20,6 +20,11 @@ class PurchaseOrderPdfController extends Controller
      */
     public function show(PurchaseOrder $purchase_order)
     {
+        // Ensure the status is not 'planned'
+        if ($purchase_order->status === 'planned') {
+            abort(403, 'PDF export is not allowed for planned purchase orders.');
+        }
+
         // Prepare data for the PDF
         $companyDetails = [
             'name' => 'Your Company Name',
@@ -68,30 +73,36 @@ class PurchaseOrderPdfController extends Controller
      * @param  \App\Models\PurchaseOrder  $purchase_order
      * @return string  The path to the QR code image.
      */
+
     private function generateQrCode(PurchaseOrder $purchase_order)
-{
-    // Extract details for the QR code
-    $purchaseOrderId = $purchase_order->id;
-    $providerId = $purchase_order->provider_id;
-    $wantedDate = Carbon::parse($purchase_order->wanted_date)->format('Y-m-d');
+    {
+        // Extract details for the QR code
+        $purchaseOrderId = $purchase_order->id;
+        $providerId = $purchase_order->provider_id;
+        $wantedDate = Carbon::parse($purchase_order->wanted_date)->format('Y-m-d');
 
-    // Create the QR code content
-    $qrContent = "Purchase Order: {$purchaseOrderId}\nProvider ID: {$providerId}\nWanted Date: {$wantedDate}";
+        // Create the QR code content
+        $qrContent = "Purchase Order: {$purchaseOrderId}\nProvider ID: {$providerId}\nWanted Date: {$wantedDate}";
 
-    // Generate the QR code
-    $qrCode = new QrCode($qrContent); // Use the constructor
+        // Generate the QR code
+        $qrCode = new QrCode($qrContent);
 
-    $writer = new PngWriter();
-    $qrCodeResult = $writer->write($qrCode);
+        $writer = new PngWriter();
+        $qrCodeResult = $writer->write($qrCode);
 
-    // Define the file path
-    $fileName = 'purchase_order_' . $purchaseOrderId . '.png';
-    $path = 'public/qrcodes/' . $fileName;
+        // Define the file path
+        $fileName = 'purchase_order_' . $purchaseOrderId . '.png';
+        $path = 'public/qrcodes/' . $fileName;
 
-    // Save the QR code image to storage
-    Storage::put($path, $qrCodeResult->getString());
+        // Save the QR code image to storage
+        Storage::put($path, $qrCodeResult->getString());
 
-    // Return the public URL to the QR code
-    return asset('storage/qrcodes/' . $fileName);
-}
+        // Debugging: Check if the file exists
+        if (!Storage::exists($path)) {
+            throw new \Exception("QR Code could not be saved to {$path}");
+        }
+
+        // Return the public URL to the QR code
+        return asset('storage/qrcodes/' . $fileName);
+    }
 }
