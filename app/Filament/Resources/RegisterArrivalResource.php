@@ -67,9 +67,7 @@ class RegisterArrivalResource extends Resource
                                         ->relationship('inventoryItem', 'name')
                                         ->searchable()
                                         ->preload()
-                                        ->options(function () {
-                                            return InventoryItem::all()->pluck('name', 'id');
-                                        })
+                                        ->options(fn () => InventoryItem::all()->pluck('name', 'id'))
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set) {
                                             $item = InventoryItem::find($state);
@@ -87,6 +85,7 @@ class RegisterArrivalResource extends Resource
                                     TextInput::make('quantity')
                                         ->label('Quantity')
                                         ->reactive()
+
                                         ->required() // Ensure the field is required
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
@@ -95,14 +94,18 @@ class RegisterArrivalResource extends Resource
                                             }
                                         }),
 
+                                        ->required(),
+
+
                                     TextInput::make('price')
                                         ->label('Price')
                                         ->reactive()
                                         ->required() // Ensure the field is required
+                                        ->required()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $quantity = $get('quantity');
                                             if ($quantity > 0) {
-                                                $set('total', $state * $quantity); // Update total when price changes
+                                                $set('total', $state * $quantity);
                                             }
                                         }),
 
@@ -113,7 +116,7 @@ class RegisterArrivalResource extends Resource
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $price = $get('price');
                                             if ($price > 0) {
-                                                $set('quantity', $state / $price); // Update quantity when total changes
+                                                $set('quantity', $state / $price);
                                             }
                                         }),
                                 ]),
@@ -137,9 +140,9 @@ class RegisterArrivalResource extends Resource
                                             'item_id' => $item->inventoryItem->id,
                                             'item_code' => $item->inventoryItem->item_code,
                                             'item_name' => $item->inventoryItem->name,
-                                            'quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity as quantity
+                                            'quantity' => $item->remaining_quantity ?? $item->quantity,
                                             'price' => $item->price,
-                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
+                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
                                         ];
                                     })->toArray();
 
@@ -161,7 +164,6 @@ class RegisterArrivalResource extends Resource
 
             // Section 3: Arrival Information and Invoice Upload
             Section::make('Arrival Information and Invoice Upload')
-<<<<<<< Updated upstream
                 ->schema([
                     Grid::make(2)
                         ->schema([
@@ -175,7 +177,6 @@ class RegisterArrivalResource extends Resource
                                     return InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
                                         ->pluck('name', 'id');
                                 }),
-=======
             ->schema([
                 Grid::make(2)
                     ->schema([
@@ -195,7 +196,6 @@ class RegisterArrivalResource extends Resource
                                     $set('location_type', $location->location_type);
                                 }
                             }),
->>>>>>> Stashed changes
 
                         TextInput::make('location_type')
                             ->label('Location Type')
@@ -221,6 +221,28 @@ class RegisterArrivalResource extends Resource
                             ->nullable(),
                     ]),
             ]),
+                                ->options(fn () => InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
+                                    ->pluck('name', 'id')),
+
+                            DatePicker::make('received_date')
+                                ->label('Received Date')
+                                ->default(now())
+                                ->required(),
+
+                            TextInput::make('invoice_number')
+                                ->label('Invoice Number')
+                                ->required(),
+
+                            FileUpload::make('image_of_invoice')
+                                ->label('Invoice Image')
+                                ->image()
+                                ->nullable(),
+
+                            Textarea::make('note')
+                                ->label('Notes')
+                                ->nullable(),
+                        ]),
+                ]),
         ]);
     }
 
@@ -250,10 +272,10 @@ class RegisterArrivalResource extends Resource
                     'item_id' => $item->inventoryItem->id,
                     'item_code' => $item->inventoryItem->item_code,
                     'item_name' => $item->inventoryItem->name,
-                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity, // Use remaining_quantity
-                    'arrived_quantity' => $item->arrived_quantity ?? 0, // Include arrived quantity
+                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                    'arrived_quantity' => $item->arrived_quantity ?? 0,
                     'price' => $item->price,
-                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price, // Calculate total based on remaining_quantity
+                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
                 ];
             })->toArray();
 
@@ -277,24 +299,18 @@ class RegisterArrivalResource extends Resource
         $purchaseOrderId = $registerArrival->purchase_order_id;
 
         if ($purchaseOrderId) {
-            // Update the arrived_quantity and remaining_quantity in PurchaseOrderItem
             foreach ($registerArrival->items as $item) {
                 $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
                     ->where('inventory_item_id', $item->item_id)
                     ->first();
 
                 if ($purchaseOrderItem) {
-                    // Ensure arrived_quantity and remaining_quantity are initialized
                     $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
                     $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
 
-                    // Add the quantity from the RegisterArrivalItem to arrived_quantity
                     $purchaseOrderItem->arrived_quantity += $item->quantity;
-
-                    // Subtract the arrived quantity from remaining_quantity
                     $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
 
-                    // Save the updated PurchaseOrderItem
                     $purchaseOrderItem->save();
                 }
 
@@ -306,13 +322,9 @@ class RegisterArrivalResource extends Resource
                 }
             }
 
-            // Check if all remaining_quantity values are 0
             $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
-            $allRemainingZero = $allItems->every(function ($item) {
-                return $item->remaining_quantity === 0;
-            });
+            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
 
-            // Update the PurchaseOrder status based on remaining_quantity
             $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
             if ($purchaseOrder) {
                 $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
