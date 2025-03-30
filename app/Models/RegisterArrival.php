@@ -36,14 +36,11 @@ class RegisterArrival extends Model
         return $this->belongsTo(InventoryLocation::class);
     }
 
-<<<<<<< Updated upstream
-=======
     /**
      * Configure activity logging options.
      *
      * @return \Spatie\Activitylog\LogOptions
      */
->>>>>>> Stashed changes
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -56,7 +53,6 @@ class RegisterArrival extends Model
             ])
             ->useLogName('register_arrival')
             ->setDescriptionForEvent(function (string $eventName) {
-<<<<<<< Updated upstream
                 $description = "Register Arrival {$this->id} has been {$eventName}";
 
                 // Check if the related PurchaseOrder exists before accessing its properties
@@ -71,9 +67,6 @@ class RegisterArrival extends Model
                 }
 
                 return $description;
-=======
-                return "Register Arrival record (ID: {$this->id}, Purchase Order ID: {$this->purchase_order_id}) has been {$eventName}.";
->>>>>>> Stashed changes
             });
     }
 }
