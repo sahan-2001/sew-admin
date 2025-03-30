@@ -161,6 +161,7 @@ class RegisterArrivalResource extends Resource
 
             // Section 3: Arrival Information and Invoice Upload
             Section::make('Arrival Information and Invoice Upload')
+<<<<<<< Updated upstream
                 ->schema([
                     Grid::make(2)
                         ->schema([
@@ -174,26 +175,52 @@ class RegisterArrivalResource extends Resource
                                     return InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
                                         ->pluck('name', 'id');
                                 }),
+=======
+            ->schema([
+                Grid::make(2)
+                    ->schema([
+                        Select::make('location_id')
+                            ->label('Location')
+                            ->relationship('location', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->options(fn () => InventoryLocation::whereIn('location_type', ['picking', 'arrival'])
+                                ->orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
+                                ->pluck('name', 'id'))
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                $location = InventoryLocation::find($state);
+                                if ($location) {
+                                    $set('location_type', $location->location_type);
+                                }
+                            }),
+>>>>>>> Stashed changes
 
-                            DatePicker::make('received_date')
-                                ->label('Received Date')
-                                ->default(now())
-                                ->required(),
+                        TextInput::make('location_type')
+                            ->label('Location Type')
+                            ->disabled()
+                            ->hidden(),
 
-                            TextInput::make('invoice_number')
-                                ->label('Invoice Number')
-                                ->required(),
+                        DatePicker::make('received_date')
+                            ->label('Received Date')
+                            ->default(now())
+                            ->required(),
 
-                            FileUpload::make('image_of_invoice')
-                                ->label('Invoice Image')
-                                ->image()
-                                ->nullable(),
+                        TextInput::make('invoice_number')
+                            ->label('Invoice Number')
+                            ->required(),
 
-                            Textarea::make('note')
-                                ->label('Notes')
-                                ->nullable(),
-                        ]),
-                ]),
+                        FileUpload::make('image_of_invoice')
+                            ->label('Invoice Image')
+                            ->image()
+                            ->nullable(),
+
+                        Textarea::make('note')
+                            ->label('Notes')
+                            ->nullable(),
+                    ]),
+            ]),
         ]);
     }
 
@@ -270,6 +297,13 @@ class RegisterArrivalResource extends Resource
                     // Save the updated PurchaseOrderItem
                     $purchaseOrderItem->save();
                 }
+
+                // Set status based on location type
+                $location = InventoryLocation::find($registerArrival->location_id);
+                if ($location) {
+                    $item->status = $location->location_type === 'picking' ? 'QC passed' : 'to be inspected';
+                    $item->save();
+                }
             }
 
             // Check if all remaining_quantity values are 0
@@ -297,6 +331,13 @@ class RegisterArrivalResource extends Resource
                 TextColumn::make('received_date')->sortable()->searchable(),
                 TextColumn::make('location_id')->sortable(),
                 TextColumn::make('location.name')->sortable(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->getStateUsing(function ($record) {
+                        $statuses = $record->items->pluck('status')->unique()->toArray();
+                        return implode(', ', $statuses);
+                    })
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('purchase_order_id')
@@ -304,7 +345,54 @@ class RegisterArrivalResource extends Resource
                     ->relationship('purchaseOrder', 'id'),
             ])
             ->defaultSort('received_date', 'desc')
-            ->recordUrl(null);
+            ->recordUrl(null)
+            ->actions([
+                Tables\Actions\Action::make('re-correction')
+                    ->label('Re-correct')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function ($record, $livewire) {
+                        // Soft delete the RegisterArrival record
+                        $record->delete();
+
+                        // Revert the quantities in PurchaseOrderItem
+                        foreach ($record->items as $item) {
+                            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $record->purchase_order_id)
+                                ->where('inventory_item_id', $item->item_id)
+                                ->first();
+
+                            if ($purchaseOrderItem) {
+                                $purchaseOrderItem->arrived_quantity -= $item->quantity;
+                                $purchaseOrderItem->remaining_quantity += $item->quantity;
+
+                                // Ensure values are not negative
+                                $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
+                                $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
+
+                                $purchaseOrderItem->save();
+                            }
+                        }
+
+                        // Update the status of the PurchaseOrder
+                        $purchaseOrder = PurchaseOrder::find($record->purchase_order_id);
+                        if ($purchaseOrder) {
+                            $allItems = $purchaseOrder->items;
+                            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+                            $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
+
+                            if ($allArrivedZero) {
+                                $purchaseOrder->status = 'released';
+                            } else {
+                                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                            }
+
+                            $purchaseOrder->save();
+                        }
+
+                        $livewire->redirect(request()->header('Referer'));
+                    })
+                    ->icon('heroicon-o-trash'),
+            ]);
     }
 
     public static function getPages(): array

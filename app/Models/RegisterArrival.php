@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class RegisterArrival extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'purchase_order_id',
@@ -34,6 +36,14 @@ class RegisterArrival extends Model
         return $this->belongsTo(InventoryLocation::class);
     }
 
+<<<<<<< Updated upstream
+=======
+    /**
+     * Configure activity logging options.
+     *
+     * @return \Spatie\Activitylog\LogOptions
+     */
+>>>>>>> Stashed changes
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -46,6 +56,7 @@ class RegisterArrival extends Model
             ])
             ->useLogName('register_arrival')
             ->setDescriptionForEvent(function (string $eventName) {
+<<<<<<< Updated upstream
                 $description = "Register Arrival {$this->id} has been {$eventName}";
 
                 // Check if the related PurchaseOrder exists before accessing its properties
@@ -60,6 +71,9 @@ class RegisterArrival extends Model
                 }
 
                 return $description;
+=======
+                return "Register Arrival record (ID: {$this->id}, Purchase Order ID: {$this->purchase_order_id}) has been {$eventName}.";
+>>>>>>> Stashed changes
             });
     }
 }
