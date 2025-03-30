@@ -183,21 +183,21 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->deleteOrder());
         }
 
-        // Show "Generate QR Code" action for all statuses
-        $actions[] = Action::make('generateQrCode')
-            ->label('Generate QR Code')
-            ->url(fn () => route('generate.qr', ['purchase_order' => $this->record->id]))
-            ->icon('heroicon-o-document-text')
-            ->color('success')
-            ->openUrlInNewTab(true);
+        // Show "Download QR Code" action
+        $actions[] = Action::make('downloadQrCode')
+            ->label('Download QR Code')
+            ->icon('heroicon-s-arrow-down')
+            ->url(fn () => route('purchase-order.qr-code.download', $this->record->id)) // Use $this->record
+            ->visible(fn () => $this->record->qr_code); 
 
-        // Show "Print PDF" action for all statuses
+        // Show "Print PDF" action
         $actions[] = Action::make('printPdf')
             ->label('Print PDF')
             ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))
-            ->icon('heroicon-o-printer')
+            ->icon('heroicon-s-printer')
             ->color('secondary')
-            ->openUrlInNewTab(true);
+            ->openUrlInNewTab(true)
+            ->visible(fn () => $this->record->status !== 'planned'); 
 
         return $actions;
     }

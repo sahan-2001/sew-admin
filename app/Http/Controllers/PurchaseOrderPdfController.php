@@ -43,18 +43,15 @@ class PurchaseOrderPdfController extends Controller
             'created_at' => $purchase_order->created_at->format('Y-m-d H:i:s'), 
         ];
 
-        // Fetch purchase order items with inventory item details
         $purchaseOrderItems = $purchase_order->items()->with('inventoryItem')->get();
+        $grandTotal = $purchaseOrderItems->sum(fn ($item) => $item->quantity * $item->price);
 
-        // Calculate the grand total
-        $grandTotal = $purchaseOrderItems->sum(function ($item) {
-            return $item->quantity * $item->price;
-        });
+        // Get QR code path
+        $qrCodePath = $purchase_order->qr_code
+            ? asset('storage/qrcodes/' . $purchase_order->qr_code)
+            : null;
 
-        // Generate the QR code
-        $qrCodePath = $this->generateQrCode($purchase_order);
-
-        // Pass the QR code path to the Blade view
+        // Generate the PDF
         $pdf = Pdf::loadView('purchase-orders.pdf', [
             'companyDetails' => $companyDetails,
             'purchaseOrderDetails' => $purchaseOrderDetails,
@@ -63,46 +60,6 @@ class PurchaseOrderPdfController extends Controller
             'qrCodePath' => $qrCodePath,
         ]);
 
-        // Return the PDF as a streamed response
         return $pdf->stream('purchase_order_' . $purchase_order->id . '.pdf');
-    }
-
-    /**
-     * Generate a QR code for the given purchase order.
-     *
-     * @param  \App\Models\PurchaseOrder  $purchase_order
-     * @return string  The path to the QR code image.
-     */
-
-    private function generateQrCode(PurchaseOrder $purchase_order)
-    {
-        // Extract details for the QR code
-        $purchaseOrderId = $purchase_order->id;
-        $providerId = $purchase_order->provider_id;
-        $wantedDate = Carbon::parse($purchase_order->wanted_date)->format('Y-m-d');
-
-        // Create the QR code content
-        $qrContent = "Purchase Order: {$purchaseOrderId}\nProvider ID: {$providerId}\nWanted Date: {$wantedDate}";
-
-        // Generate the QR code
-        $qrCode = new QrCode($qrContent);
-
-        $writer = new PngWriter();
-        $qrCodeResult = $writer->write($qrCode);
-
-        // Define the file path
-        $fileName = 'purchase_order_' . $purchaseOrderId . '.png';
-        $path = 'public/qrcodes/' . $fileName;
-
-        // Save the QR code image to storage
-        Storage::put($path, $qrCodeResult->getString());
-
-        // Debugging: Check if the file exists
-        if (!Storage::exists($path)) {
-            throw new \Exception("QR Code could not be saved to {$path}");
-        }
-
-        // Return the public URL to the QR code
-        return asset('storage/qrcodes/' . $fileName);
     }
 }

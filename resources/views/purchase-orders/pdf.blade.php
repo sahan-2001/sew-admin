@@ -142,11 +142,14 @@
     </div>
 
     <div class="qr-code">
-    @if(isset($qrCodePath))
-        <img src="{{ $qrCodePath }}" alt="QR Code" style="width:150px; height:150px;">
-    @endif
+        @if ($qrCodePath)
+            <img src="{{ $qrCodePath }}" alt="QR Code" style="width: 150px; height: 150px;">
+        @else
+            <p>QR Code not available</p>
+        @endif
     </div>
 
+    
     <div class="signature">
         <div>
             <p>Authorized Signature</p>

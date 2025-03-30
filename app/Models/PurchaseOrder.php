@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
+use Illuminate\Support\Facades\Storage;
 
 class PurchaseOrder extends Model
 {
@@ -20,8 +23,32 @@ class PurchaseOrder extends Model
         'wanted_date',
         'special_note',
         'user_id',
-        'status', // Add status to fillable
+        'status', 
+        'qr_code', 
     ];
+
+    protected static function booted()
+    {
+        static::created(function ($purchaseOrder) {
+            // Generate QR code content
+            $qrContent = "Purchase Order: {$purchaseOrder->id}\nProvider ID: {$purchaseOrder->provider_id}\nWanted Date: {$purchaseOrder->wanted_date}";
+
+            // Generate QR code
+            $qrCode = new QrCode($qrContent);
+            $writer = new PngWriter();
+            $qrCodeResult = $writer->write($qrCode);
+
+            // Define file path
+            $fileName = 'purchase_order_' . $purchaseOrder->id . '.png';
+            $path = 'public/qrcodes/' . $fileName;
+
+            // Save QR code to storage
+            Storage::put($path, $qrCodeResult->getString());
+
+            // Save QR code path to the database
+            $purchaseOrder->update(['qr_code' => $fileName]);
+        });
+    }
 
     protected static $logName = 'purchase_order';
 

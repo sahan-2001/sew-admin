@@ -72,6 +72,6 @@ Route::get('/sample-orders/{sampleOrder}/pdf', function (SampleOrder $sampleOrde
 })->name('sample-orders.pdf');
 
 
-// Generate and display the QR code
-Route::get('purchase-order/{purchase_order}/qr-code', [PurchaseOrderController::class, 'generateQrCode'])
-    ->name('generate.qr');
+// Download the QR code
+Route::get('/purchase-order/{purchase_order}/qr-code/download', [PurchaseOrderController::class, 'downloadQrCode'])
+    ->name('purchase-order.qr-code.download');
