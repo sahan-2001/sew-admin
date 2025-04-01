@@ -1,4 +1,3 @@
-<!-- filepath: resources/views/purchase-orders/pdf.blade.php -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,25 +12,22 @@
         .header, .footer {
             text-align: center;
         }
-        .details {
+        .details, .provider-details {
             margin-top: 20px;
-            width: 100%;
+            width: 48%;
+            float: left;
             border-collapse: collapse;
         }
-        .details th, .details td{
+        .details th, .details td, .provider-details th, .provider-details td {
             border: 1px solid #ddd;
             padding: 10px;
             text-align: left;
         }
-        .details th {
+        .details th, .provider-details th {
             background-color: #f2f2f2;
         }
         .items th {
             text-align: center;
-        }
-        .qr-code {
-            text-align: center;
-            margin-top: 20px;
         }
         .items table {
             width: 100%;
@@ -58,12 +54,17 @@
             text-align: center;
         }
         .signature-line {
-            border-top: 1px solid black;
+            border-top: 1px dotted black;
             margin: 10px auto;
             width: 80%;
         }
+        .qr-code {
+            width: 48%;
+            float: right;
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
-
 </head>
 <body>
     <div class="header">
@@ -72,14 +73,13 @@
         <p>Phone: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
     </div>
 
-    <div class="details">
+    <div class="provider-details">
         <h2>Purchase Order Details</h2>
         <table>
             <tr>
                 <th>Status</th>
                 <td>{{ $purchaseOrderDetails['status'] }}</td>
             </tr>
-            
             <tr>
                 <th>Purchase Order ID</th>
                 <td>{{ $purchaseOrderDetails['id'] }}</td>
@@ -107,7 +107,20 @@
         </table>
     </div>
 
-    <div class="items">
+    <div class="qr-code">
+        <h4>Scan to View Purchase Order</h4>
+        <img src="{{ storage_path('app/public/qrcodes/qrcode_' . $purchaseOrderDetails['id'] . '.png') }}" 
+            alt="QR Code for Purchase Order {{ $purchaseOrderDetails['id'] }}"
+            style="width: 100px; height: 100px; border: 1px solid #eee;">
+        <div style="margin-top: 10px;">
+            <a href="{{ $qrCodeData }}" 
+            style="font-size: 12px; color: #3490dc; text-decoration: none;">
+            View Purchase Order Online
+            </a>
+        </div>
+    </div>
+
+    <div class="items" style="clear: both;">
         <h2>Purchase Order Items</h2>
         <table>
             <thead>
@@ -141,25 +154,17 @@
         </table>
     </div>
 
-    <div class="qr-code">
-        @if ($qrCodePath)
-            <img src="{{ $qrCodePath }}" alt="QR Code" style="width: 150px; height: 150px;">
-        @else
-            <p>QR Code not available</p>
-        @endif
-    </div>
-
-    
     <div class="signature">
-        <div>
+        <div style="flex: 1; text-align: left;">
             <p>Authorized Signature</p>
             <div class="signature-line"></div>
         </div>
-        <div>
+        <div style="flex: 1; text-align: right;">
             <p>Received By</p>
             <div class="signature-line"></div>
         </div>
     </div>
+
 
     <div class="footer">
         <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>

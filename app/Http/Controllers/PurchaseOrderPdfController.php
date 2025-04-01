@@ -9,6 +9,11 @@ use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Label\Label;
+use Endroid\QrCode\Writer\SvgWriter;
 
 class PurchaseOrderPdfController extends Controller
 {
@@ -20,10 +25,6 @@ class PurchaseOrderPdfController extends Controller
      */
     public function show(PurchaseOrder $purchase_order)
     {
-        // Ensure the status is not 'planned'
-        if ($purchase_order->status === 'planned') {
-            abort(403, 'PDF export is not allowed for planned purchase orders.');
-        }
 
         // Prepare data for the PDF
         $companyDetails = [
@@ -46,20 +47,36 @@ class PurchaseOrderPdfController extends Controller
         $purchaseOrderItems = $purchase_order->items()->with('inventoryItem')->get();
         $grandTotal = $purchaseOrderItems->sum(fn ($item) => $item->quantity * $item->price);
 
-        // Get QR code path
-        $qrCodePath = $purchase_order->qr_code
-            ? asset('storage/qrcodes/' . $purchase_order->qr_code)
-            : null;
+        // Generate QR Code URL
+        $qrCodeData = url('/purchase-order/' . $purchase_order->id);
 
-        // Generate the PDF
-        $pdf = Pdf::loadView('purchase-orders.pdf', [
+        // Create QR Code
+        $qrCode = new QrCode($qrCodeData);
+
+
+        // Generate PNG Image
+        $writer = new PngWriter();
+        $result = $writer->write($qrCode);
+
+        // Define the filename and storage path
+        $qrCodeFilename = 'qrcode_' . $purchase_order->id . '.png';
+        $path = 'public/qrcodes/' . $qrCodeFilename;
+
+        // Ensure the directory exists
+        Storage::makeDirectory('public/qrcodes');
+
+        // Store the QR code in Laravel storage
+        Storage::put($path, $result->getString());
+
+        // Generate and return the PDF
+        return Pdf::loadView('purchase-orders.pdf', [
             'companyDetails' => $companyDetails,
             'purchaseOrderDetails' => $purchaseOrderDetails,
             'purchaseOrderItems' => $purchaseOrderItems,
             'grandTotal' => $grandTotal,
-            'qrCodePath' => $qrCodePath,
-        ]);
-
-        return $pdf->stream('purchase_order_' . $purchase_order->id . '.pdf');
+            'qrCodePath' => storage_path('app/public/qrcodes/qrcode_' . $purchase_order->id . '.png'),
+            'qrCodeData' => $qrCodeData
+        ])->setPaper('a4')->stream('purchase-order-'.$purchase_order->id.'.pdf');
     }
+
 }

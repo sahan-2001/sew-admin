@@ -15,17 +15,21 @@
             @php
                 $status = $record->status;
                 $progressValue = match($status) {
+                    'paused' => 0,
                     'planned' => 25,
                     'released' => 50,
-                    'cancelled' => 75,
+                    'partially arrived' => 65,
+                    'arrived' => 75,
                     'completed' => 100,
                     default => 0
                 };
 
                 $color = match($status) {
+                    'paused' => '#e5e7eb',
                     'planned' => '#3b82f6',
                     'released' => '#f59e0b',
-                    'cancelled' => '#ef4444',
+                    'partially arrived' => '#f59e0b',
+                    'arrived' => '#ef4444',
                     'completed' => '#10b981',
                     default => '#e5e7eb'
                 };
@@ -69,6 +73,8 @@
                 <th class="border border-gray-300 p-2">Quantity</th>
                 <th class="border border-gray-300 p-2 text-right">Price</th>
                 <th class="border border-gray-300 p-2 text-right">Total</th>
+                <th class="border border-gray-300 p-2 text-right">Remaining Quantity</th>
+                <th class="border border-gray-300 p-2 text-right">Arrived Quantity</th>
             </tr>
         </thead>
         <tbody>
@@ -79,6 +85,8 @@
                     <td class="border border-gray-300 p-2">{{ $item->quantity }}</td>
                     <td class="border border-gray-300 p-2 text-right">{{ $item->price }}</td>
                     <td class="border border-gray-300 p-2 text-right">{{ $item->quantity * $item->price }}</td>
+                    <td class="border border-gray-300 p-2 text-right">{{ $item->remaining_quantity }}</td>
+                    <td class="border border-gray-300 p-2 text-right">{{ $item->arrived_quantity }}</td>
                 </tr>
                 @php $grandTotal += $item->quantity * $item->price; @endphp
             @endforeach

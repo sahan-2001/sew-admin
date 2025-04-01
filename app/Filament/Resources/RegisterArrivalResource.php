@@ -174,7 +174,8 @@ class RegisterArrivalResource extends Resource
                             DatePicker::make('received_date')
                                 ->label('Received Date')
                                 ->default(now())
-                                ->required(),
+                                ->required()
+                                ->maxDate(now()), 
 
                             TextInput::make('invoice_number')
                                 ->label('Invoice Number')
@@ -316,6 +317,14 @@ class RegisterArrivalResource extends Resource
         ->defaultSort('received_date', 'desc')
         ->recordUrl(null)
         ->actions([
+           # Tables\Actions\Action::make('view-pdf')
+             #   ->label('View PDF')
+             #   ->icon('heroicon-o-document-text')
+             #   ->color('primary')
+             #   ->url(fn ($record) => route('grn.pdf', ['grn' => $record->id])) 
+               # ->openUrlInNewTab(),
+        
+
             Tables\Actions\Action::make('re-correction')
                 ->label('Re-correct')
                 ->color('danger')
