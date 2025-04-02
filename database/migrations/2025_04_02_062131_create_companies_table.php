@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('country')->default('Sri Lanka');
             $table->string('primary_phone');
             $table->string('secondary_phone')->nullable();
+            $table->string('email');
             $table->date('started_date');
             $table->text('special_notes')->nullable();
             $table->timestamps();

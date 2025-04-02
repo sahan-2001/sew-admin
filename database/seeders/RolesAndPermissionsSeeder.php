@@ -135,6 +135,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'country' => 'Sri Lanka',
             'primary_phone' => '+94112345678',
             'secondary_phone' => '+94112345679',
+            'email' => 'owner@textileco.com',
             'started_date' => '2010-01-15',
             'special_notes' => 'Leading textile manufacturer since 2010',
         ]);

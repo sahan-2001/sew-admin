@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
+use App\Models\Company;
 use Illuminate\Http\Request;
 
 class POFrontendController extends Controller
@@ -16,12 +17,19 @@ class POFrontendController extends Controller
             return abort(404, 'Purchase Order not found');
         }
 
-        // Define company details
+        // Fetch the first company details (assuming only one company record)
+        $company = Company::first();
+
+        if (!$company) {
+            return abort(500, 'Company details not found.');
+        }
+
+        // Structure company details for frontend
         $companyDetails = [
-            'name' => 'Your Company Name',
-            'address' => 'Company Address Here',
-            'phone' => 'Company Phone',
-            'email' => 'company@example.com',
+            'name' => $company->name,
+            'address' => "{$company->address_line_1}, {$company->address_line_2}, {$company->address_line_3}, {$company->city}, {$company->country}, {$company->postal_code}",
+            'phone' => $company->primary_phone ?? 'N/A',
+            'email' => $company->email ?? 'N/A',
         ];
 
         // Return the view with the purchaseOrder and companyDetails

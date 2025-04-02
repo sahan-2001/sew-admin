@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Models\PurchaseOrder;
+use App\Models\Company;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
@@ -14,6 +15,7 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\Label\Label;
 use Endroid\QrCode\Writer\SvgWriter;
+
 
 class PurchaseOrderPdfController extends Controller
 {
@@ -26,13 +28,19 @@ class PurchaseOrderPdfController extends Controller
     public function show(PurchaseOrder $purchase_order)
     {
 
-        // Prepare data for the PDF
+        // Fetch company details from the database
+        $company = Company::first(); // Modify as needed if multiple companies exist
+
+        if (!$company) {
+            return abort(500, 'Company details not found.');
+        }
+
+        // Prepare company details
         $companyDetails = [
-            'name' => 'Your Company Name',
-            'address' => '123 Main Street, City, Country',
-            'phone' => '+123456789',
-            'email' => 'info@company.com',
-        ];
+            'name' => $company->name,
+            'address' => "{$company->address_line_1}, {$company->address_line_2}, {$company->address_line_3}, {$company->city}, {$company->country}, {$company->postal_code}",
+            'phone' => $company->primary_phone ?? 'N/A',
+            'email' => $company->email ?? 'N/A',        ];
 
         $purchaseOrderDetails = [
             'id' => $purchase_order->id,

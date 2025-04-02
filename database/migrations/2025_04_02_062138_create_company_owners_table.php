@@ -23,8 +23,8 @@ return new class extends Migration
             $table->string('postal_code');
             $table->string('country')->default('Sri Lanka');
             $table->string('phone_1');
+            $table->string('email');
             $table->string('phone_2')->nullable();
-            $table->string('email')->nullable();
             $table->date('joined_date');
             $table->timestamps();
             $table->softDeletes();

@@ -89,6 +89,8 @@ class CompanySettingsResource extends Resource
                                                 TextInput::make('secondary_phone')
                                                     ->tel()
                                                     ->maxLength(20),
+                                                TextInput::make('email')
+                                                    ->required()
                                             ])->columns(2),
                                         
                                         DatePicker::make('started_date')
