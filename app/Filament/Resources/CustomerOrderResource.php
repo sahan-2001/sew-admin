@@ -213,11 +213,11 @@ class CustomerOrderResource extends Resource
                     ->visible(fn ($record) => auth()->user()->can('edit customer orders')),
                 DeleteAction::make()
                     ->visible(fn ($record) => auth()->user()->can('delete customer orders')),
-                Action::make('view_pdf')
-                    ->label('View PDF')
-                    ->icon('heroicon-o-document-text')
-                    ->url(fn ($record) => route('customer-orders.pdf', $record))
-                    ->openUrlInNewTab(),
+  #              Action::make('view_pdf')
+  #                  ->label('View PDF')
+   #                 ->icon('heroicon-o-document-text')
+    #                ->url(fn ($record) => route('customer-orders.pdf', $record))
+   #                 ->openUrlInNewTab(),
             ])
             ->recordUrl(null);
     }

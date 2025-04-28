@@ -145,9 +145,20 @@
             </div>
         </div>
 
+        <!-- Grand Total Section -->
+        <div class="text-right text-xl font-bold mt-6">
+            @php
+                $grandTotal = $purchaseOrder->items->sum(function($item) {
+                    return $item->quantity * $item->price;
+                });
+            @endphp
+            <p>Grand Total: {{ number_format($grandTotal, 2) }}</p>
+        </div>
+
+
         <!-- QR Code Section -->
         <div class="qr-container mb-8">
-            <h4 class="text-xl md:text-2xl font-medium mb-2 text-gray-800">Scan to View</h4>
+            <h4 class="text-xl md:text-2xl font-medium mb-2 text-gray-800">Track your order</h4>
             <img src="{{ asset('storage/qrcodes/qrcode_' . $purchaseOrder->id . '.png') }}" 
                  alt="QR Code" 
                  class="mx-auto w-32 h-32 md:w-40 md:h-40 border border-gray-300 rounded-md shadow-md">

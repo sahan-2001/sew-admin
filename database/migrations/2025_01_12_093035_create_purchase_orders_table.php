@@ -17,8 +17,8 @@ class CreatePurchaseOrdersTable extends Migration
             $table->string('provider_phone');
             $table->date('wanted_date');
             $table->text('special_note')->nullable();
-            $table->string('status')->default('planned'); // Add status field
-            $table->string('qr_code')->nullable(); // Removed ->after('status')
+            $table->string('status')->default('planned'); 
+            $table->string('random_code')->nullable(); 
             $table->timestamps();
             $table->softDeletes();
         });

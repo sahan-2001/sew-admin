@@ -216,11 +216,11 @@ class SampleOrderResource extends Resource
                     !in_array($record->status, ['accepted', 'rejected'])
                 ),
                 
-                Action::make('download_pdf')
-                    ->label('View')
-                    ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
-                    ->openUrlInNewTab()
-                    ->visible(fn ($record) => $record->status !== 'planned'),  // Hide View button if status is 'planned'
+ #               Action::make('download_pdf')
+ #                   ->label('View')
+  #                  ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
+  #                  ->openUrlInNewTab()
+ #                   ->visible(fn ($record) => $record->status !== 'planned'),  // Hide View button if status is 'planned'
                 Action::make('handle')
                     ->label('Handle')
                     ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))

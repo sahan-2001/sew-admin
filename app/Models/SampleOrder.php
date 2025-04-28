@@ -29,8 +29,19 @@ class SampleOrder extends Model
         'confirmation_message',
         'rejected_by',
         'rejection_message',
+        'random_code', 
     ];
 
+    protected static function booted()
+    {
+        static::creating(function ($purchaseOrder) {
+            $purchaseOrder->random_code = '';
+            for ($i = 0; $i < 16; $i++) {
+                $purchaseOrder->random_code .= mt_rand(0, 9);
+            }
+        });
+    }
+    
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');

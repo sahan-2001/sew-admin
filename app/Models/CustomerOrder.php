@@ -10,9 +10,9 @@ use Spatie\Activitylog\LogOptions;
 
 class CustomerOrder extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity; // Enable soft deletes and activity logging
+    use HasFactory, SoftDeletes, LogsActivity; 
 
-    protected $primaryKey = 'order_id'; // Set the primary key to 'order_id'
+    protected $primaryKey = 'order_id'; 
 
     protected $fillable = [
         'name',
@@ -20,9 +20,20 @@ class CustomerOrder extends Model
         'customer_id',
         'special_notes',
         'status',
-        'added_by',  // Add added_by to fillable fields
+        'added_by',  
+        'random_code',
     ];
 
+    protected static function booted()
+    {
+        static::creating(function ($customerOrder) {
+            $customerOrder->random_code = '';
+            for ($i = 0; $i < 16; $i++) {
+                $customerOrder->random_code .= mt_rand(0, 9);
+            }
+        });
+    }
+    
     // Relationship with CustomerOrderDescription (OrderItems)
     public function orderItems()
     {

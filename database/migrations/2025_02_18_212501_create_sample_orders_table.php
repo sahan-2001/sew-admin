@@ -20,6 +20,7 @@ return new class extends Migration
             $table->text('confirmation_message')->nullable(); 
             $table->unsignedBigInteger('rejected_by')->nullable(); 
             $table->text('rejection_message')->nullable(); 
+            $table->string('random_code')->nullable(); 
             $table->timestamps(); 
             $table->softDeletes(); 
 

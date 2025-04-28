@@ -9,6 +9,8 @@ use Spatie\Activitylog\LogOptions;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
 
 class PurchaseOrder extends Model
 {
@@ -24,31 +26,22 @@ class PurchaseOrder extends Model
         'special_note',
         'user_id',
         'status', 
-        'qr_code', 
+        'random_code', 
     ];
 
     protected static function booted()
     {
-        static::created(function ($purchaseOrder) {
-            // Generate QR code content
-            $qrContent = "Purchase Order: {$purchaseOrder->id}\nProvider ID: {$purchaseOrder->provider_id}\nWanted Date: {$purchaseOrder->wanted_date}";
-
-            // Generate QR code
-            $qrCode = new QrCode($qrContent);
-            $writer = new PngWriter();
-            $qrCodeResult = $writer->write($qrCode);
-
-            // Define file path
-            $fileName = 'purchase_order_' . $purchaseOrder->id . '.png';
-            $path = 'public/qrcodes/' . $fileName;
-
-            // Save QR code to storage
-            Storage::put($path, $qrCodeResult->getString());
-
-            // Save QR code path to the database
-            $purchaseOrder->update(['qr_code' => $fileName]);
+        static::creating(function ($purchaseOrder) {
+            $purchaseOrder->random_code = '';
+            for ($i = 0; $i < 16; $i++) {
+                $purchaseOrder->random_code .= mt_rand(0, 9);
+            }
         });
     }
+
+
+
+    
 
     protected static $logName = 'purchase_order';
 
@@ -68,7 +61,7 @@ class PurchaseOrder extends Model
                 'provider_phone',
                 'wanted_date',
                 'special_note',
-                'status', // Log changes to status
+                'status', 
             ])
             ->useLogName('purchase_order')
             ->setDescriptionForEvent(function (string $eventName) {

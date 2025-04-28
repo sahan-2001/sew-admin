@@ -18,9 +18,10 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id');
             $table->text('special_notes')->nullable();
             $table->string('status')->default('planned');
-            $table->unsignedBigInteger('added_by'); // Track the user who created the order
+            $table->unsignedBigInteger('added_by'); 
+            $table->string('random_code')->nullable(); 
             $table->timestamps();
-            $table->softDeletes(); // Add softDeletes column for soft deletes
+            $table->softDeletes(); 
 
             $table->foreign('customer_id')
                   ->references('customer_id')
