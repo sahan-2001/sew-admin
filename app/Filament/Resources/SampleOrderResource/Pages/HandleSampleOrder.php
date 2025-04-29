@@ -226,6 +226,16 @@ class HandleSampleOrder extends Page
                 ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
         }
 
+        // Show "Print PDF" action
+        if (in_array($this->record->status, ['planned', 'released', 'accepted', 'rejected'])) {
+            $actions[] = Action::make('printPdf')
+            ->label('Print PDF')
+            ->url(fn () => route('sample-orders.pdf', ['sample_order' => $this->record->order_id]))
+            ->icon('heroicon-s-printer')
+            ->color('secondary')
+            ->openUrlInNewTab(true);
+        }
+
         return $actions;
     }
 }

@@ -34,10 +34,10 @@ class SampleOrder extends Model
 
     protected static function booted()
     {
-        static::creating(function ($purchaseOrder) {
-            $purchaseOrder->random_code = '';
+        static::creating(function ($sampleOrder) {
+            $sampleOrder->random_code = '';
             for ($i = 0; $i < 16; $i++) {
-                $purchaseOrder->random_code .= mt_rand(0, 9);
+                $sampleOrder->random_code .= mt_rand(0, 9);
             }
         });
     }

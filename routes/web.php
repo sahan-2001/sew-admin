@@ -10,10 +10,11 @@ use App\Models\PurchaseOrder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CustomerOrderController;
-use App\Http\Controllers\SampleOrderController;
+use App\Http\Controllers\SampleOrderPdfController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PoFrontendController;
 use App\Http\Controllers\PageController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -32,17 +33,12 @@ Route::get('/', function () {
 Route::get('/welcome', [PageController::class, 'index'])->name('welcome');
 
 Route::get('/purchase-order/{purchase_order}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-order.pdf');
+Route::get('/sample-orders/{sample_order}/pdf', [SampleOrderPdfController::class, 'show'])->name('sample-orders.pdf');
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     ActivityLogResource::routes(Filament::getCurrentPanel());
 });
-
-// Download the QR code
-Route::get('/purchase-order/{purchase_order}/qr-code/download', [PurchaseOrderController::class, 'downloadQrCode'])
-    ->name('purchase-order.qr-code.download');
-
-Route::get('/purchase-orders/{purchase_order}', [PurchaseOrderPdfController::class, 'show'])
-    ->name('purchase-orders.show');
 
 
 // Frontend route
