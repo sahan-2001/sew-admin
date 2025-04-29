@@ -71,6 +71,12 @@
     </style>
 </head>
 <body class="bg-gray-100">
+
+    @php
+        // Build the full purchase order URL with id and random_code
+        $purchaseOrderUrl = url("/purchase-order/{$purchaseOrder->id}/{$purchaseOrder->random_code}");
+    @endphp
+
     <div class="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-8 my-8 card">
         <!-- Company Header -->
         <div class="header text-center mb-8">
@@ -148,27 +154,26 @@
         <!-- Grand Total Section -->
         <div class="text-right text-xl font-bold mt-6">
             @php
-                $grandTotal = $purchaseOrder->items->sum(function($item) {
-                    return $item->quantity * $item->price;
-                });
+                $grandTotal = $purchaseOrder->items->sum(fn($item) => $item->quantity * $item->price);
             @endphp
             <p>Grand Total: {{ number_format($grandTotal, 2) }}</p>
         </div>
 
-
         <!-- QR Code Section -->
         <div class="qr-container mb-8">
             <h4 class="text-xl md:text-2xl font-medium mb-2 text-gray-800">Track your order</h4>
-            <img src="{{ asset('storage/qrcodes/qrcode_' . $purchaseOrder->id . '.png') }}" 
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data={{ urlencode($purchaseOrderUrl) }}&amp;size=200x200" 
                  alt="QR Code" 
                  class="mx-auto w-32 h-32 md:w-40 md:h-40 border border-gray-300 rounded-md shadow-md">
             <p class="mt-2 text-blue-600">PO#{{ $purchaseOrder->id }}</p>
         </div>
 
+        <!-- Footer -->
         <div class="footer text-center">
             <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>
             <a href="{{ route('welcome') }}" class="text-blue-600 hover:underline mt-4 block">Go to Welcome Page</a>
         </div>
     </div>
+
 </body>
 </html>

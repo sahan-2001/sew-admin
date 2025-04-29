@@ -8,23 +8,23 @@ use Illuminate\Http\Request;
 
 class POFrontendController extends Controller
 {
-    public function showPurchaseOrder($id)
+    public function showPurchaseOrder($id, $random_code)
     {
-        // Fetch the purchase order with related items
+        // Fetch the purchase order
         $purchaseOrder = PurchaseOrder::with(['items.inventoryItem'])->find($id);
 
-        if (!$purchaseOrder) {
-            return abort(404, 'Purchase Order not found');
+        if (!$purchaseOrder || $purchaseOrder->random_code !== $random_code) {
+            return abort(404, 'Purchase Order not found or invalid code');
         }
 
-        // Fetch the first company details (assuming only one company record)
+        // Fetch the first company details
         $company = Company::first();
 
         if (!$company) {
             return abort(500, 'Company details not found.');
         }
 
-        // Structure company details for frontend
+        // Structure company details
         $companyDetails = [
             'name' => $company->name,
             'address' => "{$company->address_line_1}, {$company->address_line_2}, {$company->address_line_3}, {$company->city}, {$company->country}, {$company->postal_code}",
@@ -32,7 +32,7 @@ class POFrontendController extends Controller
             'email' => $company->email ?? 'N/A',
         ];
 
-        // Return the view with the purchaseOrder and companyDetails
+        // Return the view
         return view('frontend.purchase_order', compact('purchaseOrder', 'companyDetails'));
     }
 }
