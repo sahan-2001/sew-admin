@@ -30,7 +30,7 @@ class CompanySettingsResource extends Resource
     protected static ?string $model = Company::class;
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'Company Settings';
-    protected static ?string $modelLabel = 'Company Settings';
+    protected static ?string $modelLabel = 'System';
     protected static ?string $slug = 'company-settings';
     protected static ?int $navigationSort = 1;
 

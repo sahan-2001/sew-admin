@@ -15,8 +15,7 @@ class InventoryLocationResource extends Resource
     protected static ?string $model = InventoryLocation::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document';
-    protected static ?string $navigationLabel = 'Inventory Locations';
-    protected static ?string $navigationGroup = 'Inventory Management';
+    protected static ?string $navigationGroup = 'Warehouse Management';
 
     public static function form(Form $form): Form
     {
