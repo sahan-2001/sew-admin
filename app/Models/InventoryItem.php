@@ -19,7 +19,7 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
-        'created_by', // Add created_by to fillable fields
+        'created_by', 
     ];
 
     protected static function boot()

@@ -243,52 +243,54 @@ class RegisterArrivalResource extends Resource
     }
 
     public static function updatePurchaseOrderStatusAndItems($registerArrival)
-    {
-        $purchaseOrderId = $registerArrival->purchase_order_id;
+{
+    $purchaseOrderId = $registerArrival->purchase_order_id;
 
-        if ($purchaseOrderId) {
-            foreach ($registerArrival->items as $item) {
-                $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                    ->where('inventory_item_id', $item->item_id)
-                    ->first();
+    if ($purchaseOrderId) {
+        foreach ($registerArrival->items as $item) {
+            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                ->where('inventory_item_id', $item->item_id)
+                ->first();
 
-                if ($purchaseOrderItem) {
-                    $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
-                    $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
+            if ($purchaseOrderItem) {
+                $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
+                $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
 
-                    $purchaseOrderItem->arrived_quantity += $item->quantity;
-                    $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
+                $purchaseOrderItem->arrived_quantity += $item->quantity;
+                $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
 
-                    $purchaseOrderItem->save();
-                }
-
-                // Check if the selected location type is "picking"
-                $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
-                if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
-                    // Update status of RegisterArrivalItem to "QC passed"
-                    $item->status = 'QC passed';
-                    $item->save();
-
-                    // Update available quantity in InventoryItem table
-                    $inventoryItem = InventoryItem::find($item->item_id);
-                    if ($inventoryItem) {
-                        $inventoryItem->available_quantity += $item->quantity;
-                        $inventoryItem->save();
-                    }
-                }
+                $purchaseOrderItem->save();
             }
 
-            // Check if all items have zero remaining quantity
-            $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
-            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+            // Check if the selected location type is "picking"
+            $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
+            if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
+                // Update status of RegisterArrivalItem to "QC passed"
+                $item->status = 'QC passed';
+                $item->save();
 
-            $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-            if ($purchaseOrder) {
-                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
-                $purchaseOrder->save();
+                // Always create a new stock entry
+                \App\Models\Stock::create([
+                    'item_id' => $item->item_id,
+                    'location_id' => $registerArrival->location_id,
+                    'quantity' => $item->quantity,
+                    'cost' => $item->price, // Use the price from the creation form
+                    'purchase_order_id' => $purchaseOrderId, // Save purchase order ID
+                ]);
             }
         }
+
+        // Check if all items have zero remaining quantity
+        $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
+        $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+
+        $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+        if ($purchaseOrder) {
+            $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+            $purchaseOrder->save();
+        }
     }
+}
 
 
     public static function table(Tables\Table $table): Tables\Table
@@ -325,65 +327,81 @@ class RegisterArrivalResource extends Resource
                # ->openUrlInNewTab(),
         
 
-            Tables\Actions\Action::make('re-correction')
-                ->label('Re-correct')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->action(function ($record, $livewire) {
-                    // Store purchase order ID before deletion
-                    $purchaseOrderId = $record->purchase_order_id;
-
-                    // Revert the quantities in PurchaseOrderItem and InventoryItem
-                    foreach ($record->items as $item) {
-                        $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                            ->where('inventory_item_id', $item->item_id)
-                            ->first();
-
-                        if ($purchaseOrderItem) {
-                            $purchaseOrderItem->arrived_quantity -= $item->quantity;
-                            $purchaseOrderItem->remaining_quantity += $item->quantity;
-
-                            // Ensure values are not negative
-                            $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
-                            $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
-
-                            $purchaseOrderItem->save();
-                        }
-
-                        // Check if the item exists in InventoryItem and revert available quantity
-                        $inventoryItem = InventoryItem::find($item->item_id);
-                        if ($inventoryItem) {
-                            $inventoryItem->available_quantity -= $item->quantity;
-
-                            // Ensure available quantity is not negative
-                            $inventoryItem->available_quantity = max(0, $inventoryItem->available_quantity);
-
-                            $inventoryItem->save();
-                        }
-                    }
-
-                    // Soft delete the RegisterArrival record
-                    $record->delete();
-
-                    // Update the status of the PurchaseOrder
-                    $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-                    if ($purchaseOrder) {
-                        $allItems = $purchaseOrder->items;
-                        $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
-                        $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
-
-                        if ($allArrivedZero) {
-                            $purchaseOrder->status = 'released';
-                        } else {
-                            $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
-                        }
-
-                        $purchaseOrder->save();
-                    }
-
-                    $livewire->redirect(request()->header('Referer'));
-                })
-                ->icon('heroicon-o-trash'),
+               Tables\Actions\Action::make('re-correction')
+               ->label('Re-correct')
+               ->color('danger')
+               ->requiresConfirmation()
+               ->action(function ($record, $livewire) {
+                   // Store purchase order ID before deletion
+                   $purchaseOrderId = $record->purchase_order_id;
+           
+                   // Revert the quantities in PurchaseOrderItem, InventoryItem, and Stocks
+                   foreach ($record->items as $item) {
+                       $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                           ->where('inventory_item_id', $item->item_id)
+                           ->first();
+           
+                       if ($purchaseOrderItem) {
+                           $purchaseOrderItem->arrived_quantity -= $item->quantity;
+                           $purchaseOrderItem->remaining_quantity += $item->quantity;
+           
+                           // Ensure values are not negative
+                           $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
+                           $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
+           
+                           $purchaseOrderItem->save();
+                       }
+           
+                       // Check if the item exists in InventoryItem and revert available quantity
+                       $inventoryItem = InventoryItem::find($item->item_id);
+                       if ($inventoryItem) {
+                           $inventoryItem->available_quantity -= $item->quantity;
+           
+                           // Ensure available quantity is not negative
+                           $inventoryItem->available_quantity = max(0, $inventoryItem->available_quantity);
+           
+                           $inventoryItem->save();
+                       }
+           
+                       // Revert the stock entry if the location type is "picking"
+                       $stock = \App\Models\Stock::where('item_id', $item->item_id)
+                           ->where('location_id', $record->location_id)
+                           ->first();
+           
+                       if ($stock) {
+                           $stock->quantity -= $item->quantity;
+           
+                           // Delete the stock record if the quantity becomes zero
+                           if ($stock->quantity <= 0) {
+                               $stock->delete();
+                           } else {
+                               $stock->save();
+                           }
+                       }
+                   }
+           
+                   // Soft delete the RegisterArrival record
+                   $record->delete();
+           
+                   // Update the status of the PurchaseOrder
+                   $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                   if ($purchaseOrder) {
+                       $allItems = $purchaseOrder->items;
+                       $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+                       $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
+           
+                       if ($allArrivedZero) {
+                           $purchaseOrder->status = 'released';
+                       } else {
+                           $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                       }
+           
+                       $purchaseOrder->save();
+                   }
+           
+                   $livewire->redirect(request()->header('Referer'));
+               })
+               ->icon('heroicon-o-trash'),
         ]);
 }
 

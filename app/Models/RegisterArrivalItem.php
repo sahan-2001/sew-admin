@@ -25,6 +25,7 @@ class RegisterArrivalItem extends Model
 
     public function inventoryItem()
     {
-        return $this->belongsTo(InventoryItem::class, 'item_id');
+        return $this->belongsTo(RegisterArrival::class, 'register_arrival_id');
+
     }
 }
