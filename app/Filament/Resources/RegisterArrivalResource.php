@@ -17,6 +17,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\Hidden;
 
 class RegisterArrivalResource extends Resource
 {
@@ -57,106 +58,105 @@ class RegisterArrivalResource extends Resource
 
             // Section 2: Purchase Order Items
             Section::make('Purchase Order Items')
-                ->schema([
-                    Repeater::make('purchase_order_items')
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    Select::make('item_id')
-                                        ->label('Item')
-                                        ->relationship('inventoryItem', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->options(fn () => InventoryItem::all()->pluck('name', 'id'))
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, Set $set) {
-                                            $item = InventoryItem::find($state);
-                                            if ($item) {
-                                                $set('item_code', $item->item_code);
-                                                $set('item_name', $item->name);
-                                            }
-                                        }),
+            ->schema([
+                Repeater::make('purchase_order_items')
+                    ->schema([
+                        TextInput::make('item_id')
+                            ->label('Item ID')
+                            ->required() // Ensure it is required
+                            ->dehydrated(), // Ensure it is included in the form submission
 
-                                    TextInput::make('item_code')->label('Item Code')->disabled(),
-                                    TextInput::make('item_name')->label('Item Name')->disabled(),
-                                ]),
-                            Grid::make(3)
-                                ->schema([
-                                    TextInput::make('quantity')
-                                        ->label('Quantity')
-                                        ->reactive()
-                                        ->required()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $price = $get('price');
-                                            if ($price > 0) {
-                                                $set('total', $state * $price);
-                                            }
-                                        }),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('item_code')
+                                    ->label('Item Code')
+                                    ->disabled(),
+                            ]),
 
-                                    TextInput::make('price')
-                                        ->label('Price')
-                                        ->reactive()
-                                        ->required()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $quantity = $get('quantity');
-                                            if ($quantity > 0) {
-                                                $set('total', $state * $quantity);
-                                            }
-                                        }),
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('quantity')
+                                    ->label('Quantity')
+                                    ->reactive()
+                                    ->required()
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                        $price = $get('price');
+                                        $remainingQuantity = $get('remaining_quantity');
+                                        if ($state > $remainingQuantity) {
+                                            Notification::make()
+                                                ->title('Quantity Exceeded')
+                                                ->danger()
+                                                ->body('The entered quantity exceeds the remaining quantity.')
+                                                ->send();
 
-                                    TextInput::make('total')
-                                        ->label('Total')
-                                        ->reactive()
-                                        ->disabled()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $price = $get('price');
-                                            if ($price > 0) {
-                                                $set('quantity', $state / $price);
-                                            }
-                                        }),
-                                ]),
-                        ])
-                        ->disableItemCreation(false)
-                        ->relationship('items')
-                        ->createItemButtonLabel('Add Item')
-                        ->afterStateHydrated(function ($state, $get, $set) {
-                            $purchaseOrderId = $get('purchase_order_id');
+                                            $set('quantity', $remainingQuantity);
+                                        } elseif ($price > 0) {
+                                            $set('total', $state * $price);
+                                        }
+                                    }),
 
-                            if ($purchaseOrderId) {
-                                $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                                TextInput::make('price')
+                                    ->label('Price')
+                                    ->reactive()
+                                    ->required()
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                        $quantity = $get('quantity');
+                                        if ($quantity > 0) {
+                                            $set('total', $state * $quantity);
+                                        }
+                                    }),
 
-                                if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-                                    $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                                        ->with('inventoryItem')
-                                        ->get();
+                                TextInput::make('total')
+                                    ->label('Total')
+                                    ->reactive()
+                                    ->disabled(),
+                            ]),
 
-                                    $itemsData = $items->map(function ($item) {
-                                        return [
-                                            'item_id' => $item->inventoryItem->id,
-                                            'item_code' => $item->inventoryItem->item_code,
-                                            'item_name' => $item->inventoryItem->name,
-                                            'quantity' => $item->remaining_quantity ?? $item->quantity,
-                                            'price' => $item->price,
-                                            'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
-                                        ];
-                                    })->toArray();
+                        TextInput::make('remaining_quantity')
+                            ->label('Remaining Quantity')
+                            ->reactive()
+                            ->required(),
+                    ])
+                    ->disableItemCreation()
+                    ->relationship('items')
+                    ->afterStateHydrated(function ($state, $get, $set) {
+                        $purchaseOrderId = $get('purchase_order_id');
 
-                                    $set('purchase_order_items', $itemsData);
-                                } else {
-                                    Notification::make()
-                                        ->title('Invalid Purchase Order')
-                                        ->danger()
-                                        ->body('The selected purchase order is not in a released or partially arrived status.')
-                                        ->send();
+                        if ($purchaseOrderId) {
+                            $purchaseOrder = \App\Models\PurchaseOrder::find($purchaseOrderId);
 
-                                    $set('purchase_order_items', []);
-                                }
+                            if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
+                                $items = \App\Models\PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                                    ->with('inventoryItem')
+                                    ->get();
+
+                                $itemsData = $items->map(function ($item) {
+                                    return [
+                                        'item_id' => $item->inventory_item_id,
+                                        'item_code' => optional($item->inventoryItem)->item_code,
+                                        'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                                        'quantity' => 0,
+                                        'price' => $item->price,
+                                        'total' => 0,
+                                    ];
+                                })->toArray();
+
+                                $set('purchase_order_items', $itemsData);
                             } else {
+                                Notification::make()
+                                    ->title('Invalid Purchase Order')
+                                    ->danger()
+                                    ->body('The selected purchase order is not in a released or partially arrived status.')
+                                    ->send();
+
                                 $set('purchase_order_items', []);
                             }
-                        }),
-                ]),
-
+                        } else {
+                            $set('purchase_order_items', []);
+                        }
+                    }),
+        ]),
+        
             // Section 3: Arrival Information and Invoice Upload
             Section::make('Arrival Information and Invoice Upload')
                 ->schema([
@@ -191,56 +191,57 @@ class RegisterArrivalResource extends Resource
                                 ->nullable(),
                         ]),
                 ]),
-        ]);
+            
+        ]);     
     }
 
     public static function loadPurchaseOrderDetails($purchaseOrderId, Set $set)
-    {
-        if (!$purchaseOrderId) {
-            $set('provider_name', null);
-            $set('provider_phone', null);
-            $set('due_date', null);
-            $set('purchase_order_items', []);
-            return;
-        }
-
-        $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-
-        if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-            $set('provider_name', $purchaseOrder->provider_name);
-            $set('provider_phone', $purchaseOrder->provider_phone);
-            $set('due_date', $purchaseOrder->wanted_date);
-
-            $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                ->with('inventoryItem')
-                ->get();
-
-            $itemsData = $items->map(function ($item) {
-                return [
-                    'item_id' => $item->inventoryItem->id,
-                    'item_code' => $item->inventoryItem->item_code,
-                    'item_name' => $item->inventoryItem->name,
-                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
-                    'arrived_quantity' => $item->arrived_quantity ?? 0,
-                    'price' => $item->price,
-                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
-                ];
-            })->toArray();
-
-            $set('purchase_order_items', $itemsData);
-        } else {
-            Notification::make()
-                ->title('Invalid Purchase Order')
-                ->danger()
-                ->body('The selected purchase order is not in a released or partially arrived status.')
-                ->send();
-
-            $set('provider_name', null);
-            $set('provider_phone', null);
-            $set('due_date', null);
-            $set('purchase_order_items', []);
-        }
+{
+    if (!$purchaseOrderId) {
+        $set('provider_name', null);
+        $set('provider_phone', null);
+        $set('due_date', null);
+        $set('purchase_order_items', []);
+        return;
     }
+
+    $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+
+    if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
+        $set('provider_name', $purchaseOrder->provider_name);
+        $set('provider_phone', $purchaseOrder->provider_phone);
+        $set('due_date', $purchaseOrder->wanted_date);
+
+        $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+            ->with('inventoryItem')
+            ->get();
+
+        $itemsData = $items->map(function ($item) {
+            return [
+                'item_id' => $item->inventory_item_id,
+                'item_code' => $item->inventoryItem->item_code,
+                'item_name' => $item->inventoryItem->name,
+                'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                'arrived_quantity' => $item->arrived_quantity ?? 0,
+                'price' => $item->price,
+                'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
+            ];
+        })->toArray();
+
+        $set('purchase_order_items', $itemsData);
+    } else {
+        Notification::make()
+            ->title('Invalid Purchase Order')
+            ->danger()
+            ->body('The selected purchase order is not in a released or partially arrived status.')
+            ->send();
+
+        $set('provider_name', null);
+        $set('provider_phone', null);
+        $set('due_date', null);
+        $set('purchase_order_items', []);
+    }
+}
 
     public static function updatePurchaseOrderStatusAndItems($registerArrival)
 {
