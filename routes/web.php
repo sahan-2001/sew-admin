@@ -43,3 +43,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Frontend route
 Route::get('/purchase-order/{id}', [POFrontendController::class, 'showPurchaseOrder'])->name('purchase-order.show');
+
