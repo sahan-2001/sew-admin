@@ -17,14 +17,11 @@ use Filament\Forms\Components\Actions\Action;
 class MaterialQCResource extends Resource
 {
     protected static ?string $model = MaterialQC::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-
     public static function form(Form $form): Form
-{
-    return $form
-        ->schema([
+    {
+        return $form->schema([
             // Section for Purchase Order Details
             Forms\Components\Card::make()
                 ->schema([
@@ -33,45 +30,63 @@ class MaterialQCResource extends Resource
                         ->required()
                         ->reactive()
                         ->afterStateUpdated(function ($state, callable $set) {
-                            // Query RegisterArrivalItem using the purchase_order_id
-                            $items = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
-                                $query->where('purchase_order_id', $state);
-                            })
-                            ->where('status', 'to be inspected')
-                            ->get();
+                            // Fetch the purchase order details
+                            $purchaseOrder = \App\Models\PurchaseOrder::find($state);
+                            
+                            // Check if the purchase order exists and if the status is 'partially arrived' or 'arrived'
+                            if ($purchaseOrder && in_array($purchaseOrder->status, ['partially arrived', 'arrived'])) {
+                                // Fetch RegisterArrivalItem data
+                                $items = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
+                                    $query->where('purchase_order_id', $state);
+                                })
+                                ->where('status', 'to be inspected')
+                                ->get();
 
-                            // Set the items to a form repeater or similar component
-                            $set('items', $items->map(function ($item) {
-                                $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
-                                return [
-                                    'item_id' => $item->item_id,
-                                    'item_code' => $inventoryItem ? $inventoryItem->item_code : null,
-                                    'quantity' => $item->quantity,
-                                    'status' => $item->status,
-                                ];
-                            })->toArray());
+                                // Set the items to a form repeater
+                                $set('items', $items->map(function ($item) {
+                                    $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
+                                    return [
+                                        'item_id' => $item->item_id,
+                                        'item_code' => $inventoryItem ? $inventoryItem->item_code : null,
+                                        'name' => $inventoryItem ? $inventoryItem->name : null,
+                                        'quantity' => $item->quantity,
+                                        'status' => $item->status,
+                                    ];
+                                })->toArray());
 
-                            // Fetch and set Purchase Order details
-                            $purchaseOrder = \App\Models\PurchaseOrder::where('id', $state)->first();
-                            if ($purchaseOrder) {
+                                // Fetch and set additional details
                                 $set('provider_type', $purchaseOrder->provider_type);
                                 $set('provider_name', $purchaseOrder->provider_name);
                                 $set('provider_id', $purchaseOrder->provider_id);
                                 $set('wanted_date', $purchaseOrder->wanted_date);
-                            }
 
-                            // Fetch and set Register Arrival details
-                            $registerArrival = \App\Models\RegisterArrival::where('purchase_order_id', $state)->first();
-                            if ($registerArrival) {
-                                $set('location_id', $registerArrival->location_id);
-                                $set('received_date', $registerArrival->received_date);
-                                $set('invoice_number', $registerArrival->invoice_number);
-
-                                // Fetch and set Location Name
-                                $location = \App\Models\InventoryLocation::where('id', $registerArrival->location_id)->first();
-                                if ($location) {
-                                    $set('location_name', $location->name);
+                                $registerArrival = \App\Models\RegisterArrival::where('purchase_order_id', $state)->first();
+                                if ($registerArrival) {
+                                    $set('location_id', $registerArrival->location_id);
+                                    $set('received_date', $registerArrival->received_date);
+                                    $set('invoice_number', $registerArrival->invoice_number);
+                                    
+                                    $location = \App\Models\InventoryLocation::find($registerArrival->location_id);
+                                    $set('location_name', $location ? $location->name : null);
                                 }
+                            } else {
+                                // Clear the fields manually
+                                $set('items', []);
+                                $set('provider_type', null);
+                                $set('provider_name', null);
+                                $set('provider_id', null);
+                                $set('wanted_date', null);
+                                $set('location_id', null);
+                                $set('location_name', null);
+                                $set('received_date', null);
+                                $set('invoice_number', null);
+
+                                // Display a notification
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Invalid Purchase Order Status')
+                                    ->body('The purchase order status is not "partially arrived" or "arrived". Please select a valid purchase order.')
+                                    ->danger()
+                                    ->send();
                             }
                         }),
 
@@ -88,7 +103,7 @@ class MaterialQCResource extends Resource
                         ->label('Wanted Date')
                         ->disabled(),
                 ])
-                ->columns(2), // Display Purchase Order details in two columns
+                ->columns(2),
 
             // Section for Register Arrival Details
             Forms\Components\Card::make()
@@ -106,53 +121,49 @@ class MaterialQCResource extends Resource
                         ->label('Invoice Number')
                         ->disabled(),
                 ])
-                ->columns(2), // Display Register Arrival details in two columns
-
-            // Section for Register Arrival Items
-
+                ->columns(2),
 
             Forms\Components\Repeater::make('items')
-    ->label('Items to Inspect')
-    ->schema([
-        Forms\Components\TextInput::make('item_id')
-            ->label('Item ID')
-            ->disabled(),
-        Forms\Components\TextInput::make('item_code')
-            ->label('Item Code')
-            ->disabled(),
-        Forms\Components\TextInput::make('quantity')
-            ->label('Quantity')
-            ->disabled(),
-        Forms\Components\TextInput::make('status')
-            ->label('Status')
-            ->default('To Be Inspected')
-            ->disabled(),
-        Forms\Components\Placeholder::make('add_qc')
-            ->label('Add QC Results')
-            ->content('🔧')
-            ->extraAttributes([
-                'class' => 'cursor-pointer text-blue-500',
-                'onclick' => 'Livewire.emit("openQCModal", "{{ $record["item_id"] }}")',
-            ]),
-    ])
-    ->disableItemCreation()
-    ->disableItemDeletion()
-    ->columns(5)
-    ->columnSpan('full')
-
+                ->label('Items to Inspect')
+                ->schema([
+                    Forms\Components\TextInput::make('item_id')
+                        ->label('Item ID')
+                        ->columnSpan(1)
+                        ->disabled(),
+                    Forms\Components\TextInput::make('item_code')
+                        ->label('Item Code')
+                        ->columnSpan(1)
+                        ->disabled(),
+                    Forms\Components\TextInput::make('name')
+                        ->label('Item Name')
+                        ->columnSpan(1)
+                        ->disabled(),
+                    Forms\Components\TextInput::make('quantity')
+                        ->label('Quantity')
+                        ->columnSpan(1)
+                        ->disabled(),
+                    Forms\Components\TextInput::make('status')
+                        ->label('Status')
+                        ->default('To Be Inspected')
+                        ->columnSpan(1)
+                        ->disabled(),
+                ])
+                ->columns(5)
+                ->columnSpanFull()
+                ->disableItemCreation()
+                ->disableItemDeletion()
+                ->disableLabel(),
         ]);
-
-}
-
+    }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                //
+                // Define columns here (if needed)
             ])
             ->filters([
-                //
+                // Add filters if necessary
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -167,7 +178,7 @@ class MaterialQCResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // Add relations if necessary
         ];
     }
 

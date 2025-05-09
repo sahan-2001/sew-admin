@@ -33,6 +33,11 @@ class InventoryLocation extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class, 'location_id');
+    }
+
     /**
      * Get the user that created the inventory location.
      */
