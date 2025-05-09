@@ -97,7 +97,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $employee = Role::firstOrCreate(['name' => 'employee']);
-        $superuserRole = Role::firstOrCreate(['name' => 'superuser']);  // Add superuser role
+        $superuser = Role::firstOrCreate(['name' => 'superuser']);  
+        $supervisor = Role::firstOrCreate(['name' => 'supervisor']);
+        $qc = Role::firstOrCreate(['name' => 'Quality Control']);
 
         // Assign permissions to roles
         $admin->givePermissionTo(Permission::all());
