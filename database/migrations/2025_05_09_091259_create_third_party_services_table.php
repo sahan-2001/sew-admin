@@ -17,6 +17,7 @@ class CreateThirdPartyServicesTable extends Migration
                 ->references('supplier_id') 
                 ->on('suppliers')
                 ->onDelete('cascade');
+            $table->string('name');
             $table->timestamps();
             $table->softDeletes();
         });

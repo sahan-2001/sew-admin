@@ -30,6 +30,8 @@ class ReleaseMaterialsResource extends Resource
     protected static ?string $model = ReleaseMaterials::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationLabel = 'Release Materials';
+    protected static ?string $navigationGroup = 'Warehouse Management';
 
     public static function form(Form $form): Form
     {

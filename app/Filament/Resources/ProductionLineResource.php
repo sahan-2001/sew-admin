@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\ProductionLineResource\Pages;
+use App\Filament\Resources\ProductionLineResource\RelationManagers;
+use App\Models\ProductionLine;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+class ProductionLineResource extends Resource
+{
+    protected static ?string $model = ProductionLine::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationLabel = 'Production Lines';
+    protected static ?string $navigationGroup = 'Production Management';
+
+    public static function form(Form $form): Form
+{
+    return $form
+        ->schema([
+            Forms\Components\TextInput::make('name')
+                ->required()
+                ->maxLength(255),
+            
+            Forms\Components\Textarea::make('description')
+                ->nullable(),
+
+            Forms\Components\Select::make('status')
+                ->options([
+                    'active' => 'Active',
+                    'inactive' => 'Inactive',
+                ])
+                ->default('active')
+                ->required(),
+
+            
+        ]);
+}
+
+public static function table(Table $table): Table
+{
+    return $table
+        ->columns([
+            Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+            Tables\Columns\TextColumn::make('status')->sortable(),
+            Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+            Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+        ])
+        ->filters([
+            Tables\Filters\Filter::make('Active')->query(fn (Builder $query) => $query->where('status', 'active')),
+            Tables\Filters\Filter::make('Inactive')->query(fn (Builder $query) => $query->where('status', 'inactive')),
+        ]);
+}
+
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListProductionLines::route('/'),
+            'create' => Pages\CreateProductionLine::route('/create'),
+            'edit' => Pages\EditProductionLine::route('/{record}/edit'),
+        ];
+    }
+}

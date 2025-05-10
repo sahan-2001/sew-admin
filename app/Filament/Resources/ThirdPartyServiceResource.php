@@ -44,9 +44,13 @@ class ThirdPartyServiceResource extends Resource
                     $set('supplier_phone', $supplier ? $supplier->phone_1 : null);
                 }),
 
-            TextInput::make('supplier_name')->label('Name')->readonly(),
-            TextInput::make('supplier_email')->label('Email')->readonly(),
-            TextInput::make('supplier_phone')->label('Phone')->readonly(),
+            TextInput::make('supplier_name')->label('Name')->readonly()->disabled(),
+            TextInput::make('supplier_email')->label('Email')->readonly()->disabled(),
+            TextInput::make('supplier_phone')->label('Phone')->readonly()->disabled(),
+            TextInput::make('name')
+                ->label('Service Name')
+                ->required()
+                ->maxLength(255),
 
             Repeater::make('processes')
     ->relationship('processes')
@@ -87,14 +91,14 @@ class ThirdPartyServiceResource extends Resource
         $relatedTable = $get('related_table');
         if ($relatedTable) {
             return match ($relatedTable) {
-                'customers' => Customer::all()->pluck('name', 'customer_id'),
-                'suppliers' => Supplier::all()->pluck('name', 'supplier_id'),
-                'purchase_orders' => PurchaseOrder::all()->pluck('provider_name', 'id'),
-                'customer_orders' => CustomerOrder::all()->pluck('customer_name', 'order_id'),
-                'sample_orders' => SampleOrder::all()->pluck('customer_name', 'order_id'),
-                'inventory_locations' => InventoryLocation::all()->pluck('name', 'id'),
-                'inventory_items' => InventoryItem::all()->pluck('name', 'id'),
-                'warehouses' => Warehouse::all()->pluck('name', 'id'),
+                'customers' => Customer::all()->pluck('name', 'customer_id')->filter(),
+                'suppliers' => Supplier::all()->pluck('name', 'supplier_id')->filter(),
+                'purchase_orders' => PurchaseOrder::all()->pluck('provider_name', 'id')->filter(),
+                'customer_orders' => CustomerOrder::all()->pluck('name', 'order_id')->filter(), // Use 'name' instead of 'customer_name'
+                'sample_orders' => SampleOrder::all()->pluck('name', 'order_id')->filter(), // Use 'name' instead of 'customer_name'
+                'inventory_locations' => InventoryLocation::all()->pluck('name', 'id')->filter(),
+                'inventory_items' => InventoryItem::all()->pluck('name', 'id')->filter(),
+                'warehouses' => Warehouse::all()->pluck('name', 'id')->filter(),
                 default => [],
             };
         }
@@ -103,9 +107,9 @@ class ThirdPartyServiceResource extends Resource
     ->searchable()
     ->required()
     ->columnSpan(3)
-    ->dehydrated() // Ensures value is saved in database
+    ->dehydrated()
     ->saveRelationshipsUsing(function ($state, $record, $set) {
-        $record->related_record_id = $state; // Directly saving the selected ID
+        $record->related_record_id = $state;
         $record->save();
     }),
 

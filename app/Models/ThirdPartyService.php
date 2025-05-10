@@ -10,7 +10,7 @@ class ThirdPartyService extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['supplier_id'];
+    protected $fillable = ['supplier_id', 'name'];
 
     public function supplier()
     {
