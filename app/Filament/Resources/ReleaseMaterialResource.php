@@ -201,36 +201,7 @@ class ReleaseMaterialResource extends Resource
         ]);
     }
 
-public static function updateStockOnLineChange(Model $line, string $operation)
-{
-    \Log::info("Stock update triggered for operation: {$operation}, item_id: {$line->item_id}, location_id: {$line->location_id}");
 
-    $stock = Stock::where('item_id', $line->item_id)
-        ->where('location_id', $line->location_id)
-        ->first();
-
-    if (!$stock) {
-        \Log::warning("No stock record found for item_id: {$line->item_id}, location_id: {$line->location_id}");
-        return;
-    }
-
-    if ($operation === 'create') {
-        $stock->quantity -= $line->quantity;
-    } elseif ($operation === 'update') {
-        $originalQuantity = $line->getOriginal('quantity');
-        $stock->quantity += $originalQuantity - $line->quantity;
-    } elseif ($operation === 'delete') {
-        $stock->quantity += $line->quantity;
-    }
-
-    $stock->quantity = max(0, $stock->quantity);
-
-    if (!$stock->save()) {
-        \Log::error("Failed to save stock for item_id: {$line->item_id}, location_id: {$line->location_id}");
-    } else {
-        \Log::info("Stock updated successfully for item_id: {$line->item_id}, location_id: {$line->location_id}, new quantity: {$stock->quantity}");
-    }
-}
     
     public static function table(Tables\Table $table): Tables\Table
     {
@@ -242,7 +213,8 @@ public static function updateStockOnLineChange(Model $line, string $operation)
                 TextColumn::make('production_line_id')->sortable(),
                 TextColumn::make('workstation_id')->sortable(),
                 TextColumn::make('created_at')->sortable(),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

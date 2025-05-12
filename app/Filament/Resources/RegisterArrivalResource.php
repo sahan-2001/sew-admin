@@ -320,18 +320,11 @@ class RegisterArrivalResource extends Resource
         ->defaultSort('received_date', 'desc')
         ->recordUrl(null)
         ->actions([
-           # Tables\Actions\Action::make('view-pdf')
-             #   ->label('View PDF')
-             #   ->icon('heroicon-o-document-text')
-             #   ->color('primary')
-             #   ->url(fn ($record) => route('grn.pdf', ['grn' => $record->id])) 
-               # ->openUrlInNewTab(),
-        
-
                Tables\Actions\Action::make('re-correction')
                ->label('Re-correct')
                ->color('danger')
                ->requiresConfirmation()
+               ->authorize(fn ($record) => auth()->user()->can('re-correct register arrivals')) 
                ->action(function ($record, $livewire) {
                    // Store purchase order ID before deletion
                    $purchaseOrderId = $record->purchase_order_id;

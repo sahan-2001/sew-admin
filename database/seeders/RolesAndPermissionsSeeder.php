@@ -88,6 +88,40 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit inventory locations']);
         Permission::firstOrCreate(['name' => 'delete inventory locations']);
 
+        // Third Party Services permissions
+        Permission::firstOrCreate(['name' => 'view third party services']);
+        Permission::firstOrCreate(['name' => 'create third party services']);
+        Permission::firstOrCreate(['name' => 'edit third party services']);
+        Permission::firstOrCreate(['name' => 'delete third party services']);
+
+        // Production Machines permissions
+        Permission::firstOrCreate(['name' => 'view production machines']);
+        Permission::firstOrCreate(['name' => 'create production machines']);
+        Permission::firstOrCreate(['name' => 'edit production machines']);
+        Permission::firstOrCreate(['name' => 'delete production machines']);
+
+        // Production Line Operations permissions
+        Permission::firstOrCreate(['name' => 'view workstations']);
+        Permission::firstOrCreate(['name' => 'create workstations']);
+        Permission::firstOrCreate(['name' => 'edit workstations']);
+        Permission::firstOrCreate(['name' => 'delete workstations']);
+
+        // Production Line permissions
+        Permission::firstOrCreate(['name' => 'view production lines']);
+        Permission::firstOrCreate(['name' => 'create production lines']);
+        Permission::firstOrCreate(['name' => 'edit production lines']);
+        Permission::firstOrCreate(['name' => 'delete production lines']);
+
+        // Register Arrival permissions
+        Permission::firstOrCreate(['name' => 'view register arrivals']);
+        Permission::firstOrCreate(['name' => 'create register arrivals']);
+        Permission::firstOrCreate(['name' => 're-correct register arrivals']);
+
+        // Release Material permissions
+        Permission::firstOrCreate(['name' => 'view release materials']);
+        Permission::firstOrCreate(['name' => 'create release materials']);
+        Permission::firstOrCreate(['name' => 're-correct release materials']);
+
         // Activity log permissions
         Permission::firstOrCreate(['name' => 'view self activity logs']);
         Permission::firstOrCreate(['name' => 'view other users activity logs']);

@@ -16,6 +16,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Form;
 use Filament\Resources\Pages\EditRecord;
+use App\Models\Stock;
+use App\Models\ReleaseMaterialLine;
 
 class EditReleaseMaterial extends EditRecord
 {
@@ -212,5 +214,33 @@ Section::make('Items')
         }
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $currentLines = $this->record->lines;
+        $originalLines = ReleaseMaterialLine::withTrashed()
+            ->where('release_material_id', $this->record->id)
+            ->get()
+            ->keyBy(function ($line) {
+                return $line->id ?? "{$line->item_id}-{$line->location_id}";
+            });
+
+        foreach ($currentLines as $line) {
+            $key = $line->id ?? "{$line->item_id}-{$line->location_id}";
+
+            $stock = Stock::where('item_id', $line->item_id)
+                          ->where('location_id', $line->location_id)
+                          ->first();
+
+            $oldQty = $originalLines[$key]->quantity ?? 0;
+            $newQty = $line->quantity;
+
+            if ($stock) {
+                $stock->quantity += $oldQty; // revert old quantity
+                $stock->quantity -= $newQty; // subtract new quantity
+                $stock->save();
+            }
+        }
     }
 }

@@ -16,6 +16,9 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Spatie\Permission\Models\Role;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ViewAction;
 
 class ProductionLineOperationResource extends Resource
 {
@@ -120,7 +123,29 @@ class ProductionLineOperationResource extends Resource
             ]);
     }
 
-   
+   public static function table(Tables\Table $table): Tables\Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->sortable(),
+                TextColumn::make('status')->sortable(),
+                TextColumn::make('production_line_id')->sortable(),
+                TextColumn::make('created_at')->sortable(),
+            ])
+            ->actions([
+                EditAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('edit workstations') 
+                    ),
+
+                DeleteAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('delete workstations') 
+                    ),
+            ])
+            ->recordUrl(null);
+    }
 
     public static function getRelations(): array
     {

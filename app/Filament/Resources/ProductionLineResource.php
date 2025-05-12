@@ -12,6 +12,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ViewAction;
 
 class ProductionLineResource extends Resource
 {
@@ -56,7 +59,19 @@ public static function table(Table $table): Table
         ->filters([
             Tables\Filters\Filter::make('Active')->query(fn (Builder $query) => $query->where('status', 'active')),
             Tables\Filters\Filter::make('Inactive')->query(fn (Builder $query) => $query->where('status', 'inactive')),
-        ]);
+        ])
+        ->actions([
+                EditAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('edit production lines') 
+                    ),
+
+                DeleteAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('delete production lines') 
+                    ),
+            ])
+            ->recordUrl(null);
 }
 
 

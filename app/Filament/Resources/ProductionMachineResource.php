@@ -13,6 +13,9 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\ProductionMachineResource\Pages;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ViewAction;
 
 class ProductionMachineResource extends Resource
 {
@@ -85,11 +88,17 @@ class ProductionMachineResource extends Resource
             ])
             ->filters([])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('edit production machines') 
+                    ),
+
+                DeleteAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('delete production machines') 
+                    ),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

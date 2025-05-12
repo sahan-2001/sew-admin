@@ -19,6 +19,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ViewAction;
 
 class ThirdPartyServiceResource extends Resource
 {
@@ -166,9 +169,23 @@ class ThirdPartyServiceResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('id')->label('Service ID'),
+                TextColumn::make('name')->label('Service Name'),
                 TextColumn::make('supplier.name')->label('Supplier'),
                 TextColumn::make('created_at')->label('Created Date')->date(),
-            ]);
+            ])
+            ->actions([
+                EditAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('edit third party services') 
+                    ),
+
+                DeleteAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('delete third party services') 
+                    ),
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array
