@@ -19,6 +19,9 @@ use Illuminate\Database\Eloquent\Model;
 class ReleaseMaterialResource extends Resource
 {
     protected static ?string $model = ReleaseMaterial::class;
+    protected static ?string $navigationIcon = 'heroicon-m-cube';
+    protected static ?string $navigationGroup = 'Inventory Management'; 
+    protected static ?string $navigationLabel = 'Release Materials';
 
     public static function form(Forms\Form $form): Forms\Form
     {

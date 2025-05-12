@@ -22,7 +22,7 @@ use Filament\Forms\Components\Hidden;
 class RegisterArrivalResource extends Resource
 {
     protected static ?string $model = RegisterArrival::class;
-    protected static ?string $navigationGroup = 'Warehouse Management';
+    protected static ?string $navigationGroup = 'Inventory Management'; 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
 
     public static function form(Forms\Form $form): Forms\Form

@@ -20,7 +20,7 @@ class StockOverviewResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-folder';
     protected static ?string $navigationLabel = 'Stocks';
-    protected static ?string $navigationGroup = 'Warehouse Management';
+    protected static ?string $navigationGroup = 'Inventory Management'; 
 
     public static function table(Table $table): Table
 {
