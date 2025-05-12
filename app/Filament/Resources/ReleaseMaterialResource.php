@@ -214,7 +214,42 @@ class ReleaseMaterialResource extends Resource
                 TextColumn::make('workstation_id')->sortable(),
                 TextColumn::make('created_at')->sortable(),
             ])
+            ->actions([
+                Tables\Actions\Action::make('re-correction')
+                    ->label('Re-correct')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        // Perform the re-correction logic
+                        static::handleReCorrection($record);
+                    })
+                    ->icon('heroicon-o-trash'),
+            ])
             ->recordUrl(null);
+    }
+
+    protected static function handleReCorrection($record)
+    {
+        // Soft delete the ReleaseMaterial record
+        $record->delete();
+
+        // Retrieve related lines
+        $lines = $record->lines;
+
+        foreach ($lines as $line) {
+            // Soft delete the ReleaseMaterialLine record
+            $line->delete();
+
+            // Update the stock table
+            $stock = \App\Models\Stock::where('item_id', $line->item_id)
+                ->where('location_id', $line->location_id)
+                ->first();
+
+            if ($stock) {
+                $stock->quantity += $line->quantity;
+                $stock->save();
+            }
+        }
     }
 
     public static function getPages(): array

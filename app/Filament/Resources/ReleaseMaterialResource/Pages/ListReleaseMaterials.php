@@ -14,7 +14,7 @@ class ListReleaseMaterials extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->visible(fn () => auth()->user()->can('create Release Materials')),
+                ->visible(fn () => auth()->user()->can('create release materials')),
         ];
     }
 }
