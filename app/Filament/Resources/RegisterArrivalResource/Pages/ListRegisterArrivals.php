@@ -14,7 +14,7 @@ class ListRegisterArrivals extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->visible(fn () => auth()->user()->can('create Register Arrivals')),
+                ->visible(fn () => auth()->user()->can('create register arrivals')),
         ];
     }
 }

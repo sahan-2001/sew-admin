@@ -16,18 +16,15 @@ class MaterialQC extends Model
         'purchase_order_id',
         'item_id',
         'inspected_quantity',
+        'approved_qty',
         'returned_qty',
         'scrapped_qty',
         'cost_of_item',
+        'store_location_id',
         'inspected_by',
         'created_by',
-        'status',
+        'updated_by',
     ];
-
-    public function items()
-    {
-        return $this->hasMany(MaterialQCItem::class, 'material_qc_id'); // Ensure the foreign key is correct
-    }
 
     public function purchaseOrder()
     {
@@ -36,7 +33,7 @@ class MaterialQC extends Model
     
     public function inventoryItem()
     {
-        return $this->belongsTo(InventoryItem::class, 'item_id'); // Ensure the foreign key is correct
+        return $this->belongsTo(InventoryItem::class, 'item_id'); 
     }
 
     public function inspectedBy()
@@ -44,8 +41,20 @@ class MaterialQC extends Model
         return $this->belongsTo(User::class, 'inspected_by');
     }
 
-    public function createdBy()
+    public function storeLocation()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(InventoryLocation::class, 'store_location_id');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

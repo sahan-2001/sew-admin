@@ -12,19 +12,21 @@ class CreateMaterialQCsTable extends Migration
             $table->id();
             $table->unsignedBigInteger('purchase_order_id');
             $table->unsignedBigInteger('item_id');
-            $table->integer('inspected_quantity');
-            $table->integer('returned_qty')->default(0);
-            $table->integer('scrapped_qty')->default(0);
+            $table->decimal('inspected_quantity');
+            $table->decimal('approved_qty', 10, 2)->default(0);
+            $table->decimal('returned_qty', 10, 2)->default(0);
+            $table->decimal('scrapped_qty', 10, 2)->default(0);
             $table->decimal('cost_of_item', 10, 2);
+            $table->unsignedBigInteger('store_location_id');
             $table->unsignedBigInteger('inspected_by');
             $table->unsignedBigInteger('created_by');
-            $table->string('status')->default('to be inspected');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
 
             $table->foreign('purchase_order_id')->references('id')->on('purchase_orders')->onDelete('cascade');
+            $table->foreign('store_location_id')->references('id')->on('inventory_locations')->onDelete('cascade'); // Foreign key
             $table->foreign('inspected_by')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

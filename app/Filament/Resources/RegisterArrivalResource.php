@@ -115,7 +115,8 @@ class RegisterArrivalResource extends Resource
                         TextInput::make('remaining_quantity')
                             ->label('Remaining Quantity')
                             ->reactive()
-                            ->required(),
+                            ->required()
+                            ->disabled(),
                     ])
                     ->disableItemCreation()
                     ->relationship('items')
