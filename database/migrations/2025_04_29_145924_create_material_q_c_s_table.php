@@ -25,7 +25,7 @@ class CreateMaterialQCsTable extends Migration
             $table->softDeletes();
 
             $table->foreign('purchase_order_id')->references('id')->on('purchase_orders')->onDelete('cascade');
-            $table->foreign('store_location_id')->references('id')->on('inventory_locations')->onDelete('cascade'); // Foreign key
+            $table->foreign('store_location_id')->references('id')->on('inventory_locations')->onDelete('cascade');
             $table->foreign('inspected_by')->references('id')->on('users')->onDelete('cascade');
         });
     }

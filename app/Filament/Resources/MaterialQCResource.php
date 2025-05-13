@@ -51,7 +51,7 @@ class MaterialQCResource extends Resource
                                                 'item_code' => $inventoryItem?->item_code,
                                                 'name' => $inventoryItem?->name,
                                                 'quantity' => $item->quantity,
-                                                'cost_of_item' => $item->price,
+                                                'cost_of_item' => $item->price ?? 0,
                                                 'status' => $item->status,
                                             ];
                                         })->toArray());
@@ -149,6 +149,11 @@ class MaterialQCResource extends Resource
             ->label('Cost of Item')
             ->disabled()
             ->columnSpan(1),
+        
+            Forms\Components\Hidden::make('cost_of_item')
+                ->default(function ($get) {
+                    return $get('cost_of_item'); // Preserve the existing value
+                }),
 
         Forms\Components\TextInput::make('inspected_quantity')
             ->label('Inspected Quantity')
