@@ -18,4 +18,11 @@ class EditRegisterArrival extends EditRecord
         // Update PurchaseOrder and PurchaseOrderItem quantities
         RegisterArrivalResource::updatePurchaseOrderStatusAndItems($registerArrival);
     }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+        ];
+
+    }
 }

@@ -12,6 +12,9 @@ class EditProductionMachine extends EditRecord
 
     protected function getHeaderActions(): array
     {
+    
+        return [
+        ];
 
     }
     protected function beforeSave()

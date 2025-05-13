@@ -1,28 +1,21 @@
 <?php
-
 namespace App\Filament\Resources\ReleaseMaterialResource\Pages;
 
 use App\Filament\Resources\ReleaseMaterialResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
-use App\Models\Stock;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateReleaseMaterial extends CreateRecord
 {
     protected static string $resource = ReleaseMaterialResource::class;
 
-    protected function afterCreate(): void
+    protected function handleRecordCreation(array $data): Model
     {
-        foreach ($this->record->lines as $line) {
-            $stock = Stock::where('item_id', $line->item_id)
-                        ->where('location_id', $line->location_id)
-                        ->first();
+        $releaseMaterial = parent::handleRecordCreation($data);
 
-            if ($stock) {
-                $stock->quantity -= $line->quantity;
-                $stock->save();
-            }
-        }
+        // Deduct stock after creating the release material
+        $releaseMaterial->deductStock();
+
+        return $releaseMaterial;
     }
-
 }

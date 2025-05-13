@@ -31,10 +31,38 @@ class ReleaseMaterial extends Model
 
     public function lines()
     {
-        return $this->hasMany(ReleaseMaterialLine::class);
+        return $this->hasMany(ReleaseMaterialLine::class, 'release_material_id');
     }
 
- 
+
+        public function deductStock(): void
+        {
+            $this->load('lines'); // Ensure the lines relationship is loaded
+
+            foreach ($this->lines as $line) {
+                // Find the stock entry for the item and location
+                $stock = Stock::where('item_id', $line->item_id)
+                    ->where('location_id', $line->location_id)
+                    ->first();
+
+                if (!$stock) {
+                    \Log::error('Stock deduction failed: No stock entry found for item_id ' . $line->item_id . ' and location_id ' . $line->location_id);
+                    continue;
+                }
+
+                // Deduct the released quantity from the stock
+                $stock->quantity -= $line->quantity;
+
+                // Ensure the stock quantity does not go below zero
+                if ($stock->quantity < 0) {
+                    \Log::warning('Stock quantity below zero for item_id ' . $line->item_id . ' at location_id ' . $line->location_id);
+                    $stock->quantity = 0;
+                }
+
+                $stock->save();
+                \Log::info('Stock updated: item_id=' . $line->item_id . ', location_id=' . $line->location_id . ', new quantity=' . $stock->quantity);
+            }
+        }
     
     protected static function booted()
     {
