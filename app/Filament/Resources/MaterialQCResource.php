@@ -13,8 +13,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\Action;
 
 
 class MaterialQCResource extends Resource
@@ -31,64 +32,114 @@ class MaterialQCResource extends Resource
                     Forms\Components\Grid::make(2)
                         ->schema([
                             Forms\Components\TextInput::make('purchase_order_id')
-                                ->label('Purchase Order ID')
-                                ->required()
-                                ->reactive()
-                                ->afterStateUpdated(function ($state, callable $set) {
-                                    $purchaseOrder = \App\Models\PurchaseOrder::find($state);
+    ->label('Purchase Order ID')
+    ->required()
+    ->reactive()
+    ->afterStateUpdated(function ($state, callable $set) {
+    $purchaseOrder = \App\Models\PurchaseOrder::find($state);
 
-                                    if ($purchaseOrder && in_array($purchaseOrder->status, ['partially arrived', 'arrived'])) {
-                                        $items = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
-                                            $query->where('purchase_order_id', $state);
-                                        })
-                                        ->where('status', 'to be inspected')
-                                        ->get();
+    if ($purchaseOrder) {
+        // Check if all RegisterArrivalItem records for the purchase order are 'inspected'
+        $allInspected = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
+            $query->where('purchase_order_id', $state);
+        })
+        ->where('status', '!=', 'inspected') // Check for any record NOT inspected
+        ->doesntExist(); // If none exist, all are inspected
 
-                                        $set('items', $items->map(function ($item) {
-                                            $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
-                                            return [
-                                                'item_id' => $item->item_id,
-                                                'item_code' => $inventoryItem?->item_code,
-                                                'name' => $inventoryItem?->name,
-                                                'quantity' => $item->quantity,
-                                                'cost_of_item' => $item->price ?? 0,
-                                                'status' => $item->status,
-                                            ];
-                                        })->toArray());
+        if ($allInspected) {
+            \Filament\Notifications\Notification::make()
+                ->title('Purchase Order Inspected')
+                ->body('All records for this purchase order have already been inspected.')
+                ->danger()
+                ->send();
 
-                                        $set('provider_type', $purchaseOrder->provider_type);
-                                        $set('provider_name', $purchaseOrder->provider_name);
-                                        $set('provider_id', $purchaseOrder->provider_id);
-                                        $set('wanted_date', $purchaseOrder->wanted_date);
+            // Clear all form data
+            $set('items', []);
+            $set('provider_type', null);
+            $set('provider_name', null);
+            $set('provider_id', null);
+            $set('wanted_date', null);
+            $set('location_id', null);
+            $set('location_name', null);
+            $set('received_date', null);
+            $set('invoice_number', null);
+            $set('register_arrival_id', null);
 
-                                        $registerArrival = \App\Models\RegisterArrival::where('purchase_order_id', $state)->first();
-                                        if ($registerArrival) {
-                                            $set('location_id', $registerArrival->location_id);
-                                            $set('received_date', $registerArrival->received_date);
-                                            $set('invoice_number', $registerArrival->invoice_number);
+            return;
+        }
 
-                                            $location = \App\Models\InventoryLocation::find($registerArrival->location_id);
-                                            $set('location_name', $location?->name);
-                                        }
-                                    } else {
-                                        $set('items', []);
-                                        $set('provider_type', null);
-                                        $set('provider_name', null);
-                                        $set('provider_id', null);
-                                        $set('wanted_date', null);
-                                        $set('location_id', null);
-                                        $set('location_name', null);
-                                        $set('received_date', null);
-                                        $set('invoice_number', null);
+        // If not all are inspected, proceed with existing logic
+        if (in_array($purchaseOrder->status, ['partially arrived', 'arrived'])) {
+            $items = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
+                $query->where('purchase_order_id', $state);
+            })
+            ->where('status', 'to be inspected')
+            ->get();
 
-                                        \Filament\Notifications\Notification::make()
-                                            ->title('Invalid Purchase Order Status')
-                                            ->body('The purchase order status must be "partially arrived" or "arrived".')
-                                            ->danger()
-                                            ->send();
-                                    }
-                                }),
+            $set('items', $items->map(function ($item) {
+                $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
+                return [
+                    'item_id' => $item->item_id,
+                    'item_code' => $inventoryItem?->item_code,
+                    'name' => $inventoryItem?->name,
+                    'quantity' => $item->quantity,
+                    'cost_of_item' => $item->price ?? 0,
+                    'status' => $item->status,
+                ];
+            })->toArray());
 
+            $set('provider_type', $purchaseOrder->provider_type);
+            $set('provider_name', $purchaseOrder->provider_name);
+            $set('provider_id', $purchaseOrder->provider_id);
+            $set('wanted_date', $purchaseOrder->wanted_date);
+
+            $registerArrival = \App\Models\RegisterArrival::where('purchase_order_id', $state)->first();
+            if ($registerArrival) {
+                $set('location_id', $registerArrival->location_id);
+                $set('received_date', $registerArrival->received_date);
+                $set('invoice_number', $registerArrival->invoice_number);
+                $set('register_arrival_id', $registerArrival->id); // Set the register_arrival_id
+
+                $location = \App\Models\InventoryLocation::find($registerArrival->location_id);
+                $set('location_name', $location?->name);
+            }
+        } else {
+            $set('items', []);
+            $set('provider_type', null);
+            $set('provider_name', null);
+            $set('provider_id', null);
+            $set('wanted_date', null);
+            $set('location_id', null);
+            $set('location_name', null);
+            $set('received_date', null);
+            $set('invoice_number', null);
+            $set('register_arrival_id', null);
+
+            \Filament\Notifications\Notification::make()
+                ->title('Invalid Purchase Order Status')
+                ->body('The purchase order status must be "partially arrived" or "arrived".')
+                ->danger()
+                ->send();
+        }
+    } else {
+        $set('items', []);
+        $set('provider_type', null);
+        $set('provider_name', null);
+        $set('provider_id', null);
+        $set('wanted_date', null);
+        $set('location_id', null);
+        $set('location_name', null);
+        $set('received_date', null);
+        $set('invoice_number', null);
+        $set('register_arrival_id', null);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Purchase Order Not Found')
+            ->body('The purchase order ID entered does not exist.')
+            ->danger()
+            ->send();
+    }
+}),
                             Forms\Components\TextInput::make('provider_type')
                                 ->label('Provider Type')
                                 ->disabled(),
@@ -108,6 +159,11 @@ class MaterialQCResource extends Resource
                 ->schema([
                     Forms\Components\Grid::make(2)
                         ->schema([
+                            Forms\Components\Hidden::make('register_arrival_id')->required(),
+                            #Forms\Components\TextInput::make('register_arrival_id')
+                            #   ->label('Register Arrival ID')
+                             #  ->disabled(),
+                                
                             Forms\Components\TextInput::make('location_id')
                                 ->label('Location ID')
                                 ->disabled(),
@@ -149,38 +205,88 @@ class MaterialQCResource extends Resource
             ->label('Cost of Item')
             ->disabled()
             ->columnSpan(1),
-        
-            Forms\Components\Hidden::make('cost_of_item')
+
+        Forms\Components\Hidden::make('cost_of_item')
                 ->default(function ($get) {
                     return $get('cost_of_item'); // Preserve the existing value
                 }),
 
         Forms\Components\TextInput::make('inspected_quantity')
-            ->label('Inspected Quantity')
-            ->numeric()
-            ->required()
-            ->columnSpan(1),
-            
-        Forms\Components\TextInput::make('approved_qty')
-            ->label('Approved Quantity')
-            ->numeric()
-            ->required()
-            ->live()
-            ->columnSpan(1),
+    ->label('Inspected Quantity')
+    ->numeric()
+    ->required()
+    ->columnSpan(1)
+    ->reactive()
+    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+        $quantity = $get('quantity');
+        if ($state > $quantity) {
+            $set('inspected_quantity', $quantity); // Reset to max allowed
+            $set('inspected_quantity_error', 'Inspected Quantity cannot exceed Received Quantity.');
+        } else {
+            $set('inspected_quantity_error', null); // Clear error
+        }
+    })
+    ->helperText(fn (callable $get) => $get('inspected_quantity_error')),
 
-        Forms\Components\TextInput::make('returned_qty')
-            ->label('Returned Quantity')
-            ->numeric()
-            ->required()
-            ->default(0)
-            ->columnSpan(1),
+Forms\Components\TextInput::make('approved_qty')
+    ->label('Approved Quantity')
+    ->numeric()
+    ->required()
+    ->live()
+    ->reactive()
+    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+        $inspectedQuantity = $get('inspected_quantity') ?? 0;
+        $returnedQty = $get('returned_qty') ?? 0;
+        $scrappedQty = $get('scrapped_qty') ?? 0;
 
-        Forms\Components\TextInput::make('scrapped_qty')
-            ->label('Scrapped Quantity')
-            ->numeric()
-            ->required()
-            ->default(0)
-            ->columnSpan(1),
+        if ($state + $returnedQty + $scrappedQty !== $inspectedQuantity) {
+            $set('approved_qty_error', 'Approved Quantity + Returned Quantity + Scrapped Quantity must equal Inspected Quantity.');
+        } else {
+            $set('approved_qty_error', null); // Clear error
+        }
+    })
+    ->helperText(fn (callable $get) => $get('approved_qty_error')),
+
+Forms\Components\TextInput::make('returned_qty')
+    ->label('Returned Quantity')
+    ->numeric()
+    ->required()
+    ->default(0)
+    ->live()
+    ->reactive()
+    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+        $inspectedQuantity = $get('inspected_quantity') ?? 0;
+        $approvedQty = $get('approved_qty') ?? 0;
+        $scrappedQty = $get('scrapped_qty') ?? 0;
+
+        if ($approvedQty + $state + $scrappedQty !== $inspectedQuantity) {
+            $set('returned_qty_error', 'Approved Quantity + Returned Quantity + Scrapped Quantity must equal Inspected Quantity.');
+        } else {
+            $set('returned_qty_error', null); // Clear error
+        }
+    })
+    ->helperText(fn (callable $get) => $get('returned_qty_error')),
+
+Forms\Components\TextInput::make('scrapped_qty')
+    ->label('Scrapped Quantity')
+    ->numeric()
+    ->required()
+    ->default(0)
+    ->live()
+    ->reactive()
+    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+        $inspectedQuantity = $get('inspected_quantity') ?? 0;
+        $approvedQty = $get('approved_qty') ?? 0;
+        $returnedQty = $get('returned_qty') ?? 0;
+
+        if ($approvedQty + $returnedQty + $state !== $inspectedQuantity) {
+            $set('scrapped_qty_error', 'Approved Quantity + Returned Quantity + Scrapped Quantity must equal Inspected Quantity.');
+        } else {
+            $set('scrapped_qty_error', null); // Clear error
+        }
+    })
+    ->helperText(fn (callable $get) => $get('scrapped_qty_error')),
+        
 
         Select::make('inspected_by')
             ->label('QC Officer')
@@ -196,7 +302,12 @@ class MaterialQCResource extends Resource
             ->required()
             ->columnSpan(1),
     ]),
-                    ]),
+]),
+    
+ 
+            
+
+        
         ]);
     }
 
@@ -208,18 +319,61 @@ class MaterialQCResource extends Resource
     {
         return $table
             ->columns([
-                // Define columns here (if needed)
+                TextColumn::make('id')->label('QC Record ID'),
+                TextColumn::make('purchase_order_id')->label('Purchase Order ID'),
+                TextColumn::make('inspected_quantity')->label('Inspected Quantity'),
+                TextColumn::make('approved_qty')->label('Approved Quantity'),
+                TextColumn::make('returned_qty')->label('Returned Quantity'),
+                TextColumn::make('scrapped_qty')->label('Scrapped Quantity'),
             ])
-            ->filters([
-
-            ])
+            ->filters([])
             ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Action::make('reCorrection')
+                    ->label('Re-Correction')
+                    ->authorize(fn ($record) => 
+                        auth()->user()->can('re-correct material qc') 
+                    )
+                    ->action(function (MaterialQC $record) {
+                        // Begin transaction
+                        \DB::beginTransaction();
+
+                        try {
+                            // Update the status of related RegisterArrivalItem records to "to be inspected"
+                            \App\Models\RegisterArrivalItem::where('register_arrival_id', $record->register_arrival_id)
+                                ->where('item_id', $record->item_id)
+                                ->update(['status' => 'to be inspected']);
+
+                            // Delete related rows in the Stock table
+                            \App\Models\Stock::where('purchase_order_id', $record->purchase_order_id)
+                                ->where('item_id', $record->item_id)
+                                ->delete();
+
+                            // Delete the MaterialQC record
+                            $record->delete();
+
+                            // Commit transaction
+                            \DB::commit();
+
+                            // Notify the user
+                            \Filament\Notifications\Notification::make()
+                                ->title('Re-Correction Successful')
+                                ->body('The record has been reset and related data has been updated.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            // Rollback transaction on error
+                            \DB::rollBack();
+
+                            // Notify the user of the error
+                            \Filament\Notifications\Notification::make()
+                                ->title('Re-Correction Failed')
+                                ->body('An error occurred while performing the re-correction: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->requiresConfirmation()
+                    ->color('danger'),
             ]);
     }
 

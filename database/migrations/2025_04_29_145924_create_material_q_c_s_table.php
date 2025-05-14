@@ -18,6 +18,7 @@ class CreateMaterialQCsTable extends Migration
             $table->decimal('scrapped_qty', 10, 2)->default(0);
             $table->decimal('cost_of_item', 10, 2);
             $table->unsignedBigInteger('store_location_id');
+            $table->unsignedBigInteger('register_arrival_id');
             $table->unsignedBigInteger('inspected_by');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
@@ -25,6 +26,7 @@ class CreateMaterialQCsTable extends Migration
             $table->softDeletes();
 
             $table->foreign('purchase_order_id')->references('id')->on('purchase_orders')->onDelete('cascade');
+            $table->foreign('register_arrival_id')->references('id')->on('register_arrivals')->onDelete('cascade');
             $table->foreign('store_location_id')->references('id')->on('inventory_locations')->onDelete('cascade');
             $table->foreign('inspected_by')->references('id')->on('users')->onDelete('cascade');
         });

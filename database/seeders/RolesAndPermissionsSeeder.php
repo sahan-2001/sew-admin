@@ -122,6 +122,11 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'create release materials']);
         Permission::firstOrCreate(['name' => 're-correct release materials']);
 
+        // Material QC permissions
+        Permission::firstOrCreate(['name' => 'view material qc']);
+        Permission::firstOrCreate(['name' => 'create material qc']);
+        Permission::firstOrCreate(['name' => 're-correct material qc']);
+
         // Activity log permissions
         Permission::firstOrCreate(['name' => 'view self activity logs']);
         Permission::firstOrCreate(['name' => 'view other users activity logs']);

@@ -21,6 +21,7 @@ class MaterialQC extends Model
         'scrapped_qty',
         'cost_of_item',
         'store_location_id',
+        'register_arrival_id',
         'inspected_by',
         'created_by',
         'updated_by',
@@ -44,6 +45,11 @@ class MaterialQC extends Model
     public function storeLocation()
     {
         return $this->belongsTo(InventoryLocation::class, 'store_location_id');
+    }
+
+    public function registerArrival()
+    {
+        return $this->belongsTo(RegisterArrival::class, 'register_arrival_id');
     }
 
     protected static function booted()

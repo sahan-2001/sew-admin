@@ -25,6 +25,7 @@ class CreateMaterialQC extends CreateRecord
             if (!$item || !isset($item['item_id'])) {
                 throw new \Exception("Item ID is required.");
             }
+
             $cost = $item['cost_of_item'] ?? 0;
 
             // Create the MaterialQC record for each item
@@ -37,7 +38,8 @@ class CreateMaterialQC extends CreateRecord
                 'returned_qty' => $item['returned_qty'] ?? 0,
                 'scrapped_qty' => $item['scrapped_qty'] ?? 0,
                 'store_location_id' => $item['store_location_id'],
-                'inspected_by' => $item['inspected_by'],
+                'register_arrival_id' => $data['register_arrival_id'], 
+                'inspected_by' => $item['inspected_by'],               
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -50,6 +52,15 @@ class CreateMaterialQC extends CreateRecord
                     $query->where('purchase_order_id', $data['purchase_order_id']);
                 })
                 ->update(['status' => 'inspected']);
+            
+            // Add a new row to the Stock table
+            \App\Models\Stock::create([
+                'item_id' => $item['item_id'],
+                'quantity' => $item['approved_qty'], 
+                'cost' => $cost, 
+                'location_id' => $item['store_location_id'], 
+                'purchase_order_id' => $data['purchase_order_id'], 
+            ]);
         }
 
         DB::commit();
@@ -61,4 +72,5 @@ class CreateMaterialQC extends CreateRecord
         throw $e;
     }
 }
+
 }
