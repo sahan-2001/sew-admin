@@ -24,6 +24,11 @@ class ReleaseMaterial extends Model
         return $this->belongsTo(ProductionLine::class);
     }
 
+    public function getWorkstationNameAttribute()
+    {
+        return $this->workstation ? $this->workstation->name : 'N/A';
+    }
+    
     public function workstation()
     {
         return $this->belongsTo(Workstation::class);

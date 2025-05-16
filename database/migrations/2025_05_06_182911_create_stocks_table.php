@@ -21,6 +21,7 @@ class CreateStocksTable extends Migration
             $table->unsignedBigInteger('location_id');
             $table->unsignedBigInteger('purchase_order_id');
             $table->timestamps();
+            $table->softDeletes();
 
             // Foreign key constraints
             $table->foreign('item_id')->references('id')->on('inventory_items')->onDelete('cascade');

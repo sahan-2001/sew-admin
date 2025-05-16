@@ -132,37 +132,37 @@ class ReleaseMaterialResource extends Resource
                                         ->columnSpan(3),
 
                                     Forms\Components\Select::make('location_id')
-    ->label('Stored Location')
-    ->options(function ($get) {
-        $itemId = $get('item_id');
-        if ($itemId) {
-            return Stock::where('item_id', $itemId)
-                ->with('location')
-                ->get()
-                ->mapWithKeys(function ($stock) {
-                    return [$stock->location_id => $stock->location->name ?? 'Unknown Location'];
-                });
-        }
-        return [];
-    })
-    ->required()
-    ->reactive()
-    ->afterStateUpdated(function ($state, $set, $get) {
-        $itemId = $get('item_id');
-        if ($state && $itemId) {
-            $stock = Stock::where('item_id', $itemId)
-                ->where('location_id', $state)
-                ->first();
-            if ($stock) {
-                $set('stored_quantity', $stock->quantity);
-                $set('cost', $stock->cost);
-            } else {
-                $set('stored_quantity', 0);
-                $set('cost', 0);
-            }
-        }
-    })
-    ->columnSpan(3),
+                                        ->label('Stored Location')
+                                        ->options(function ($get) {
+                                            $itemId = $get('item_id');
+                                            if ($itemId) {
+                                                return Stock::where('item_id', $itemId)
+                                                    ->with('location')
+                                                    ->get()
+                                                    ->mapWithKeys(function ($stock) {
+                                                        return [$stock->location_id => $stock->location->name ?? 'Unknown Location'];
+                                                    });
+                                            }
+                                            return [];
+                                        })
+                                        ->required()
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            $itemId = $get('item_id');
+                                            if ($state && $itemId) {
+                                                $stock = Stock::where('item_id', $itemId)
+                                                    ->where('location_id', $state)
+                                                    ->first();
+                                                if ($stock) {
+                                                    $set('stored_quantity', $stock->quantity);
+                                                    $set('cost', $stock->cost);
+                                                } else {
+                                                    $set('stored_quantity', 0);
+                                                    $set('cost', 0);
+                                                }
+                                            }
+                                        })
+                                        ->columnSpan(3),
 
                                     Forms\Components\TextInput::make('stored_quantity')
                                         ->label('Available Quantity')
