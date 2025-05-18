@@ -140,14 +140,15 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                         ]),
                 ]),
 
-            Section::make('Operation Schedule')
-                ->schema([
-                    DatePicker::make('operation_date')
-                        ->label('Operation Date')
-                        ->required()
-                        ->reactive()
-                        ->disabled(fn ($get, $record) => $record !== null)                    
-                ]),
+            #Section::make('Operation Schedule')
+            #    ->schema([
+              #      DatePicker::make('operation_date')
+             #           ->label('Operation Date')
+             #           ->reactive()
+              #          ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
+             #           ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
+              #          ->disabled(fn ($get, $record) => $record !== null)                    
+              #  ]),
             
             Section::make('Add New Operation')
                 ->schema([
@@ -156,7 +157,7 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                             Select::make('production_line_id')
                                 ->label('Production Line')
                                 ->options(ProductionLine::all()->pluck('name', 'id'))
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
                                 ->reactive()
                                 ->searchable(),
 
@@ -169,7 +170,7 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                     return Workstation::where('production_line_id', $get('production_line_id'))
                                         ->pluck('name', 'id');
                                 })
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
                                 ->reactive()
                                 ->searchable(),
 
@@ -182,7 +183,7 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                     return Operation::where('workstation_id', $get('workstation_id'))
                                         ->pluck('description', 'id');
                                 })
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
                                 ->reactive()
                                 ->searchable()
                                 ->afterStateUpdated(function ($state, $set, $get) {
@@ -200,14 +201,16 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                             TextInput::make('selected_setup_time')
                                 ->label('Setup Time (minutes)')
                                 ->numeric()
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
+                                ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
                                 ->default(0)
                                 ->disabled(),
 
                             TextInput::make('selected_run_time')
                                 ->label('Run Time (minutes)')
                                 ->numeric()
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
+                                ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
                                 ->default(0)
                                 ->disabled(),
 
@@ -296,15 +299,18 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                         ->schema([
                             TextInput::make('production_line_name')
                                 ->label('Production Line')
-                                ->disabled(),
+                                ->disabled()
+                                ->reactive(),
                                 
                             TextInput::make('workstation_name')
                                 ->label('Workstation')
-                                ->disabled(),
+                                ->disabled()
+                                ->reactive(),
                             
                             TextInput::make('operation_description')
                                 ->label('Operation')
-                                ->disabled(),
+                                ->disabled()
+                                ->reactive(),
 
                             Forms\Components\MultiSelect::make('employee_ids')
                                 ->label('Employees')
@@ -384,7 +390,20 @@ class DailyOperationUnreleasedMaterialResource extends Resource
     {
         return $table
             ->columns([
-        
+                Tables\Columns\TextColumn::make('id')->label('Sequence ID')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('order_type'),
+                Tables\Columns\TextColumn::make('order_id')->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('order_type')
+                    ->options([
+                        'Customer Order' => 'Customer Order',
+                        'Sample Order' => 'Sample Order',
+                    ])
+                    ->label('Filter by Order Type'),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
             ]);
     }
 

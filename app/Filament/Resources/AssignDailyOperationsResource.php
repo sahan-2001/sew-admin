@@ -208,9 +208,9 @@ class AssignDailyOperationsResource extends Resource
             ->schema([
                 DatePicker::make('operation_date')
                     ->label('Operation Date')
-                    ->required()
                     ->reactive()
-                    ->disabled(fn ($get, $record) => $record !== null)
+                    ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\CreateAssignDailyOperations::class)
+                    ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\EditAssignDailyOperations::class)
                     ->afterStateUpdated(function ($state, $set) {
                         $set('working_hours', []);
                     }),
@@ -251,7 +251,8 @@ class AssignDailyOperationsResource extends Resource
                                     return collect($availableWorkstations)->pluck('name', 'id')->toArray();
                                 })
                                 ->reactive()
-                                ->required()
+                                ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\CreateAssignDailyOperations::class)
+                                ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\EditAssignDailyOperations::class)
                                 ->hidden(fn ($get) => !$get('order_id')),
 
                             Select::make('selected_operation_id')
@@ -457,18 +458,20 @@ class AssignDailyOperationsResource extends Resource
     {
         return $table
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('id')->label('Sequence ID')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('order_type'),
+                Tables\Columns\TextColumn::make('order_id')->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('order_type')
+                    ->options([
+                        'Customer Order' => 'Customer Order',
+                        'Sample Order' => 'Sample Order',
+                    ])
+                    ->label('Filter by Order Type'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

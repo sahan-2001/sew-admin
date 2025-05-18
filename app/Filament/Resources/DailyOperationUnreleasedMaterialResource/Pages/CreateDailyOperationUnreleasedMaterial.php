@@ -41,7 +41,6 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
                 'target_duration' => $operation['target_duration'] ?? null,
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
-                'status' => 'pending', // Default status for new operations
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);

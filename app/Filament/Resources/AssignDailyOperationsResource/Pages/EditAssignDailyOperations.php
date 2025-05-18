@@ -27,17 +27,23 @@ class EditAssignDailyOperations extends EditRecord
         $data['order_id'] = $this->getRecord()->order_id;
         $data['show_operation_date'] = !empty($data['working_hours']);
         
+        // Load lines with nested relations
         $data['daily_operations'] = $this->getRecord()->lines()->with([
+            'productionLine',
+            'workstation',
+            'operation',
             'assignedEmployees.user',
             'assignedSupervisors.user',
             'assignedProductionMachines',
             'assignedThirdPartyServices'
         ])->get()->map(function ($line) {
             return [
+                'id' => $line->id,
                 'production_line_id' => $line->production_line_id,
+                'production_line_name' => $line->productionLine->name ?? 'N/A',
                 'workstation_id' => $line->workstation_id,
-                'operation_id' => $line->operation_id,
                 'workstation_name' => $line->workstation->name ?? 'N/A',
+                'operation_id' => $line->operation_id,
                 'operation_description' => $line->operation->description ?? 'N/A',
                 'employee_ids' => $line->assignedEmployees->pluck('user_id')->toArray(),
                 'supervisor_ids' => $line->assignedSupervisors->pluck('user_id')->toArray(),
@@ -64,41 +70,55 @@ class EditAssignDailyOperations extends EditRecord
         $this->callHook('afterFill');
     }
 
+
     // Add this method to handle the update, creating missing related records if needed
     protected function handleRecordUpdate($record, array $data): Model
     {
         // Update main record
         $record->update($data);
 
-        // Helper to sync or create related entities
-        $this->syncOrCreateRelations($record, 'assignedEmployees', 'user_id', $data['employee_ids'] ?? []);
-        $this->syncOrCreateRelations($record, 'assignedSupervisors', 'user_id', $data['supervisor_ids'] ?? []);
-        $this->syncOrCreateRelations($record, 'assignedProductionMachines', 'production_machine_id', $data['machine_ids'] ?? []);
-        $this->syncOrCreateRelations($record, 'assignedThirdPartyServices', 'third_party_service_id', $data['third_party_service_ids'] ?? []);
+        // Update the daily operations and their related records
+        foreach ($data['daily_operations'] as $operation) {
+            // Find or create the operation line
+            $line = $record->lines()->updateOrCreate(
+                ['id' => $operation['id'] ?? null], // If ID exists, update; otherwise create new
+                [
+                    'production_line_id' => $operation['production_line_id'],
+                    'workstation_id' => $operation['workstation_id'],
+                    'operation_id' => $operation['operation_id'],
+                    'setup_time' => $operation['setup_time'],
+                    'run_time' => $operation['run_time'],
+                    'target_duration' => $operation['target_duration'],
+                    'target' => $operation['target'],
+                    'measurement_unit' => $operation['measurement_unit'],
+                    'created_by' => auth()->id(),
+                    'updated_by' => auth()->id(),
+                ]
+            );
+
+            // Sync or create related entities (employees, supervisors, etc.)
+            $this->syncOrCreateRelations($line, 'assignedEmployees', 'user_id', $operation['employee_ids'] ?? []);
+            $this->syncOrCreateRelations($line, 'assignedSupervisors', 'user_id', $operation['supervisor_ids'] ?? []);
+            $this->syncOrCreateRelations($line, 'assignedProductionMachines', 'production_machine_id', $operation['machine_ids'] ?? []);
+            $this->syncOrCreateRelations($line, 'assignedThirdPartyServices', 'third_party_service_id', $operation['third_party_service_ids'] ?? []);
+        }
 
         return $record;
     }
 
-    protected function syncOrCreateRelations($record, string $relationName, string $foreignKey, array $ids)
+
+    protected function syncOrCreateRelations($line, string $relationName, string $foreignKey, array $ids)
     {
-        $syncIds = [];
+        // Delete old relations not in the new list
+        $line->$relationName()->whereNotIn($foreignKey, $ids)->delete();
 
+        // Add new relations if not existing
         foreach ($ids as $id) {
-            // Check if related record exists by id
-            try {
-                $relationModel = $record->$relationName()->getRelated()::findOrFail($id);
-                $syncIds[] = $id;
-            } catch (ModelNotFoundException $e) {
-                // Record does not exist - create new related record with created_by and updated_by
-                $newRecord = $record->$relationName()->getRelated()::create([
-                    $foreignKey => $id,  // This depends on your table structure, adjust accordingly
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
-                ]);
-                $syncIds[] = $newRecord->id;
-            }
+            $line->$relationName()->firstOrCreate(
+                [$foreignKey => $id],
+                ['created_by' => auth()->id(), 'updated_by' => auth()->id()]
+            );
         }
-
-        $record->$relationName()->sync($syncIds);
     }
+
 }

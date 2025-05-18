@@ -43,21 +43,24 @@ class UMOperationLine extends Model
         return $this->belongsTo(Operation::class);
     }
     
-    public function uMOperationEmployees()
+    public function umOperationMachines()
     {
-        return $this->hasMany(UMOperationLineEmployee::class);
+        return $this->hasMany(UMOperationLineMachine::class, 'u_m_operation_line_id');
     }
-    public function uMOperationSupervisors()
+
+    public function umOperationEmployees()
     {
-        return $this->hasMany(UMOperationLineSupervisor::class);
+        return $this->hasMany(UMOperationLineEmployee::class, 'u_m_operation_line_id');
     }
-    public function uMOperationMachines()
+
+    public function umOperationSupervisors()
     {
-        return $this->hasMany(UMOperationLineMachine::class);
+        return $this->hasMany(UMOperationLineSupervisor::class, 'u_m_operation_line_id');
     }
-    public function uMOperationServices()
+
+    public function umOperationServices()
     {
-        return $this->hasMany(UMOperationLineService::class);
+        return $this->hasMany(UMOperationLineService::class, 'u_m_operation_line_id');
     }
     
     protected static function booted()

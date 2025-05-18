@@ -11,11 +11,10 @@ class UMOperation extends Model
 
     protected $fillable = ['order_type', 'order_id', 'created_by', 'updated_by'];
 
-    public function lines()
+   public function Lines()
     {
-        return $this->hasMany(UMOperationLine::class);
+        return $this->hasMany(UMOperationLine::class, 'u_m_operation_id'); 
     }
-
     protected static function booted()
     {
         static::creating(function ($model) {
