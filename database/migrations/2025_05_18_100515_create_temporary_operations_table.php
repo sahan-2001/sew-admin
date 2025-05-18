@@ -11,19 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('u_m_operation_line_machines', function (Blueprint $table) {
+        Schema::create('temporary_operations', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('production_machine_id');
-            $table->unsignedBigInteger('u_m_operation_line_id');
+            $table->string('order_type');
+            $table->foreignId('order_id');
+            $table->foreignId('production_line_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('workstation_id')->nullable()->constrained()->nullOnDelete();
+            $table->text('description');
+            $table->integer('setup_time')->default(0);
+            $table->integer('run_time');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
-
-            $table->foreign('u_m_operation_line_id' ,'u_m_operation_line_machines_operation_line_fk')
-                ->references('id')
-                ->on('u_m_operation_lines')
-                ->onDelete('cascade');
         });
     }
 
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('u_m_operation_line_machines');
+        Schema::dropIfExists('temporary_operations');
     }
 };

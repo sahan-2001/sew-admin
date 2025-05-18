@@ -18,7 +18,7 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            $table->foreign('u_m_operation_line_id', 'atps_adol_id_fk')
+            $table->foreign('u_m_operation_line_id')
                 ->references('id')
                 ->on('u_m_operation_lines')
                 ->onDelete('cascade');

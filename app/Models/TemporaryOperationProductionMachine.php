@@ -1,19 +1,28 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UMOperationLineEmployee extends Model
+class TemporaryOperationProductionMachine extends Model
 {
-    use SoftDeletes, HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $fillable = ['user_id', 'u_m_operation_line_id', 'created_by','updated_by',];
+    protected $fillable = [
+        'temporary_operation_id',
+        'production_machine_id',
+    ];
 
-    public function line()
+    public function temporaryOperation()
     {
-        return $this->belongsTo(UMOperationLine::class, 'u_m_operation_line_id');
+        return $this->belongsTo(TemporaryOperation::class);
+    }
+
+    public function productionMachine()
+    {
+        return $this->belongsTo(ProductionMachine::class);
     }
 
     protected static function booted()
@@ -26,9 +35,5 @@ class UMOperationLineEmployee extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
-    }
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
     }
 }

@@ -1,32 +1,28 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UMOperationLine extends Model
+class TemporaryOperation extends Model
 {
-    use SoftDeletes, HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'u_m_operation_id',
+        'order_type',
+        'order_id',
+        'customer_id',
+        'wanted_date',
+        'description',
         'production_line_id',
         'workstation_id',
-        'operation_id',
         'setup_time',
         'run_time',
-        'target_duration',
-        'target',
-        'measurement_unit',
         'created_by',
         'updated_by',
     ];
-
-    public function umOperation()
-    {
-        return $this->belongsTo(UMOperation::class, 'u_m_operation_id');
-    }
 
     public function productionLine()
     {
@@ -38,28 +34,26 @@ class UMOperationLine extends Model
         return $this->belongsTo(Workstation::class);
     }
 
-    public function operation()
+    public function employees()
     {
-        return $this->belongsTo(Operation::class);
+        return $this->belongsToMany(User::class, 'temporary_operation_employees');
     }
-    
-    public function uMOperationEmployees()
+
+    public function supervisors()
     {
-        return $this->hasMany(UMOperationLineEmployee::class);
+        return $this->belongsToMany(User::class, 'temporary_operation_supervisors');
     }
-    public function uMOperationSupervisors()
+
+    public function productionMachines()
     {
-        return $this->hasMany(UMOperationLineSupervisor::class);
+        return $this->belongsToMany(ProductionMachine::class, 'temporary_operation_production_machines');
     }
-    public function uMOperationMachines()
+
+    public function services()
     {
-        return $this->hasMany(UMOperationLineMachine::class);
+        return $this->belongsToMany(ThirdPartyService::class, 'temporary_operation_services');
     }
-    public function uMOperationServices()
-    {
-        return $this->hasMany(UMOperationLineService::class);
-    }
-    
+
     protected static function booted()
     {
         static::creating(function ($model) {
