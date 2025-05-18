@@ -1,6 +1,5 @@
 <?php
 
-// app/Filament/Resources/AssignDailyOperationsResource/Pages/CreateAssignDailyOperations.php
 namespace App\Filament\Resources\AssignDailyOperationsResource\Pages;
 
 use App\Models\AssignDailyOperation;
@@ -11,6 +10,8 @@ use App\Models\AssignedProductionMachine;
 use App\Models\AssignedWorkingHour;
 use App\Models\AssignedThirdPartyService;
 use Filament\Actions;
+use Illuminate\Support\Carbon;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use App\Filament\Resources\AssignDailyOperationsResource; 
@@ -21,6 +22,24 @@ class CreateAssignDailyOperations extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
+        // Check for existing record with same order type, order ID, and date
+        $existingRecord = AssignDailyOperation::where('order_type', $data['order_type'])
+            ->where('order_id', $data['order_id'])
+            ->whereDate('created_at', Carbon::today())
+            ->first();
+
+        if ($existingRecord) {
+            Notification::make()
+                ->title('Duplicate Record')
+                ->danger()
+                ->body('A record for this Order Type, Order ID, and Date already exists.')
+                ->send();
+
+            $this->form->fill([]); // Clear the form
+
+            return $existingRecord;
+        }
+
         // Create the main AssignDailyOperation record
         $assignDailyOperation = AssignDailyOperation::create([
             'order_type' => $data['order_type'],
@@ -28,6 +47,12 @@ class CreateAssignDailyOperations extends CreateRecord
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
+
+        Notification::make()
+            ->title('Record Created Successfully')
+            ->success()
+            ->body('Assigned Daily Operation Created Successfully with ID: ' . $assignDailyOperation->id)
+            ->send();
 
         // Create operation lines and related records
         foreach ($data['daily_operations'] as $operation) {
@@ -45,62 +70,49 @@ class CreateAssignDailyOperations extends CreateRecord
                 'updated_by' => auth()->id(),
             ]);
 
-            // Create assigned employees
-            foreach ($operation['employee_ids'] as $employeeId) {
-                AssignedEmployee::create([
-                    'user_id' => $employeeId,
-                    'assign_daily_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned supervisors
-            foreach ($operation['supervisor_ids'] ?? [] as $supervisorId) {
-                AssignedSupervisor::create([
-                    'user_id' => $supervisorId,
-                    'assign_daily_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned machines
-            foreach ($operation['machine_ids'] ?? [] as $machineId) {
-                AssignedProductionMachine::create([
-                    'production_machine_id' => $machineId,
-                    'assign_daily_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned third party services
-            foreach ($operation['third_party_service_ids'] ?? [] as $serviceId) {
-                AssignedThirdPartyService::create([
-                    'third_party_service_id' => $serviceId,
-                    'assign_daily_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned working hours
-            if (!empty($data['working_hours'])) {
-                foreach ($data['working_hours'] as $workingHour) {
-                    AssignedWorkingHour::create([
-                        'assign_daily_operation_id' => $assignDailyOperation->id,
-                        'operation_date' => $data['operation_date'],
-                        'start_time' => $workingHour['start_time'],
-                        'end_time' => $workingHour['end_time'],
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
-                    ]);
-                }
-            }
-
+            $this->createRelatedRecords($operation, $line->id, $assignDailyOperation->id, $data['operation_date']);
         }
 
         return $assignDailyOperation;
+    }
+
+    private function createRelatedRecords(array $operation, int $lineId, int $operationId, string $date): void
+    {
+        foreach ($operation['employee_ids'] as $employeeId) {
+            AssignedEmployee::create([
+                'user_id' => $employeeId,
+                'assign_daily_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['supervisor_ids'] ?? [] as $supervisorId) {
+            AssignedSupervisor::create([
+                'user_id' => $supervisorId,
+                'assign_daily_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['machine_ids'] ?? [] as $machineId) {
+            AssignedProductionMachine::create([
+                'production_machine_id' => $machineId,
+                'assign_daily_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['third_party_service_ids'] ?? [] as $serviceId) {
+            AssignedThirdPartyService::create([
+                'third_party_service_id' => $serviceId,
+                'assign_daily_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['working_hours'] ?? [] as $workingHour) {
+            AssignedWorkingHour::create([
+                'assign_daily_operation_id' => $operationId,
+                'operation_date' => $date,
+                'start_time' => $workingHour['start_time'],
+                'end_time' => $workingHour['end_time'],
+            ]);
+        }
     }
 }

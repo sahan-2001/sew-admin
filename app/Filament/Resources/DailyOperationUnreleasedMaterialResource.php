@@ -140,15 +140,6 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                         ]),
                 ]),
 
-            #Section::make('Operation Schedule')
-            #    ->schema([
-              #      DatePicker::make('operation_date')
-             #           ->label('Operation Date')
-             #           ->reactive()
-              #          ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
-             #           ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
-              #          ->disabled(fn ($get, $record) => $record !== null)                    
-              #  ]),
             
             Section::make('Add New Operation')
                 ->schema([
@@ -393,6 +384,10 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('Sequence ID')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('order_type'),
                 Tables\Columns\TextColumn::make('order_id')->sortable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created At')
+                    ->date('Y-m-d')      
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('order_type')

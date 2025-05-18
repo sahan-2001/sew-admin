@@ -9,6 +9,8 @@ use App\Models\UMOperationLineSupervisor;
 use App\Models\UMOperationLineMachine;
 use App\Models\UMOperationLineService;
 use Filament\Actions;
+use Illuminate\Support\Carbon;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use App\Filament\Resources\DailyOperationUnreleasedMaterialResource;
@@ -19,6 +21,24 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
+        // Check for existing record with same order type, order ID, and date
+        $existingRecord = UMOperation::where('order_type', $data['order_type'])
+            ->where('order_id', $data['order_id'])
+            ->whereDate('created_at', Carbon::today())
+            ->first();
+
+        if ($existingRecord) {
+            Notification::make()
+                ->title('Duplicate Record')
+                ->danger()
+                ->body('A record for this Order Type, Order ID, and Date already exists.')
+                ->send();
+
+            $this->form->fill([]); // Clear the form
+
+            return $existingRecord;
+        }
+
         // Create the main UMOperation record
         $umOperation = UMOperation::create([
             'order_type' => $data['order_type'],
@@ -27,6 +47,12 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
+
+        Notification::make()
+            ->title('Record Created Successfully')
+            ->success()
+            ->body('UM Operation Created Successfully with ID: ' . $umOperation->id)
+            ->send();
 
         // Create operation lines and related records
         foreach ($data['daily_operations'] as $operation) {
@@ -45,48 +71,41 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
                 'updated_by' => auth()->id(),
             ]);
 
-            // Create assigned employees
-            foreach ($operation['employee_ids'] as $employeeId) {
-                UMOperationLineEmployee::create([
-                    'user_id' => $employeeId,
-                    'u_m_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned supervisors
-            foreach ($operation['supervisor_ids'] ?? [] as $supervisorId) {
-                UMOperationLineSupervisor::create([
-                    'user_id' => $supervisorId,
-                    'u_m_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned machines
-            foreach ($operation['machine_ids'] ?? [] as $machineId) {
-                UMOperationLineMachine::create([
-                    'production_machine_id' => $machineId,
-                    'u_m_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            // Create assigned third party services
-            foreach ($operation['third_party_service_ids'] ?? [] as $serviceId) {
-                UMOperationLineService::create([
-                    'third_party_service_id' => $serviceId,
-                    'u_m_operation_line_id' => $line->id,
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
+            $this->createRelatedRecords($operation, $line->id);
         }
 
         return $umOperation;
+    }
+
+    private function createRelatedRecords(array $operation, int $lineId): void
+    {
+        foreach ($operation['employee_ids'] as $employeeId) {
+            UMOperationLineEmployee::create([
+                'user_id' => $employeeId,
+                'u_m_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['supervisor_ids'] ?? [] as $supervisorId) {
+            UMOperationLineSupervisor::create([
+                'user_id' => $supervisorId,
+                'u_m_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['machine_ids'] ?? [] as $machineId) {
+            UMOperationLineMachine::create([
+                'production_machine_id' => $machineId,
+                'u_m_operation_line_id' => $lineId,
+            ]);
+        }
+
+        foreach ($operation['third_party_service_ids'] ?? [] as $serviceId) {
+            UMOperationLineService::create([
+                'third_party_service_id' => $serviceId,
+                'u_m_operation_line_id' => $lineId,
+            ]);
+        }
     }
 
     protected function getRedirectUrl(): string

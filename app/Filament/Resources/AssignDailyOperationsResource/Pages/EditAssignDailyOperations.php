@@ -25,7 +25,6 @@ class EditAssignDailyOperations extends EditRecord
         
         $data['order_type'] = $this->getRecord()->order_type;
         $data['order_id'] = $this->getRecord()->order_id;
-        $data['show_operation_date'] = !empty($data['working_hours']);
         
         // Load lines with nested relations
         $data['daily_operations'] = $this->getRecord()->lines()->with([
@@ -57,13 +56,6 @@ class EditAssignDailyOperations extends EditRecord
             ];
         })->toArray();
 
-        $data['working_hours'] = $this->getRecord()->assignedWorkingHours()->get()->map(function ($hour) {
-            return [
-                'operation_date' => $hour->operation_date,
-                'start_time' => $hour->start_time,
-                'end_time' => $hour->end_time,
-            ];
-        })->toArray();
 
         $this->form->fill($data);
 

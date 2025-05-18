@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AssignDailyOperationsResource\Pages;
+use App\Filament\Resources\AssignDailyOperationsResource\Pages\EditAssignDailyOperations;
+use App\Filament\Resources\AssignDailyOperationsResource\Pages\CreateAssignDailyOperations;
 use App\Filament\Resources\AssignDailyOperationsResource\RelationManagers;
 use App\Models\AssignDailyOperation;
 use App\Models\ReleaseMaterial;
@@ -25,6 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
+
 
 class AssignDailyOperationsResource extends Resource
 {
@@ -203,43 +206,7 @@ class AssignDailyOperationsResource extends Resource
                                 ->disabled(),
                         ]),
                 ]),
-
-            Section::make('Operation Schedule')
-            ->schema([
-                DatePicker::make('operation_date')
-                    ->label('Operation Date')
-                    ->reactive()
-                    ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\CreateAssignDailyOperations::class)
-                    ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\EditAssignDailyOperations::class)
-                    ->afterStateUpdated(function ($state, $set) {
-                        $set('working_hours', []);
-                    }),
-
-                
-                Repeater::make('working_hours')
-                    ->label('Working Hours')
-                    ->schema([
-                        TimePicker::make('start_time')
-                            ->label('Start Time')
-                            ->required()
-                            ->seconds(false),
-                            
-                        TimePicker::make('end_time')
-                            ->label('End Time')
-                            ->required()
-                            ->seconds(false)
-                            ->after('start_time'),
-                    ])
-                    ->columns(2)
-                    ->default([])
-                    ->addActionLabel('Add Working Hours')
-                    ->itemLabel(fn (array $state): ?string => 
-                        isset($state['start_time'], $state['end_time']) 
-                            ? $state['start_time'] . ' - ' . $state['end_time'] 
-                            : null),
-            ]),
             
-
             Section::make('Select From Pre-Defined Operations')
                 ->schema([
                     Grid::make(2)
@@ -252,7 +219,6 @@ class AssignDailyOperationsResource extends Resource
                                 })
                                 ->reactive()
                                 ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\CreateAssignDailyOperations::class)
-                                ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\AssignDailyOperationsResource\Pages\EditAssignDailyOperations::class)
                                 ->hidden(fn ($get) => !$get('order_id')),
 
                             Select::make('selected_operation_id')
@@ -461,6 +427,10 @@ class AssignDailyOperationsResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('Sequence ID')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('order_type'),
                 Tables\Columns\TextColumn::make('order_id')->sortable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created At')
+                    ->date('Y-m-d')      
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('order_type')
