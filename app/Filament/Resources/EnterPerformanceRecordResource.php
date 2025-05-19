@@ -9,23 +9,26 @@ use App\Models\ProductionLine;
 use App\Models\Workstation;
 use App\Models\CustomerOrder;
 use App\Models\SampleOrder;
+use App\Models\AssignDailyOperation;
+use App\Models\AssignDailyOperationLine;
 use App\Models\TemporaryOperation;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\{Select, Textarea, Grid, Section, Repeater, TextInput};
-
+use Filament\Forms\Components\{Select, Textarea, Grid, Section, Repeater, TextInput, Modal};
+use Filament\Forms\Components\Actions\Action;
 
 class EnterPerformanceRecordResource extends Resource
 {
     protected static ?string $model = EnterPerformanceRecord::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationLabel = 'Enter Daily Operaton Performance';
+    protected static ?string $navigationLabel = 'Enter Daily Operation Performance';
     protected static ?string $navigationGroup = 'Daily Production';
 
     public static function form(Form $form): Form
@@ -90,12 +93,12 @@ class EnterPerformanceRecordResource extends Resource
                         TextInput::make('customer_id')
                             ->label('Customer ID')
                             ->disabled()
-                            ->columns(1),
+                            ->columnSpan(1),
 
                         TextInput::make('wanted_date')
                             ->label('Wanted Date')
                             ->disabled()
-                            ->columns(1),
+                            ->columnSpan(1),
                     ])
                     ->columns(2),
                 
@@ -104,8 +107,7 @@ class EnterPerformanceRecordResource extends Resource
                         Grid::make(2)
                             ->schema([
                                 
-                            ])
-                            ->columns(2),
+                            ]),       
                     ])
                     ->columns(2),
             ]);
@@ -115,6 +117,21 @@ class EnterPerformanceRecordResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('order_type')
+                    ->label('Order Type')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'customer_order' => 'Customer Order',
+                        'sample_order' => 'Sample Order',
+                        default => $state,
+                    }),
+                Tables\Columns\TextColumn::make('order_id')
+                    ->label('Order ID'),
+                Tables\Columns\TextColumn::make('assignDailyOperationLine.operation.name')
+                    ->label('Operation'),
+                Tables\Columns\TextColumn::make('actual_quantity')
+                    ->label('Quantity'),
+                Tables\Columns\TextColumn::make('actual_time')
+                    ->label('Time (min)'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

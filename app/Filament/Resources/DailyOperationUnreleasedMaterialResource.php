@@ -181,24 +181,36 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                     $operation = Operation::find($state);
                                     if ($operation) {
                                         $set('selected_operation_description', $operation->description);
-                                        $set('selected_setup_time', $operation->setup_time);
-                                        $set('selected_run_time', $operation->run_time);
+                                        $set('selected_machine__setup_time', $operation->machine_setup_time);
+                                        $set('selected_machine_run_time', $operation->machine_run_time);
+                                        $set('selected_labor__setup_time', $operation->labor_setup_time);
+                                        $set('selected_labor_run_time', $operation->labor_run_time);
                                     }
                                 }),
                         ]),
 
                     Grid::make(3)
                         ->schema([
-                            TextInput::make('selected_setup_time')
-                                ->label('Setup Time (minutes)')
+                            TextInput::make('selected_machine__setup_time')
+                                ->label('Machine Setup Time (minutes)')
+                                ->numeric()
+                                ->hidden(),
+
+                            TextInput::make('selected_machine_run_time')
+                                ->label('Machine Run Time (minutes)')
+                                ->numeric()
+                                ->hidden(),
+
+                            TextInput::make('selected_labor_setup_time')
+                                ->label('Labor Setup Time (minutes)')
                                 ->numeric()
                                 ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
                                 ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
                                 ->default(0)
                                 ->disabled(),
 
-                            TextInput::make('selected_run_time')
-                                ->label('Run Time (minutes)')
+                            TextInput::make('selected_labor_run_time')
+                                ->label('Labor Run Time (minutes)')
                                 ->numeric()
                                 ->required(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\CreateDailyOperationUnreleasedMaterial::class)
                                 ->disabled(fn ($livewire) => get_class($livewire) === \App\Filament\Resources\DailyOperationUnreleasedMaterialResource\Pages\EditDailyOperationUnreleasedMaterial::class)
@@ -324,18 +336,28 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                 ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
                                 ->searchable(),
                             
-                            TextInput::make('setup_time')
-                                ->label('Setup Time (min)')
+                            TextInput::make('machine_setup_time')
+                                ->label('Machine Setup Time')
                                 ->numeric()
-                                ->required(),
+                                ->default(0),
+                                        
+                            TextInput::make('labor_setup_time')
+                                ->label('Labor Setup Time')
+                                ->numeric()
+                                ->default(0),
 
-                            TextInput::make('run_time')
-                                ->label('Run Time (min)')
+                            TextInput::make('machine_run_time')
+                                ->label('Machine Run Time')
                                 ->numeric()
-                                ->required(),
+                                ->default(0),
+                                        
+                            TextInput::make('labor_run_time')
+                                ->label('Labor Run Time')
+                                ->numeric()
+                                ->default(0),
                                 
                             Select::make('target_duration')
-                                ->label('Target Duration')
+                                ->label('Target Duration')                               
                                 ->options([
                                     'hourly' => 'Hourly',
                                     'daily' => 'Daily',

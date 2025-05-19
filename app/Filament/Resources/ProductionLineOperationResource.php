@@ -59,12 +59,6 @@ class ProductionLineOperationResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make(12) 
                                 ->schema([                                 
-                                    Forms\Components\TextInput::make('sequence')
-                                        ->label('Sequence')
-                                        ->numeric()
-                                        ->required()
-                                        ->columnSpan(1), 
-
                                     Forms\Components\Textarea::make('description')
                                         ->label('Description')
                                         ->required()
@@ -103,16 +97,36 @@ class ProductionLineOperationResource extends Resource
                                         ->options(ProductionMachine::all()->pluck('name', 'id'))
                                         ->columnSpan(3),
 
-                                    Forms\Components\TextInput::make('setup_time')
-                                        ->label('Setup Time')
+                                    Forms\Components\TextInput::make('machine_setup_time')
+                                        ->label('Machine Setup Time')
                                         ->numeric()
-                                        ->default(0)
+                                        ->minValue(0)
+                                        ->maxValue(24)
+                                        ->placeholder('Enter machine setup time in minitues')
+                                        ->columnSpan(2),
+                                    
+                                    Forms\Components\TextInput::make('machine_run_time')
+                                        ->label('Machine Run Time')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(24)
+                                        ->placeholder('Enter machine run time in minitues')
+                                        ->columnSpan(2),
+                                    
+                                    Forms\Components\TextInput::make('labor_setup_time')
+                                        ->label('Labor Setup Time')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(24)
+                                        ->placeholder('Enter labor setup time in minitues')
                                         ->columnSpan(2),
 
-                                    Forms\Components\TextInput::make('run_time')
-                                        ->label('Run Time')
+                                    Forms\Components\TextInput::make('labor_run_time')
+                                        ->label('Labor Run Time')
                                         ->numeric()
-                                        ->default(0)
+                                        ->minValue(0)
+                                        ->maxValue(24)
+                                        ->placeholder('Enter labor run time in minitues')
                                         ->columnSpan(2),
                                 ]),
                         ])

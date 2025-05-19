@@ -12,15 +12,16 @@ class Operation extends Model
 
     protected $fillable = [
         'workstation_id',
-        'sequence',
         'description',
         'status',
         'employee_id',
         'supervisor_id',
         'third_party_service_id',
         'machine_id',
-        'setup_time',
-        'run_time',
+        'machine_setup_time',
+        'machine_run_time',
+        'labor_setup_time',
+        'labor_run_time',
     ];
 
     public function workstation()

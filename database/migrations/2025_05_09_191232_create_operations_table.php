@@ -14,15 +14,16 @@ return new class extends Migration
         Schema::create('operations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('workstation_id')->constrained();
-            $table->integer('sequence');
             $table->text('description');
             $table->string('status')->default('active');
             $table->foreignId('employee_id')->nullable()->constrained('users');
             $table->foreignId('supervisor_id')->nullable()->constrained('users');
             $table->foreignId('third_party_service_id')->nullable()->constrained('third_party_services');
             $table->foreignId('machine_id')->nullable()->constrained('production_machines');
-            $table->integer('setup_time')->default(0);
-            $table->integer('run_time')->default(0);
+            $table->integer('machine_setup_time')->default(0);
+            $table->integer('machine_run_time')->default(0);
+            $table->integer('labor_setup_time')->default(0);
+            $table->integer('labor_run_time')->default(0);
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->softDeletes();

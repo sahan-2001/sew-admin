@@ -367,15 +367,24 @@ class AssignDailyOperationsResource extends Resource
                                         ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
                                         ->searchable(),
                                     
-                                    TextInput::make('setup_time')
-                                        ->label('Setup Time')
+                                    TextInput::make('machine_setup_time')
+                                        ->label('Machine Setup Time')
+                                        ->numeric()
+                                        ->default(0),
+                                        
+                                    TextInput::make('labor_setup_time')
+                                        ->label('Labor Setup Time')
                                         ->numeric()
                                         ->default(0),
 
-                                    TextInput::make('run_time')
-                                        ->label('Run Time')
+                                    TextInput::make('machine_run_time')
+                                        ->label('Machine Run Time')
                                         ->numeric()
-                                        ->required()
+                                        ->default(0),
+                                        
+                                    TextInput::make('labor_run_time')
+                                        ->label('Labor Run Time')
+                                        ->numeric()
                                         ->default(0),
                                         
                                     Select::make('target_durattion')

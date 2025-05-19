@@ -43,7 +43,6 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
         $umOperation = UMOperation::create([
             'order_type' => $data['order_type'],
             'order_id' => $data['order_id'],
-            'operation_date' => $data['operation_date'],
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
@@ -61,9 +60,10 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
                 'production_line_id' => $operation['production_line_id'],
                 'workstation_id' => $operation['workstation_id'],
                 'operation_id' => $operation['operation_id'],
-                'sequence' => $operation['sequence'],
-                'setup_time' => $operation['setup_time'],
-                'run_time' => $operation['run_time'],
+                'machine_setup_time' => $operation['machine_setup_time'] ?? null,
+                'machine_run_time' => $operation['machine_run_time'] ?? null,
+                'labor_setup_time' => $operation['labor_setup_time'] ?? null,
+                'labor_run_time' => $operation['labor_run_time'] ?? null,
                 'target_duration' => $operation['target_duration'] ?? null,
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
