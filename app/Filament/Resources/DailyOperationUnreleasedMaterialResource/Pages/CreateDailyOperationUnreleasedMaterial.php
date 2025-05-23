@@ -43,6 +43,7 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
         $umOperation = UMOperation::create([
             'order_type' => $data['order_type'],
             'order_id' => $data['order_id'],
+            'operation_date' => $data['operation_date'],
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
@@ -60,10 +61,10 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
                 'production_line_id' => $operation['production_line_id'],
                 'workstation_id' => $operation['workstation_id'],
                 'operation_id' => $operation['operation_id'],
-                'machine_setup_time' => $operation['machine_setup_time'] ?? null,
-                'machine_run_time' => $operation['machine_run_time'] ?? null,
-                'labor_setup_time' => $operation['labor_setup_time'] ?? null,
-                'labor_run_time' => $operation['labor_run_time'] ?? null,
+                'machine_setup_time' => $operation['machine_setup_time'] ?? 0,
+                'machine_run_time' => $operation['machine_run_time'] ?? 0,
+                'labor_setup_time' => $operation['labor_setup_time'] ?? 0,
+                'labor_run_time' => $operation['labor_run_time'] ?? 0,
                 'target_duration' => $operation['target_duration'] ?? null,
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
@@ -104,6 +105,8 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
             UMOperationLineService::create([
                 'third_party_service_id' => $serviceId,
                 'u_m_operation_line_id' => $lineId,
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
         }
     }

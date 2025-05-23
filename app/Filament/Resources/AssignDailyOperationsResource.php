@@ -187,8 +187,7 @@ class AssignDailyOperationsResource extends Resource
                                 
                             TextInput::make('workstation_name')
                                 ->label('Workstation Name - Released Items')
-                                ->disabled()
-                                ,
+                                ->disabled(),
 
                             TextInput::make('production_line_name')
                                 ->label('Production Line Name')
@@ -207,6 +206,20 @@ class AssignDailyOperationsResource extends Resource
                         ]),
                 ]),
             
+            Section::make('Operation Details')
+                ->schema([
+                    Grid::make(1)
+                        ->schema([
+                            DatePicker::make('operation_date')
+                                ->label('Operation Date')
+                                ->required()
+                                ->default(now())
+                                ->reactive()
+                                ->dehydrated(),
+                        ]),
+                ]),
+
+
             Section::make('Select From Pre-Defined Operations')
                 ->schema([
                     Grid::make(2)

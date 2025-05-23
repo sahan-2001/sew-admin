@@ -18,4 +18,20 @@ class EnterPerformanceRecord extends Model
     protected $casts = [
         'performance_records' => 'array',
     ];
-}
+
+    public function assignedOperations()
+    {
+        return $this->hasMany(AssignedDailyOperationLines::class);
+    }
+
+    public function temporaryOperation()
+    {
+        return $this->belongsTo(TemporaryOperation::class);
+    }
+
+    public function umOperation()
+    {
+        return $this->belongsTo(UMOperation::class);
+    }
+
+    }

@@ -26,7 +26,7 @@ class AssignDailyOperationLine extends Model
 
     public function assignDailyOperation()
     {
-        return $this->belongsTo(AssignDailyOperation::class);
+        return $this->belongsTo(AssignDailyOperation::class, 'assign_daily_operation_id');
     }
 
     public function productionLine()

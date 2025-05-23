@@ -8,7 +8,7 @@ class AssignDailyOperation extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['order_type', 'order_id', 'created_by', 'updated_by'];
+    protected $fillable = ['order_type', 'order_id', 'created_by', 'updated_by', 'operation_date'];
     
 
     public function lines()

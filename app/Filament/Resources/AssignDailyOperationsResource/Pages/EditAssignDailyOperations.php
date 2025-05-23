@@ -25,6 +25,7 @@ class EditAssignDailyOperations extends EditRecord
         
         $data['order_type'] = $this->getRecord()->order_type;
         $data['order_id'] = $this->getRecord()->order_id;
+        $data['operation_date'] = $this->getRecord()->operation_date;
         
         // Load lines with nested relations
         $data['daily_operations'] = $this->getRecord()->lines()->with([
@@ -53,6 +54,8 @@ class EditAssignDailyOperations extends EditRecord
                 'target_duration' => $line->target_duration,
                 'target' => $line->target,
                 'measurement_unit' => $line->measurement_unit,
+                
+
             ];
         })->toArray();
 

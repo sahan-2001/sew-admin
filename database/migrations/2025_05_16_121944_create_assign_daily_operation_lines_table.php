@@ -12,10 +12,10 @@ return new class extends Migration {
             $table->unsignedBigInteger('production_line_id');
             $table->unsignedBigInteger('workstation_id');
             $table->unsignedBigInteger('operation_id');
-            $table->integer('machine_setup_time')->default(0);
-            $table->integer('machine_run_time')->default(0);
-            $table->integer('labor_setup_time')->default(0);
-            $table->integer('labor_run_time')->default(0);
+            $table->integer('machine_setup_time')->nullable()->default(0);
+            $table->integer('machine_run_time')->nullable()->default(0);
+            $table->integer('labor_setup_time')->nullable()->default(0);
+            $table->integer('labor_run_time')->nullable()->default(0);
             $table->string('target_duration')->nullable();
             $table->integer('target')->nullable();
             $table->string('measurement_unit')->nullable();

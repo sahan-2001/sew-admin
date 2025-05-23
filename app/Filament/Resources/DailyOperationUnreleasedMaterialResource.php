@@ -141,6 +141,19 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                 ]),
 
             
+            Section::make('Operation Details')
+                ->schema([
+                    Grid::make(1)
+                        ->schema([
+                            DatePicker::make('operation_date')
+                                ->label('Operation Date')
+                                ->required()
+                                ->default(now())
+                                ->reactive()
+                                ->dehydrated(),
+                        ]),
+                ]),
+                
             Section::make('Add New Operation')
                 ->schema([
                     Grid::make(3)
@@ -294,7 +307,7 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                             ]),
                         ]),
                 ]),
-
+                
             Section::make('Daily Operation Lines')
                 ->schema([
                     Repeater::make('daily_operations')
