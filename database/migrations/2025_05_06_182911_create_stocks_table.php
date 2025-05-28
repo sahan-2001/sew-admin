@@ -19,7 +19,7 @@ class CreateStocksTable extends Migration
             $table->integer('quantity');
             $table->decimal('cost', 10, 2);
             $table->unsignedBigInteger('location_id');
-            $table->unsignedBigInteger('purchase_order_id');
+            $table->unsignedBigInteger('purchase_order_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

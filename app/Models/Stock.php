@@ -17,27 +17,44 @@ class Stock extends Model
         'purchase_order_id', 
     ];
 
-    /**
-     * Define the relationship with the InventoryItem model.
-     */
+
     public function item()
     {
         return $this->belongsTo(InventoryItem::class, 'item_id');
     }
 
-    /**
-     * Define the relationship with the InventoryLocation model.
-     */
     public function location()
     {
         return $this->belongsTo(InventoryLocation::class, 'location_id');
     }
 
-    /**
-     * Define the relationship with the PurchaseOrder model.
-     */
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($stock) {
+            $stock->updateItemAvailableQuantity();
+        });
+
+        static::deleted(function ($stock) {
+            $stock->updateItemAvailableQuantity();
+        });
+    }
+
+    public function updateItemAvailableQuantity()
+    {
+        $item = $this->item; 
+        if ($item) {
+            $sum = self::where('item_id', $item->id)->sum('quantity');
+
+            $item->available_quantity = $sum;
+            $item->saveQuietly();
+        }
+    }
+
 }
