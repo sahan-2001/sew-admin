@@ -64,6 +64,16 @@ class AssignDailyOperationLine extends Model
         return $this->hasMany(AssignedThirdPartyService::class);
     }
 
+    public function employees()
+    {
+        return $this->belongsToMany(User::class, 'assign_daily_operation_line_employees', 'operation_line_id', 'employee_id');
+    }
+
+    public function supervisors()
+    {
+        return $this->belongsToMany(User::class, 'assign_daily_operation_line_supervisors', 'operation_line_id', 'supervisor_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

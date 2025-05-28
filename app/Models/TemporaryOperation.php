@@ -44,6 +44,17 @@ class TemporaryOperation extends Model
         return $this->belongsToMany(User::class, 'temporary_operation_supervisors');
     }
 
+    public function temporaryOperationEmployees()
+    {
+        return $this->hasMany(TemporaryOperationEmployee::class, 'temporary_operation_id');
+    }
+
+    public function temporaryOperationSupervisors()
+    {
+        return $this->hasMany(TemporaryOperationSupervisor::class, 'temporary_operation_id');
+    }
+
+
     public function productionMachines()
     {
         return $this->belongsToMany(ProductionMachine::class, 'temporary_operation_production_machines');

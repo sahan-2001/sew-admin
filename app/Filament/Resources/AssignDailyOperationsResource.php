@@ -383,22 +383,30 @@ class AssignDailyOperationsResource extends Resource
                                     TextInput::make('machine_setup_time')
                                         ->label('Machine Setup Time')
                                         ->numeric()
-                                        ->default(0),
+                                        ->default(0)
+                                        ->dehydrated()
+                                        ->reactive(),
                                         
                                     TextInput::make('labor_setup_time')
                                         ->label('Labor Setup Time')
                                         ->numeric()
-                                        ->default(0),
+                                        ->default(0)
+                                        ->dehydrated()
+                                        ->reactive(),
 
                                     TextInput::make('machine_run_time')
                                         ->label('Machine Run Time')
                                         ->numeric()
-                                        ->default(0),
+                                        ->default(0)
+                                        ->dehydrated()
+                                        ->reactive(),
                                         
                                     TextInput::make('labor_run_time')
                                         ->label('Labor Run Time')
                                         ->numeric()
-                                        ->default(0),
+                                        ->default(0)
+                                        ->dehydrated()
+                                        ->reactive(),
                                         
                                     Select::make('target_durattion')
                                         ->label('Target Duration')

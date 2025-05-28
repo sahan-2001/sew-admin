@@ -10,7 +10,7 @@ class UMOperationLineMachine extends Model
 {
     use SoftDeletes, HasFactory;
 
-    protected $fillable = ['production_machine_id', 'au_m_operation_line_id', 'created_by','updated_by',];
+    protected $fillable = ['production_machine_id', 'u_m_operation_line_id', 'created_by', 'updated_by'];
 
     public function line()
     {

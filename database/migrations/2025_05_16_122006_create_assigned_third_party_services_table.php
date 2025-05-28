@@ -10,6 +10,8 @@ return new class extends Migration {
             $table->id();
             $table->unsignedBigInteger('third_party_service_id');
             $table->unsignedBigInteger('assign_daily_operation_line_id');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
 

@@ -14,6 +14,21 @@ class AssignedThirdPartyService extends Model
     {
         return $this->belongsTo(AssignDailyOperationLine::class, 'assign_daily_operation_line_id');
     }
+    
+    public function thirdPartyService()
+    {
+        return $this->belongsTo(ThirdPartyService::class, 'third_party_service_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 
     protected static function booted()
     {

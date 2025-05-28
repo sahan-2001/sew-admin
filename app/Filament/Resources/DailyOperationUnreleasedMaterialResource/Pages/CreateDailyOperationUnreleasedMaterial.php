@@ -61,10 +61,10 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
                 'production_line_id' => $operation['production_line_id'],
                 'workstation_id' => $operation['workstation_id'],
                 'operation_id' => $operation['operation_id'],
-                'machine_setup_time' => $operation['machine_setup_time'] ?? 0,
-                'machine_run_time' => $operation['machine_run_time'] ?? 0,
-                'labor_setup_time' => $operation['labor_setup_time'] ?? 0,
-                'labor_run_time' => $operation['labor_run_time'] ?? 0,
+                'machine_setup_time' => $operation['machine_setup_time'],
+                'machine_run_time' => $operation['machine_run_time'],
+                'labor_setup_time' => $operation['labor_setup_time'],
+                'labor_run_time' => $operation['labor_run_time'],
                 'target_duration' => $operation['target_duration'] ?? null,
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
@@ -91,6 +91,7 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
             UMOperationLineSupervisor::create([
                 'user_id' => $supervisorId,
                 'u_m_operation_line_id' => $lineId,
+                
             ]);
         }
 
@@ -98,6 +99,8 @@ class CreateDailyOperationUnreleasedMaterial extends CreateRecord
             UMOperationLineMachine::create([
                 'production_machine_id' => $machineId,
                 'u_m_operation_line_id' => $lineId,
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
         }
 

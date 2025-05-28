@@ -62,10 +62,10 @@ class CreateAssignDailyOperations extends CreateRecord
                 'production_line_id' => $operation['production_line_id'],
                 'workstation_id' => $operation['workstation_id'],
                 'operation_id' => $operation['operation_id'],
-                'machine_setup_time' => $operation['machine_setup_time'] ?? 0,
-                'labor_setup_time' => $operation['labor_setup_time'] ?? 0,
-                'machine_run_time' => $operation['machine_run_time'] ?? 0,
-                'labor_run_time' => $operation['labor_run_time'] ?? 0,
+                'machine_setup_time' => $operation['machine_setup_time'],
+                'labor_setup_time' => $operation['labor_setup_time'],
+                'machine_run_time' => $operation['machine_run_time'],
+                'labor_run_time' => $operation['labor_run_time'] ,
                 'target_duration' => $operation['target_durattion'] ?? null, 
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
@@ -106,6 +106,8 @@ class CreateAssignDailyOperations extends CreateRecord
             AssignedThirdPartyService::create([
                 'third_party_service_id' => $serviceId,
                 'assign_daily_operation_line_id' => $lineId,
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
         }
     }
