@@ -210,11 +210,13 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                             TextInput::make('selected_machine__setup_time')
                                 ->label('Machine Setup Time (minutes)')
                                 ->numeric()
+                                ->default(0)
                                 ->hidden(),
 
                             TextInput::make('selected_machine_run_time')
                                 ->label('Machine Run Time (minutes)')
                                 ->numeric()
+                                ->default(0)
                                 ->hidden(),
 
                             TextInput::make('selected_labor_setup_time')
@@ -295,8 +297,10 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                             'operation_description' => $operation->description ?? 'N/A',
                                             'sequence' => $sequence,
                                             'status' => $operation->status ?? 'active',
-                                            'setup_time' => $get('selected_setup_time') ?? $operation->setup_time ?? 0,
-                                            'run_time' => $get('selected_run_time') ?? $operation->run_time ?? 0,
+                                            'machine_setup_time' => $get('selected_machine_setup_time') ?? $operation->machine_setup_time ?? 0,
+                                            'machine_run_time' => $get('selected_machine_run_time') ?? $operation->machine_run_time ?? 0,
+                                            'labor_setup_time' => $get('selected_labor_setup_time') ?? $operation->labor_setup_time ?? 0,
+                                            'labor_run_time' => $get('selected_labor_run_time') ?? $operation->labor_run_time ?? 0,
                                             'employee_ids' => $employeeIds,
                                             'supervisor_ids' => $supervisorIds,
                                             'machine_ids' => $machineIds,

@@ -66,7 +66,7 @@ class CreateAssignDailyOperations extends CreateRecord
                 'labor_setup_time' => $operation['labor_setup_time'],
                 'machine_run_time' => $operation['machine_run_time'],
                 'labor_run_time' => $operation['labor_run_time'] ,
-                'target_duration' => $operation['target_durattion'] ?? null, 
+                'target_duration' => $operation['target_duration'] ?? null,
                 'target' => $operation['target'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
                 'created_by' => auth()->id(),

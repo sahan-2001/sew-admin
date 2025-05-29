@@ -18,8 +18,11 @@ return new class extends Migration
             $table->foreignId('production_line_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('workstation_id')->nullable()->constrained()->nullOnDelete();
             $table->text('description');
-            $table->integer('setup_time')->default(0);
-            $table->integer('run_time');
+            $table->date('operation_date');
+            $table->integer('machine_setup_time')->default(0);
+            $table->integer('machine_run_time')->default(0);
+            $table->integer('labor_setup_time')->default(0);
+            $table->integer('labor_run_time')->default(0);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

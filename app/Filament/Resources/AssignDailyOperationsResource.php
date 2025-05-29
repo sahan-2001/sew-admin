@@ -312,8 +312,10 @@ class AssignDailyOperationsResource extends Resource
                                 'operation_description' => $operation->description,
                                 'sequence' => $sequence,
                                 'status' => $operation->status,
-                                'setup_time' => $operation->setup_time,
-                                'run_time' => $operation->run_time,
+                                'machine_setup_time' => $operation->machine_setup_time,
+                                'machine_run_time' => $operation->machine_run_time,
+                                'labor_setup_time' => $operation->labor_setup_time,
+                                'labor_run_time' => $operation->labor_run_time,
                                 'employee_ids' => $employeeIds,
                                 'supervisor_ids' => $supervisorIds,
                                 'machine_ids' => $machineIds,
@@ -417,9 +419,11 @@ class AssignDailyOperationsResource extends Resource
                                             'hourly' => 'Hourly',
                                             'daily' => 'Daily',
                                         ]),
+
                                     TextInput::make('target')
                                         ->label('Target')
                                         ->numeric(),
+                                        
                                     Select::make('measurement_unit')
                                         ->label('Measurement Unit')
                                         ->options([

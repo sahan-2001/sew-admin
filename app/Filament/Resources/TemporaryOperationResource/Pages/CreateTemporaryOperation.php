@@ -20,8 +20,11 @@ class CreateTemporaryOperation extends CreateRecord
             'description' => $data['description'] ?? null,
             'production_line_id' => $data['production_line_id'] ?? null,
             'workstation_id' => $data['workstation_id'] ?? null,
-            'setup_time' => $data['setup_time'] ?? 0,
-            'run_time' => $data['run_time'] ?? 0,
+            'operation_date' => $data['operation_date'] ?? now(),
+            'machine_setup_time' => $data['machine_setup_time'] ?? 0,
+            'machine_run_time' => $data['machine_run_time'] ?? 0,
+            'labor_setup_time' => $data['labor_setup_time'] ?? 0,
+            'labor_run_time' => $data['labor_run_time'] ?? 0,
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);

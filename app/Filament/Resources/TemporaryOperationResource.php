@@ -17,6 +17,8 @@ use Filament\Forms\Components\{Select, Textarea, Grid, Section, Repeater, TextIn
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
+use Filament\Forms\Components\DatePicker;
+
 
 class TemporaryOperationResource extends Resource
 {
@@ -99,6 +101,22 @@ class TemporaryOperationResource extends Resource
 
                     
 
+                Section::make('Operation Details')
+                ->schema([
+                    Grid::make(1)
+                        ->schema([
+                            DatePicker::make('operation_date')
+                                ->label('Operation Date')
+                                ->required()
+                                ->default(now())
+                                ->reactive()
+                                ->disabled(function () {
+                                        return !auth()->user()->can('select_next_operation_dates');
+                                    })
+                                ->dehydrated(),
+                        ]),
+                ]),
+                
                 Section::make('Production Details')
                     ->schema([
                                 Textarea::make('description')
@@ -122,14 +140,27 @@ class TemporaryOperationResource extends Resource
                                     ->reactive()
                                     ->dehydrated(),
 
-                                TextInput::make('setup_time')
-                                    ->label('Setup Time')
+                                TextInput::make('machine_setup_time')
+                                    ->label('Machine Setup Time')
                                     ->numeric()
                                     ->default(0)
                                     ->columns(1),
 
-                                TextInput::make('run_time')
-                                    ->label('Run Time')
+                                TextInput::make('machine_run_time')
+                                    ->label('Machine Run Time')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->required()
+                                    ->columns(1),
+
+                                TextInput::make('labor_setup_time')
+                                    ->label('Labor Setup Time')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->columns(1),
+
+                                TextInput::make('labor_run_time')
+                                    ->label('Labor Run Time')
                                     ->numeric()
                                     ->default(0)
                                     ->required()

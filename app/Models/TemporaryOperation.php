@@ -18,8 +18,11 @@ class TemporaryOperation extends Model
         'description',
         'production_line_id',
         'workstation_id',
-        'setup_time',
-        'run_time',
+        'operation_date',
+        'machine_setup_time',
+        'machine_run_time',
+        'labor_setup_time',
+        'labor_run_time',
         'created_by',
         'updated_by',
     ];
