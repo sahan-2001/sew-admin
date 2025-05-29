@@ -131,8 +131,9 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view self activity logs']);
         Permission::firstOrCreate(['name' => 'view other users activity logs']);
 
-        // Enter Daily Production Performace Data permissions
+        // Change daily for production data 
         Permission::firstOrCreate(['name' => 'select_previous_performance_dates']);
+        Permission::firstOrCreate(['name' => 'select_next_operation_dates']);
 
 
         // Roles

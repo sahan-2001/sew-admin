@@ -215,6 +215,9 @@ class AssignDailyOperationsResource extends Resource
                                 ->required()
                                 ->default(now())
                                 ->reactive()
+                                ->disabled(function () {
+                                        return !auth()->user()->can('select_next_operation_dates');
+                                    })
                                 ->dehydrated(),
                         ]),
                 ]),
@@ -457,10 +460,7 @@ class AssignDailyOperationsResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('Sequence ID')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('order_type'),
                 Tables\Columns\TextColumn::make('order_id')->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created At')
-                    ->date('Y-m-d')      
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('operation_date')->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('order_type')
@@ -472,7 +472,8 @@ class AssignDailyOperationsResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-            ]);
+            ])
+            ->defaultSort('id', 'desc');
     }
 
     public static function getRelations(): array

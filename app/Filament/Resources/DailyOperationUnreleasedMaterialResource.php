@@ -150,6 +150,9 @@ class DailyOperationUnreleasedMaterialResource extends Resource
                                 ->required()
                                 ->default(now())
                                 ->reactive()
+                                ->disabled(function () {
+                                        return !auth()->user()->can('select_next_operation_dates');
+                                    })
                                 ->dehydrated(),
                         ]),
                 ]),
@@ -434,7 +437,8 @@ class DailyOperationUnreleasedMaterialResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-            ]);
+            ])
+            ->defaultSort('id', 'desc');
     }
 
     public static function getRelations(): array
