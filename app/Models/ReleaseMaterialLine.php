@@ -30,6 +30,12 @@ class ReleaseMaterialLine extends Model
         return $this->belongsTo(ReleaseMaterial::class);
     }
 
+    public function location()
+    {
+        return $this->belongsTo(\App\Models\InventoryLocation::class, 'location_id');
+    }
+
+
     protected static function booted()
     {
         static::creating(function ($model) {

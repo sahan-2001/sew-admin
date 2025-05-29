@@ -38,7 +38,14 @@ class ReleaseMaterialResource extends Resource
                                     'sample_order' => 'Sample Order',
                                 ])
                                 ->required()
-                                ->reactive(),
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, $set) {
+                                    // Clear all order-related fields when order type changes
+                                    $set('order_id', null);
+                                    $set('customer_id', null);
+                                    $set('customer_name', null);
+                                    $set('wanted_date', null);
+                                }),
 
                             Select::make('order_id')
                                 ->label('Order')
@@ -55,6 +62,13 @@ class ReleaseMaterialResource extends Resource
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, $set, $get) {
                                     $orderType = $get('order_type');
+                                    if ($state === null) {
+                                        $set('customer_id', null);
+                                        $set('customer_name', null);
+                                        $set('wanted_date', null);
+                                        return;
+                                    }
+                                    
                                     if ($orderType === 'customer_order') {
                                         $order = \App\Models\CustomerOrder::with('customer')->find($state);
                                         if ($order) {
@@ -69,10 +83,6 @@ class ReleaseMaterialResource extends Resource
                                             $set('customer_name', $order->customer->name ?? 'Unknown');
                                             $set('wanted_date', $order->wanted_delivery_date);
                                         }
-                                    } else {
-                                        $set('customer_id', null);
-                                        $set('customer_name', null);
-                                        $set('wanted_date', null);
                                     }
                                 }),
 
@@ -93,6 +103,7 @@ class ReleaseMaterialResource extends Resource
 
                             Textarea::make('notes')
                                 ->label('Notes')
+                                ->columnSpan(2)
                                 ->nullable(),
                         ]),
                 ]),
@@ -133,16 +144,35 @@ class ReleaseMaterialResource extends Resource
 
                                     Forms\Components\Select::make('stock_id')
                                         ->label('Select Stock (Location, Qty, Cost)')
-                                        ->options(function ($get) {
+                                        ->options(function ($get, $set, $component) {
                                             $itemId = $get('item_id');
+                                            $currentStockId = $get('stock_id');
+                                            $repeaterState = $get('../../lines'); // Get all repeater items
+                                            
+                                            // Get all selected stock IDs from other repeater items
+                                            $usedStockIds = collect($repeaterState)
+                                                ->pluck('stock_id')
+                                                ->filter()
+                                                ->unique()
+                                                ->values()
+                                                ->all();
+                                                
                                             if ($itemId) {
-                                                return \App\Models\Stock::where('item_id', $itemId)
+                                                $query = \App\Models\Stock::where('item_id', $itemId)
                                                     ->where('quantity', '>', 0)
-                                                    ->with('location')
-                                                    ->get()
+                                                    ->with('location');
+                                                    
+                                                // Exclude already selected stock IDs, but include the current one if set
+                                                if (!empty($usedStockIds)) {
+                                                    $query->whereNotIn('id', $usedStockIds)
+                                                        ->orWhere('id', $currentStockId);
+                                                }
+                                                
+                                                return $query->get()
                                                     ->mapWithKeys(function ($stock) {
+                                                        $poId = $stock->purchase_order_id ?? '###'; 
                                                         return [
-                                                            $stock->id => "{$stock->location->name} - Qty: {$stock->quantity} - Cost: {$stock->cost}"
+                                                            $stock->id => "{$stock->location->name} - Qty: {$stock->quantity} - PO ID: {$poId}"
                                                         ];
                                                     });
                                             }
@@ -232,12 +262,53 @@ class ReleaseMaterialResource extends Resource
                 TextColumn::make('created_at')->sortable(),
             ])
             ->actions([
+            Tables\Actions\Action::make('viewItems')
+                ->label('View Items')
+                ->icon('heroicon-o-eye')
+                ->modalHeading(fn ($record) => "Released Items with ID #" . str_pad($record->id, 5, '0', STR_PAD_LEFT))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->form([
+                    Forms\Components\Repeater::make('items')
+                        ->label('')
+                        ->schema([
+                            Forms\Components\Grid::make(4)
+                                ->schema([
+                                    Forms\Components\TextInput::make('item_code')
+                                        ->label('Item Code')
+                                        ->disabled(),
+                                    Forms\Components\TextInput::make('item_name')
+                                        ->label('Item Name')
+                                        ->disabled(),
+                                    Forms\Components\TextInput::make('quantity')
+                                        ->label('Quantity')
+                                        ->disabled(),
+                                    Forms\Components\TextInput::make('location')
+                                        ->label('Location')
+                                        ->disabled(),
+                                ])
+                        ])
+                        ->default(function ($record) {
+                            return $record->lines->map(function ($line) {
+                                return [
+                                    'item_code' => $line->item->item_code ?? 'N/A',
+                                    'item_name' => $line->item->name ?? 'N/A',
+                                    'quantity' => $line->quantity,
+                                    'location' => $line->location->name ?? 'N/A',
+                                ];
+                            });
+                        })
+                        ->disableItemCreation()
+                        ->disableItemDeletion()
+                        ->disableItemMovement()
+                        ->columnSpan('full'),
+                ]),
+                
                 Tables\Actions\Action::make('re-correction')
                     ->label('Re-correct')
                     ->color('danger')
                     ->requiresConfirmation()
                     ->action(function ($record) {
-                        // Perform the re-correction logic
                         static::handleReCorrection($record);
                     })
                     ->icon('heroicon-o-trash'),
@@ -249,27 +320,36 @@ class ReleaseMaterialResource extends Resource
 
     protected static function handleReCorrection($record)
     {
-        // Soft delete the ReleaseMaterial record
-        $record->delete();
-
-        // Retrieve related lines
-        $lines = $record->lines;
-
-        foreach ($lines as $line) {
-            // Soft delete the ReleaseMaterialLine record
-            $line->delete();
-
-            // Update the stock table
-            $stock = \App\Models\Stock::where('item_id', $line->item_id)
-                ->where('location_id', $line->location_id)
-                ->first();
-
-            if ($stock) {
-                $stock->quantity += $line->quantity;
-                $stock->save();
+        \DB::transaction(function () use ($record) {
+            $record->load('lines');
+            
+            foreach ($record->lines as $line) {
+                $stock = Stock::find($line->stock_id);
+                
+                if ($stock) {
+                    $stock->quantity += $line->quantity;
+                    $stock->save();
+                    
+                    \Log::info("Stock restored - ID: {$stock->id}, Item: {$stock->item_id}, " . 
+                            "Location: {$stock->location_id}, Added Qty: {$line->quantity}");
+                } else {
+                    \Log::warning("Stock not found for line ID: {$line->id}, Stock ID: {$line->stock_id}");
+                }
+                
+                $line->delete();
             }
-        }
+            
+            $record->delete();
+            
+            \Log::info("Release Material and all lines soft deleted - ID: {$record->id}");
+        });
+        
+        \Filament\Notifications\Notification::make()
+            ->title('Re-correction completed successfully')
+            ->success()
+            ->send();
     }
+
 
     public static function getPages(): array
     {

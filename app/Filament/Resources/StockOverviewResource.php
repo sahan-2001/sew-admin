@@ -117,6 +117,7 @@ class StockOverviewResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(Stock::query()->where('quantity', '>', 0)) // Only show stocks with quantity > 0
             ->columns([
                 TextColumn::make('location.warehouse.name')
                     ->label('Warehouse')
@@ -148,6 +149,13 @@ class StockOverviewResource extends Resource
                 Tables\Filters\SelectFilter::make('location_id')
                     ->label('Filter by Location')
                     ->relationship('location', 'name'),
+                
+                // Add a filter to show zero quantity items if needed
+                Tables\Filters\Filter::make('show_zero_quantity')
+                    ->label('Show Zero Quantity Items')
+                    ->query(fn (Builder $query) => $query->where('quantity', 0))
+                    ->default(false)
+                    ->hidden(),
             ]);
     }
 
