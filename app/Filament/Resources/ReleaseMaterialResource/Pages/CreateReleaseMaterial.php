@@ -1,21 +1,40 @@
 <?php
+
 namespace App\Filament\Resources\ReleaseMaterialResource\Pages;
 
 use App\Filament\Resources\ReleaseMaterialResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Stock;
 
 class CreateReleaseMaterial extends CreateRecord
 {
     protected static string $resource = ReleaseMaterialResource::class;
 
-    protected function handleRecordCreation(array $data): Model
+    protected function afterCreate(): void
     {
-        $releaseMaterial = parent::handleRecordCreation($data);
+        $record = $this->record;
 
-        // Deduct stock after creating the release material
-        $releaseMaterial->deductStock();
+        // 1. Update Order Status
+        if ($record->order_type === 'customer_order') {
+            $order = \App\Models\CustomerOrder::find($record->order_id);
+        } elseif ($record->order_type === 'sample_order') {
+            $order = \App\Models\SampleOrder::find($record->order_id);
+        }
 
-        return $releaseMaterial;
+        if (isset($order)) {
+            $order->status = 'started';
+            $order->save();
+        }
+
+        // 2. Deduct Quantity from Stock
+        foreach ($record->lines as $line) {
+            $stock = Stock::find($line->stock_id);
+            if ($stock && $stock->quantity >= $line->quantity) {
+                $stock->quantity -= $line->quantity;
+                $stock->save();
+            } else {
+                // Handle overdrawn stock edge case if necessary
+            }
+        }
     }
 }

@@ -131,38 +131,39 @@ class ReleaseMaterialResource extends Resource
                                         ->reactive()
                                         ->columnSpan(3),
 
-                                    Forms\Components\Select::make('location_id')
-                                        ->label('Stored Location')
+                                    Forms\Components\Select::make('stock_id')
+                                        ->label('Select Stock (Location, Qty, Cost)')
                                         ->options(function ($get) {
                                             $itemId = $get('item_id');
                                             if ($itemId) {
-                                                return Stock::where('item_id', $itemId)
+                                                return \App\Models\Stock::where('item_id', $itemId)
+                                                    ->where('quantity', '>', 0)
                                                     ->with('location')
                                                     ->get()
                                                     ->mapWithKeys(function ($stock) {
-                                                        return [$stock->location_id => $stock->location->name ?? 'Unknown Location'];
+                                                        return [
+                                                            $stock->id => "{$stock->location->name} - Qty: {$stock->quantity} - Cost: {$stock->cost}"
+                                                        ];
                                                     });
                                             }
                                             return [];
                                         })
                                         ->required()
+                                        ->dehydrated(true)
                                         ->reactive()
-                                        ->afterStateUpdated(function ($state, $set, $get) {
-                                            $itemId = $get('item_id');
-                                            if ($state && $itemId) {
-                                                $stock = Stock::where('item_id', $itemId)
-                                                    ->where('location_id', $state)
-                                                    ->first();
-                                                if ($stock) {
-                                                    $set('stored_quantity', $stock->quantity);
-                                                    $set('cost', $stock->cost);
-                                                } else {
-                                                    $set('stored_quantity', 0);
-                                                    $set('cost', 0);
-                                                }
+                                        ->afterStateUpdated(function ($state, $set) {
+                                            $stock = \App\Models\Stock::with('location')->find($state);
+                                            if ($stock) {
+                                                $set('location_id', $stock->location_id);
+                                                $set('stored_quantity', $stock->quantity);
+                                                $set('cost', $stock->cost);
+                                            } else {
+                                                $set('location_id', null);
+                                                $set('stored_quantity', 0);
+                                                $set('cost', 0);
                                             }
                                         })
-                                        ->columnSpan(3),
+                                        ->columnSpan(4),
 
                                     Forms\Components\TextInput::make('stored_quantity')
                                         ->label('Available Quantity')
@@ -170,27 +171,36 @@ class ReleaseMaterialResource extends Resource
                                         ->reactive()
                                         ->columnSpan(2),
 
+                                    Forms\Components\TextInput::make('location_id')
+                                        ->label('Location ID')
+                                        ->disabled()
+                                        ->reactive()
+                                        ->dehydrated(true),
+                                    
                                     Forms\Components\TextInput::make('cost')
                                         ->label('Cost')
                                         ->disabled()
                                         ->reactive()
                                         ->dehydrated(true)
                                         ->columnSpan(2),
-
+                                    
                                     Forms\Components\TextInput::make('quantity')
                                         ->label('Quantity')
                                         ->required()
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $locationId = $get('location_id');
-                                            $itemId = $get('item_id');
-                                            if ($locationId && $itemId) {
-                                                $stock = Stock::where('item_id', $itemId)
-                                                    ->where('location_id', $locationId)
-                                                    ->first();
-                                                if ($stock && $state > $stock->quantity) {
-                                                    $set('quantity', $stock->quantity); 
-                                                }
+                                            $stockId = $get('stock_id'); // Use stock_id if you're using the updated select method
+                                            $stock = \App\Models\Stock::find($stockId);
+
+                                            if ($stock && $state > $stock->quantity) {
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Entered quantity exceeds available stock.')
+                                                    ->body("Only {$stock->quantity} units are available at the selected location.")
+                                                    ->danger()
+                                                    ->persistent()
+                                                    ->send();
+
+                                                $set('quantity', null); // Clear the field
                                             }
                                         })
                                         ->numeric()

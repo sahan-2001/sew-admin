@@ -12,6 +12,7 @@ class ReleaseMaterialLine extends Model
     protected $fillable = [
         'release_material_id',
         'item_id',
+        'stock_id',
         'location_id',
         'quantity',
         'cost',
