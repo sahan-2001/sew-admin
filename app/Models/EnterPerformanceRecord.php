@@ -34,4 +34,9 @@ class EnterPerformanceRecord extends Model
         return $this->belongsTo(UMOperation::class);
     }
 
+    public function assigned_employees()
+    {
+        return $this->hasMany(\App\Models\AssignedEmployee::class, 'assign_daily_operation_line_id');
     }
+
+}

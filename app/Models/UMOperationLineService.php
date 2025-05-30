@@ -16,6 +16,11 @@ class UMOperationLineService extends Model
     {
         return $this->belongsTo(UMOperationLine::class, 'u_m_operation_line_id');
     }
+    
+    public function thirdPartyService()
+    {
+        return $this->belongsTo(ThirdPartyService::class, 'third_party_service_id');
+    }
 
     protected static function booted()
     {

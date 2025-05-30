@@ -14,6 +14,11 @@ class AssignedProductionMachine extends Model
     {
         return $this->belongsTo(AssignDailyOperationLine::class, 'assign_daily_operation_line_id');
     }
+    
+    public function productionMachine()
+    {
+        return $this->belongsTo(ProductionMachine::class, 'production_machine_id');
+    }
 
     protected static function booted()
     {

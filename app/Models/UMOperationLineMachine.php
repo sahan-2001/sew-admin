@@ -17,6 +17,11 @@ class UMOperationLineMachine extends Model
         return $this->belongsTo(UMOperationLine::class, 'u_m_operation_line_id');
     }
 
+    public function productionMachine()
+    {
+        return $this->belongsTo(ProductionMachine::class, 'production_machine_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

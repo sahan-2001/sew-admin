@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Permission;
 use App\Models\User;
 use App\Models\Company; 
 use App\Models\CompanyOwner;
+use App\Models\Category;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -201,7 +202,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'joined_date' => '2010-01-15',
         ]);
         
-        // Assign all permissions to the superuser role
+        // Create Default categories
+        Category::firstOrCreate(['name' => 'Waste Item']);
+        Category::firstOrCreate(['name' => 'By Products']);
+        
+        // // Assign all permissions to the superuser role
         $superuser->assignRole('admin');  // Assigning the superuser role
     }
 }

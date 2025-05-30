@@ -22,8 +22,14 @@ class TemporaryOperationService extends Model
 
     public function service()
     {
-        return $this->belongsTo(ThirdPartyService::class);
+        return $this->belongsTo(ThirdPartyService::class,);
     }
+
+    public function thirdPartyService()
+    {
+        return $this->belongsTo(ThirdPartyService::class, 'third_party_service_id');
+    }
+
 
     protected static function booted()
     {
