@@ -74,6 +74,7 @@ class EnterPerformanceRecordResource extends Resource
                                                 $set('target_duration', null);
                                                 $set('target', null);
                                                 $set('measurement_unit', null);
+                                                $set('employee_ids', null);
                                             }),
                                         ]),
 
@@ -102,6 +103,7 @@ class EnterPerformanceRecordResource extends Resource
                                                 $set('target_duration', null);
                                                 $set('target', null);
                                                 $set('measurement_unit', null);
+                                                $set('employee_ids', null);
                                             }),
 
                                         Select::make('operation_id')
@@ -164,6 +166,108 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('target_duration', $model->target_duration ?? null);
                                                     $set('target', $model->target ?? null);
                                                     $set('measurement_unit', $model->measurement_unit ?? null);
+                                                    
+                                                    // Fetch employee data and set employee IDs
+                                                    $employees = match ($operationType) {
+                                                        'assigned' => \App\Models\AssignedEmployee::with('user')->where('assign_daily_operation_line_id', $state)->get(),
+                                                        'um' => \App\Models\UMOperationLineEmployee::with('user')->where('u_m_operation_line_id', $state)->get(),
+                                                        'temp' => \App\Models\TemporaryOperationEmployee::with('user')->where('temporary_operation_id', $state)->get(),
+                                                        default => collect(),
+                                                    };
+
+                                                    $employeeDetails = $employees->map(function ($employee) {
+                                                        return [
+                                                            'user_id' => $employee->user_id,
+                                                            'name' => $employee->user->name ?? 'N/A',
+                                                        ];
+                                                    })->toArray();
+
+                                                    $set('employee_details', $employeeDetails);
+                                                    $set('employee_ids', $employees->pluck('user_id')->implode(', '));
+
+                                                    // Fetch production machine data 
+                                                    $machines = match ($operationType) {
+                                                        'assigned' => \App\Models\AssignedProductionMachine::with('productionMachine')
+                                                            ->where('assign_daily_operation_line_id', $state)
+                                                            ->get(),
+                                                        'um' => \App\Models\UMOperationLineMachine::with('productionMachine')
+                                                            ->where('u_m_operation_line_id', $state)
+                                                            ->get(),
+                                                        'temp' => \App\Models\TemporaryOperationProductionMachine::with('productionMachine')
+                                                            ->where('temporary_operation_id', $state)
+                                                            ->get(),
+                                                        default => collect(),
+                                                    };
+                                                    
+                                                    if ($machines->isEmpty()) {
+                                                        return 'No machines assigned.';
+                                                    }
+
+                                                    $machineDetails = $machines->map(function ($machine) {
+                                                        return [
+                                                            'id' => $machine->productionMachine->id ?? null,
+                                                            'name' => $machine->productionMachine->name ?? 'Unnamed',
+                                                        ];
+                                                    })->toArray();
+                                                    
+                                                    $set('machines', $machineDetails);
+
+
+                                                    // Fetch supervisor data 
+                                                    $supervisors = match ($operationType) {
+                                                        'assigned' => \App\Models\AssignedSupervisor::with('user')
+                                                            ->where('assign_daily_operation_line_id', $state)
+                                                            ->get(),
+                                                        'um' => \App\Models\UMOperationLineSupervisor::with('user')
+                                                            ->where('u_m_operation_line_id', $state)
+                                                            ->get(),
+                                                        'temp' => \App\Models\TemporaryOperationSupervisor::with('user')
+                                                            ->where('temporary_operation_id', $state)
+                                                            ->get(),
+                                                        default => collect(),
+                                                    };
+                                                    
+                                                    if ($supervisors->isEmpty()) {
+                                                        return 'No supervisors assigned.';
+                                                    }
+
+                                                    $supervisorDetails = $supervisors->map(function ($supervisor) {
+                                                        return [
+                                                            'user_id' => $supervisor->user_id,
+                                                            'name' => $supervisor->user->name ?? 'N/A',
+                                                        ];
+                                                    })->toArray();
+
+                                                    $set('supervisor_details', $supervisorDetails);
+                                                    $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
+
+
+                                                    // Fetch third party service data 
+                                                    $services = match ($operationType) {
+                                                        'assigned' => \App\Models\AssignedThirdPartyService::with('thirdPartyService')
+                                                            ->where('assign_daily_operation_line_id', $state)
+                                                            ->get(),
+                                                        'um' => \App\Models\UMOperationLineService::with('thirdPartyService')
+                                                            ->where('u_m_operation_line_id', $state)
+                                                            ->get(),
+                                                        'temp' => \App\Models\TemporaryOperationService::with('thirdPartyService')
+                                                            ->where('temporary_operation_id', $state)
+                                                            ->get(),
+                                                        default => collect(),
+                                                    };
+                                                    
+                                                    if ($services->isEmpty()) {
+                                                        return 'No services assigned.';
+                                                    }
+
+                                                    $serviceDetails = $services->map(function ($service) {
+                                                        return [
+                                                            'id' => $service->thirdPartyService->id ?? null,
+                                                            'name' => $service->thirdPartyService->name ?? 'Unnamed',
+                                                        ];
+                                                    })->toArray();
+                                                    
+                                                    $set('services', $serviceDetails);
                                                 }
                                             }),
 
@@ -181,6 +285,24 @@ class EnterPerformanceRecordResource extends Resource
                                             ->label('Operation Date')
                                             ->disabled()
                                             ->columns(1),
+                                    ]),
+
+                                Section::make('Assigned Employees')
+                                    ->columns(1)
+                                    ->schema([
+                                        Textarea::make('employee_ids')
+                                            ->label('Employee IDs')
+                                            ->disabled()
+                                            ->rows(3)
+                                            ->placeholder('Employee IDs will be displayed here when an operation is selected')
+                                            ->columnSpanFull(),
+
+                                        Textarea::make('machines')
+                                            ->label('Machine Names')
+                                            ->disabled()
+                                            ->rows(3)
+                                            ->placeholder('Machine names will be displayed here when an operation is selected')
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
 
@@ -270,10 +392,6 @@ class EnterPerformanceRecordResource extends Resource
                                 Section::make('Operated Time Frame')
                                     ->columns(4)
                                     ->schema([
-                                        Repeater::make('time_frames')
-                                            ->label('Operated Time Frames & Production')
-                                            ->columnSpanFull()
-                                            ->schema([
                                                 Section::make()
                                                     ->columns(4)
                                                     ->schema([
@@ -409,232 +527,178 @@ class EnterPerformanceRecordResource extends Resource
                                                     ]),
                                             ])
                                             ->columns(1)
-                                            ->reorderable()
-                                            ->defaultItems(1)
-                                            ->minItems(1)
-                                            ->addActionLabel('Add Time Frame'),
 
-                                        ]),
                             ]),
 
                         Tabs\Tab::make('Employees')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-                                Section::make()
+                                Section::make('Assigned Employees Details')
                                     ->columns(1)
                                     ->schema([
-                                        Placeholder::make('employees_table')
-                                            ->content(function (callable $get) {
-                                                $operationId = $get('operation_id');
-                                                $operationType = $get('operation_type');
+                                        Repeater::make('employee_details')
+                                            ->columns(4)
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->schema([
+                                                TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
+                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
                                                 
-                                                if (!$operationId || !$operationType) {
-                                                    return 'No operation selected.';
-                                                }
-                                                
-                                                $employees = match ($operationType) {
-                                                    'assigned' => \App\Models\AssignedEmployee::with('user')
-                                                        ->where('assign_daily_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'um' => \App\Models\UMOperationLineEmployee::with('user')
-                                                        ->where('u_m_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'temp' => \App\Models\TemporaryOperationEmployee::with('user')
-                                                        ->where('temporary_operation_id', $operationId)
-                                                        ->get(),
-                                                    default => collect(),
-                                                };
-                                                
-                                                if ($employees->isEmpty()) {
-                                                    return 'No employees assigned.';
-                                                }
-                                                
-                                                $html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
-                                                $html .= '<thead><tr>';
-                                                $html .= '<th class="px-4 py-2">Employee ID</th>';
-                                                $html .= '<th class="px-4 py-2">Name</th>';
-                                                $html .= '<th class="px-4 py-2">Role</th>';
-                                                $html .= '</tr></thead><tbody>';
-                                                
-                                                foreach ($employees as $employee) {
-                                                    $html .= '<tr>';
-                                                    $html .= '<td class="px-4 py-2">'.$employee->user_id.'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($employee->user->name ?? 'N/A').'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($employee->user->role ?? 'N/A').'</td>';
-                                                    $html .= '</tr>';
-                                                }
-                                                
-                                                $html .= '</tbody></table></div>';
-                                                
-                                                return new HtmlString($html);
-                                            })
+                                                TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
+                                                TextArea::make('emp_notes')->label('Special Notes')->columns(4),
+                                            ])
                                             ->columnSpanFull(),
                                     ]),
+                                    Section::make('Summary')
+                                        ->schema([
+                                            Placeholder::make('emp_total_production')
+                                            ->label('Emp: Total Production')
+                                            ->content(function (callable $get) {
+                                                $details = $get('employee_details') ?? [];
+                                                return collect($details)->sum('emp_production') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Placeholder::make('emp_total_waste')
+                                            ->label('Emp: Total Waste')
+                                            ->content(function (callable $get) {
+                                                $details = $get('employee_details') ?? [];
+                                                return collect($details)->sum('emp_waste') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+                                        ])
                             ]),
+
 
                         Tabs\Tab::make('Machines')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-                                Section::make()
+                                Section::make('Assigned Machines Details')
                                     ->columns(1)
                                     ->schema([
-                                        Placeholder::make('machines_table')
-                                            ->content(function (callable $get) {
-                                                $operationId = $get('operation_id');
-                                                $operationType = $get('operation_type');
-                                                
-                                                if (!$operationId || !$operationType) {
-                                                    return 'No operation selected.';
-                                                }
-                                                
-                                                $machines = match ($operationType) {
-                                                    'assigned' => \App\Models\AssignedProductionMachine::with('productionMachine')
-                                                        ->where('assign_daily_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'um' => \App\Models\UMOperationLineMachine::with('productionMachine')
-                                                        ->where('u_m_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'temp' => \App\Models\TemporaryOperationProductionMachine::with('productionMachine')
-                                                        ->where('temporary_operation_id', $operationId)
-                                                        ->get(),
-                                                    default => collect(),
-                                                };
-                                                
-                                                if ($machines->isEmpty()) {
-                                                    return 'No machines assigned.';
-                                                }
-                                                
-                                                $html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
-                                                $html .= '<thead><tr>';
-                                                $html .= '<th class="px-4 py-2">Machine ID</th>';
-                                                $html .= '<th class="px-4 py-2">Name</th>';
-                                                $html .= '<th class="px-4 py-2">Type</th>';
-                                                $html .= '</tr></thead><tbody>';
-                                                
-                                                foreach ($machines as $machine) {
-                                                    $html .= '<tr>';
-                                                    $html .= '<td class="px-4 py-2">'.$machine->production_machine_id.'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($machine->productionMachine->name ?? 'N/A').'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($machine->productionMachine->type ?? 'N/A').'</td>';
-                                                    $html .= '</tr>';
-                                                }
-                                                
-                                                $html .= '</tbody></table></div>';
-                                                
-                                                return new HtmlString($html);
-                                            })
+                                        Repeater::make('machines')
+                                            ->columns(4)
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->schema([
+                                                TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
+                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
+
+                                                TextInput::make('machine_output')->label('Output')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
+                                                TextArea::make('machine_notes')->label('Notes')->columns(4),
+                                            ])
                                             ->columnSpanFull(),
                                     ]),
+                                Section::make('Summary')
+                                    ->schema([
+                                        Placeholder::make('machine_total_output')
+                                            ->label('Machine: Total Output')
+                                            ->content(function (callable $get) {
+                                                $details = $get('machines') ?? [];
+                                                return collect($details)->sum('machine_output') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Placeholder::make('machine_total_downtime')
+                                            ->label('Machine: Total Downtime (min)')
+                                            ->content(function (callable $get) {
+                                                $details = $get('machines') ?? [];
+                                                return collect($details)->sum('machine_downtime') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+                                    ])
                             ]),
+
 
                         Tabs\Tab::make('Supervisors')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-                                Section::make()
+                                Section::make('Assigned Supervisor Details')
                                     ->columns(1)
                                     ->schema([
-                                        Placeholder::make('supervisors_table')
-                                            ->content(function (callable $get) {
-                                                $operationId = $get('operation_id');
-                                                $operationType = $get('operation_type');
+                                        Repeater::make('supervisor_details')
+                                            ->columns(4)
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->schema([
+                                                TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
+                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
                                                 
-                                                if (!$operationId || !$operationType) {
-                                                    return 'No operation selected.';
-                                                }
-                                                
-                                                $supervisors = match ($operationType) {
-                                                    'assigned' => \App\Models\AssignedSupervisor::with('user')
-                                                        ->where('assign_daily_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'um' => \App\Models\UMOperationLineSupervisor::with('user')
-                                                        ->where('u_m_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'temp' => \App\Models\TemporaryOperationSupervisor::with('user')
-                                                        ->where('temporary_operation_id', $operationId)
-                                                        ->get(),
-                                                    default => collect(),
-                                                };
-                                                
-                                                if ($supervisors->isEmpty()) {
-                                                    return 'No supervisors assigned.';
-                                                }
-                                                
-                                                $html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
-                                                $html .= '<thead><tr>';
-                                                $html .= '<th class="px-4 py-2">Supervisor ID</th>';
-                                                $html .= '<th class="px-4 py-2">Name</th>';
-                                                $html .= '<th class="px-4 py-2">Role</th>';
-                                                $html .= '</tr></thead><tbody>';
-                                                
-                                                foreach ($supervisors as $supervisor) {
-                                                    $html .= '<tr>';
-                                                    $html .= '<td class="px-4 py-2">'.$supervisor->user_id.'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($supervisor->user->name ?? 'N/A').'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($supervisor->user->role ?? 'N/A').'</td>';
-                                                    $html .= '</tr>';
-                                                }
-                                                
-                                                $html .= '</tbody></table></div>';
-                                                
-                                                return new HtmlString($html);
-                                            })
+                                                TextInput::make('sup_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('sup_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
+                                                TextArea::make('sup_notes')->label('Special Notes')->columns(4),
+                                            ])
                                             ->columnSpanFull(),
                                     ]),
+                                    Section::make('Summary')
+                                        ->schema([
+                                            Placeholder::make('sup_total_production')
+                                            ->label('Sup: Total Production')
+                                            ->content(function (callable $get) {
+                                                $details = $get('supervisor_details') ?? [];
+                                                return collect($details)->sum('sup_production') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Placeholder::make('sup_total_waste')
+                                            ->label('Sup: Total Waste')
+                                            ->content(function (callable $get) {
+                                                $details = $get('supervisor_details') ?? [];
+                                                return collect($details)->sum('sup_waste') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+                                        ])
                             ]),
 
-                        Tabs\Tab::make('Services')
+
+                        Tabs\Tab::make('Third-Party Services')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-                                Section::make()
+                                Section::make('Third-Party Service Details')
                                     ->columns(1)
                                     ->schema([
-                                        Placeholder::make('services_table')
-                                            ->content(function (callable $get) {
-                                                $operationId = $get('operation_id');
-                                                $operationType = $get('operation_type');
-                                                
-                                                if (!$operationId || !$operationType) {
-                                                    return 'No operation selected.';
-                                                }
-                                                
-                                                $services = match ($operationType) {
-                                                    'assigned' => \App\Models\AssignedThirdPartyService::with('thirdPartyService')
-                                                        ->where('assign_daily_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'um' => \App\Models\UMOperationLineService::with('thirdPartyService')
-                                                        ->where('u_m_operation_line_id', $operationId)
-                                                        ->get(),
-                                                    'temp' => \App\Models\TemporaryOperationService::with('thirdPartyService')
-                                                        ->where('temporary_operation_id', $operationId)
-                                                        ->get(),
-                                                    default => collect(),
-                                                };
-                                                
-                                                if ($services->isEmpty()) {
-                                                    return 'No services assigned.';
-                                                }
-                                                
-                                                $html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
-                                                $html .= '<thead><tr>';
-                                                $html .= '<th class="px-4 py-2">Service ID</th>';
-                                                $html .= '<th class="px-4 py-2">Name</th>';
-                                                $html .= '<th class="px-4 py-2">Type</th>';
-                                                $html .= '</tr></thead><tbody>';
-                                                
-                                                foreach ($services as $service) {
-                                                    $html .= '<tr>';
-                                                    $html .= '<td class="px-4 py-2">'.$service->third_party_service_id.'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($service->thirdPartyService->name ?? 'N/A').'</td>';
-                                                    $html .= '<td class="px-4 py-2">'.($service->thirdPartyService->type ?? 'N/A').'</td>';
-                                                    $html .= '</tr>';
-                                                }
-                                                
-                                                $html .= '</tbody></table></div>';
-                                                
-                                                return new HtmlString($html);
-                                            })
+                                        Repeater::make('services')
+                                            ->columns(4)
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->schema([
+                                                TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
+                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
+
+                                                TextInput::make('machine_output')->label('Output')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
+                                                TextArea::make('machine_notes')->label('Notes')->columns(4),
+                                            ])
                                             ->columnSpanFull(),
                                     ]),
+                                Section::make('Summary')
+                                    ->schema([
+                                        Placeholder::make('machine_total_output')
+                                            ->label('Machine: Total Output')
+                                            ->content(function (callable $get) {
+                                                $details = $get('services') ?? [];
+                                                return collect($details)->sum('machine_output') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Placeholder::make('machine_total_downtime')
+                                            ->label('Machine: Total Downtime (min)')
+                                            ->content(function (callable $get) {
+                                                $details = $get('services') ?? [];
+                                                return collect($details)->sum('machine_downtime') ?: 0;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+                                    ])
                             ]),
                     ]),
             ]);

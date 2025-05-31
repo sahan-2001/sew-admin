@@ -39,4 +39,9 @@ class EnterPerformanceRecord extends Model
         return $this->hasMany(\App\Models\AssignedEmployee::class, 'assign_daily_operation_line_id');
     }
 
+    public function employeePerformances()
+    {
+        return $this->hasMany(EmployeePerformance::class);
+    }
+
 }

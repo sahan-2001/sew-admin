@@ -22,7 +22,7 @@ class TemporaryOperationProductionMachine extends Model
 
     public function productionMachine()
     {
-        return $this->belongsTo(ProductionMachine::class);
+        return $this->belongsTo(ProductionMachine::class, 'production_machine_id');
     }
 
     protected static function booted()
