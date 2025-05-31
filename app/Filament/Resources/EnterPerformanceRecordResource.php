@@ -10,6 +10,9 @@ use App\Models\Workstation;
 use App\Models\CustomerOrder;
 use App\Models\SampleOrder;
 use App\Models\InventoryItem;
+use App\Models\NonInventoryItem;
+use App\Models\InventoryLocation;
+use App\Models\Category; 
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
@@ -84,9 +87,9 @@ class EnterPerformanceRecordResource extends Resource
                                         Select::make('operation_type')
                                             ->label('Operation Type')
                                             ->options([
-                                                'assigned' => 'Assigned Daily Operation',
-                                                'um' => 'UM Operation',
-                                                'temp' => 'Temporary Operation',
+                                                'assigned' => 'Assigned Daily Operation - Released Materials',
+                                                'um' => 'Daily Operation - Unreleased Materials',
+                                                'temp' => 'Temporary Operation - All Orders',
                                             ])
                                             ->required()
                                             ->reactive()
@@ -242,31 +245,51 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
 
 
-                                                    // Fetch third party service data 
+                                                    // Fetch third party service data and their processes
                                                     $services = match ($operationType) {
-                                                        'assigned' => \App\Models\AssignedThirdPartyService::with('thirdPartyService')
+                                                        'assigned' => \App\Models\AssignedThirdPartyService::with('thirdPartyService.processes')
                                                             ->where('assign_daily_operation_line_id', $state)
                                                             ->get(),
-                                                        'um' => \App\Models\UMOperationLineService::with('thirdPartyService')
+                                                        'um' => \App\Models\UMOperationLineService::with('thirdPartyService.processes')
                                                             ->where('u_m_operation_line_id', $state)
                                                             ->get(),
-                                                        'temp' => \App\Models\TemporaryOperationService::with('thirdPartyService')
+                                                        'temp' => \App\Models\TemporaryOperationService::with('thirdPartyService.processes')
                                                             ->where('temporary_operation_id', $state)
                                                             ->get(),
                                                         default => collect(),
                                                     };
-                                                    
+
                                                     if ($services->isEmpty()) {
                                                         return 'No services assigned.';
                                                     }
 
                                                     $serviceDetails = $services->map(function ($service) {
+                                                        $processes = $service->thirdPartyService->processes->map(function ($process) {
+                                                            // Get supplier name (assuming there's a relationship)
+                                                            $supplierName = $process->supplier->name ?? 'Unknown Supplier';
+                                                            
+                                                            return [
+                                                                'process_id' => $process->id,
+                                                                'description' => $process->description,
+                                                                'related_table' => $process->related_table,
+                                                                'related_record_id' => $process->related_record_id,
+                                                                'unit_of_measurement' => $process->unit_of_measurement,
+                                                                'amount' => $process->amount,
+                                                                'unit_rate' => $process->unit_rate,
+                                                                'used_amount' => 0, 
+                                                                'total' => 0, 
+                                                            ];
+                                                        })->toArray();
+
                                                         return [
                                                             'id' => $service->thirdPartyService->id ?? null,
                                                             'name' => $service->thirdPartyService->name ?? 'Unnamed',
+                                                            'supplier_id' => $service->thirdPartyService->supplier->supplier_id ?? 'Unnamed',
+                                                            'supplier_name' => $service->thirdPartyService->supplier->name ?? 'Unknown Supplier',
+                                                            'processes' => $processes,
                                                         ];
                                                     })->toArray();
-                                                    
+
                                                     $set('services', $serviceDetails);
                                                 }
                                             }),
@@ -285,25 +308,7 @@ class EnterPerformanceRecordResource extends Resource
                                             ->label('Operation Date')
                                             ->disabled()
                                             ->columns(1),
-                                    ]),
-
-                                Section::make('Assigned Employees')
-                                    ->columns(1)
-                                    ->schema([
-                                        Textarea::make('employee_ids')
-                                            ->label('Employee IDs')
-                                            ->disabled()
-                                            ->rows(3)
-                                            ->placeholder('Employee IDs will be displayed here when an operation is selected')
-                                            ->columnSpanFull(),
-
-                                        Textarea::make('machines')
-                                            ->label('Machine Names')
-                                            ->disabled()
-                                            ->rows(3)
-                                            ->placeholder('Machine names will be displayed here when an operation is selected')
-                                            ->columnSpanFull(),
-                                    ]),
+                                        ]),
                             ]),
 
                         Tabs\Tab::make('Production Data')
@@ -479,51 +484,6 @@ class EnterPerformanceRecordResource extends Resource
                                                             ->label('Duration (hh:mm)')
                                                             ->disabled()
                                                             ->columnSpan(2),
-
-                                                        TextInput::make('actual_production')
-                                                            ->label('Actual Production')
-                                                            ->numeric()
-                                                            ->required()
-                                                            ->reactive()
-                                                            ->columnSpan(2),
-
-                                                        TextInput::make('measurement_unit')
-                                                            ->label('Measurement Unit')
-                                                            ->disabled()
-                                                            ->columnSpan(1),
-                                                        
-                                                       TextInput::make('waste')
-                                                            ->label('Waste')
-                                                            ->numeric()
-                                                            ->reactive()
-                                                            ->columnSpan(2),
-
-                                                        Select::make('waste_measurement_unit')
-                                                            ->label('Waste Measurement Unit')
-                                                            ->options([
-                                                                'pcs' => 'Pieces',
-                                                                'kgs' => 'Kilograms',
-                                                                'liters' => 'Liters',
-                                                                'minutes' => 'Minutes',
-                                                                'hours' => 'Hours',
-                                                            ])
-                                                            ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                            ->visible(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                            ->columnSpan(1),
-
-                                                        Select::make('waste_item_id')
-                                                            ->label('Waste Item')
-                                                            ->searchable()
-                                                            ->options(function () {
-                                                                return InventoryItem::query()
-                                                                    ->orderBy('item_code')
-                                                                    ->get()
-                                                                    ->mapWithKeys(fn ($item) => [$item->id => "{$item->item_code} - {$item->name}"])
-                                                                    ->toArray();
-                                                            })
-                                                            ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                            ->visible(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                            ->columnSpan(3),
                                                     ]),
                                             ])
                                             ->columns(1)
@@ -545,6 +505,7 @@ class EnterPerformanceRecordResource extends Resource
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
                                                 
                                                 TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('emp_downtime')->label('Emp: Downtime (min)')->reactive()->live()->columns(1),
                                                 TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
                                                 TextArea::make('emp_notes')->label('Special Notes')->columns(4),
                                             ])
@@ -553,22 +514,44 @@ class EnterPerformanceRecordResource extends Resource
                                     Section::make('Summary')
                                         ->schema([
                                             Placeholder::make('emp_total_production')
-                                            ->label('Emp: Total Production')
-                                            ->content(function (callable $get) {
-                                                $details = $get('employee_details') ?? [];
-                                                return collect($details)->sum('emp_production') ?: 0;
-                                            })
-                                            ->reactive()
-                                            ->live(),
+                                                ->label('Emp: Total Production')
+                                                ->content(function (callable $get, callable $set) {
+                                                    $details = $get('employee_details') ?? [];
+                                                    $total = collect($details)->sum('emp_production') ?: 0;
+                                                    $set('emp_total_production', $total); 
+                                                    return $total;
+                                                })
+                                                ->reactive()
+                                                ->live(),
 
-                                        Placeholder::make('emp_total_waste')
-                                            ->label('Emp: Total Waste')
-                                            ->content(function (callable $get) {
-                                                $details = $get('employee_details') ?? [];
-                                                return collect($details)->sum('emp_waste') ?: 0;
-                                            })
-                                            ->reactive()
-                                            ->live(),
+                                            Placeholder::make('emp_total_waste')
+                                                ->label('Emp: Total Waste')
+                                                ->content(function (callable $get, callable $set) {
+                                                    $details = $get('employee_details') ?? [];
+                                                    $total = collect($details)->sum('emp_waste') ?: 0;
+                                                    $set('emp_total_waste', $total); 
+                                                    return $total;
+                                                })
+                                                ->reactive()
+                                                ->live(),
+
+                                            Placeholder::make('emp_total_downtime')
+                                                ->label('Emp: Total Downtime (min)')
+                                                ->content(function (callable $get, callable $set) {
+                                                    $details = $get('employee_details') ?? [];
+                                                    $total = collect($details)->sum('emp_downtime') ?: 0;
+                                                    $set('emp_total_downtime', $total); 
+                                                    return $total;
+                                                })
+                                                ->reactive()
+                                                ->live(),
+
+                                            Hidden::make('emp_total_production')
+                                                ->dehydrated(),
+                                            Hidden::make('emp_total_waste')
+                                                ->dehydrated(),
+                                            Hidden::make('emp_total_downtime')
+                                                ->dehydrated(),
                                         ])
                             ]),
 
@@ -587,9 +570,10 @@ class EnterPerformanceRecordResource extends Resource
                                                 TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
 
-                                                TextInput::make('machine_output')->label('Output')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('machine_output')->label('Machine Output')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('machine_waste')->label('Machine Waste')->numeric()->required()->reactive()->live()->columns(1),
                                                 TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
-                                                TextArea::make('machine_notes')->label('Notes')->columns(4),
+                                                TextArea::make('machine_notes')->label('Notes (Machines)')->columns(4),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
@@ -597,21 +581,43 @@ class EnterPerformanceRecordResource extends Resource
                                     ->schema([
                                         Placeholder::make('machine_total_output')
                                             ->label('Machine: Total Output')
-                                            ->content(function (callable $get) {
+                                            ->content(function (callable $get, callable $set) {
                                                 $details = $get('machines') ?? [];
-                                                return collect($details)->sum('machine_output') ?: 0;
+                                                $total = collect($details)->sum('machine_output') ?: 0;
+                                                $set('machine_total_output', $total); 
+                                                return $total;
                                             })
                                             ->reactive()
                                             ->live(),
 
-                                        Placeholder::make('machine_total_downtime')
-                                            ->label('Machine: Total Downtime (min)')
-                                            ->content(function (callable $get) {
+                                        Placeholder::make('machine_total_waste')
+                                            ->label('Machine: Total Waste')
+                                            ->content(function (callable $get, callable $set) {
                                                 $details = $get('machines') ?? [];
-                                                return collect($details)->sum('machine_downtime') ?: 0;
+                                                $total = collect($details)->sum('machine_waste') ?: 0;
+                                                $set('machine_total_waste', $total); 
+                                                return $total;
                                             })
                                             ->reactive()
                                             ->live(),
+                                            
+                                        Placeholder::make('machine_total_downtime')
+                                            ->label('Machine: Total Downtime (min)')
+                                            ->content(function (callable $get, callable $set) {
+                                                $details = $get('machines') ?? [];
+                                                $total = collect($details)->sum('machine_downtime') ?: 0;
+                                                $set('machine_total_downtime', $total); 
+                                                return $total;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Hidden::make('machine_total_output')
+                                            ->dehydrated(),
+                                        Hidden::make('machine_total_waste')
+                                            ->dehydrated(),
+                                        Hidden::make('machine_total_downtime')
+                                            ->dehydrated(),
                                     ])
                             ]),
 
@@ -630,28 +636,73 @@ class EnterPerformanceRecordResource extends Resource
                                                 TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
                                                 
-                                                TextInput::make('sup_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
-                                                TextInput::make('sup_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
+                                                TextInput::make('acc_quantity')
+                                                    ->label('Accepted Quantity')
+                                                    ->numeric()
+                                                    ->required()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                        $rejected = (int) $get('rej_quantity');
+                                                        $set('sup_quantity', $state + $rejected);
+                                                    })
+                                                    ->columns(1),
+
+                                                TextInput::make('rej_quantity')
+                                                    ->label('Rejected Quantity')
+                                                    ->numeric()
+                                                    ->required()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                        $accepted = (int) $get('acc_quantity');
+                                                        $set('sup_quantity', $state + $accepted);
+                                                    })
+                                                    ->columns(1),
+
+                                                TextInput::make('sup_quantity')
+                                                    ->label('Supervisored Quantity')
+                                                    ->numeric()
+                                                    ->disabled()
+                                                    ->dehydrated()
+                                                    ->columns(1),
+
+
+
+                                                TextInput::make('sup_downtime')->label('Supervisor : Downtime (min)')->numeric()->reactive()->live()->columns(1),
                                                 TextArea::make('sup_notes')->label('Special Notes')->columns(4),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
                                     Section::make('Summary')
                                         ->schema([
-                                            Placeholder::make('sup_total_production')
-                                            ->label('Sup: Total Production')
-                                            ->content(function (callable $get) {
+                                            Placeholder::make('total_sup_quantity')
+                                            ->label('Total Supervisored Quantity')
+                                            ->content(function (callable $get, callable $set) {
                                                 $details = $get('supervisor_details') ?? [];
-                                                return collect($details)->sum('sup_production') ?: 0;
+                                                $total = collect($details)->sum('sup_quantity') ?: 0;
+                                                $set('total_sup_quantity', $total); 
+                                                return $total;
                                             })
                                             ->reactive()
                                             ->live(),
 
-                                        Placeholder::make('sup_total_waste')
-                                            ->label('Sup: Total Waste')
-                                            ->content(function (callable $get) {
+                                        Placeholder::make('total_acc_quantity')
+                                            ->label('Total Accepted Quantity')
+                                            ->content(function (callable $get, callable $set) {
                                                 $details = $get('supervisor_details') ?? [];
-                                                return collect($details)->sum('sup_waste') ?: 0;
+                                                $total = collect($details)->sum('acc_quantity') ?: 0;
+                                                $set('total_acc_quantity', $total); 
+                                                return $total;
+                                            })
+                                            ->reactive()
+                                            ->live(),
+
+                                        Placeholder::make('total_rej_quantity')
+                                            ->label('Total Rejected Quantity')
+                                            ->content(function (callable $get, callable $set) {
+                                                $details = $get('supervisor_details') ?? [];
+                                                $total = collect($details)->sum('rej_quantity') ?: 0;
+                                                $set('total_rej_quantity', $total); 
+                                                return $total;
                                             })
                                             ->reactive()
                                             ->live(),
@@ -670,36 +721,318 @@ class EnterPerformanceRecordResource extends Resource
                                             ->disableItemCreation()
                                             ->disableItemDeletion()
                                             ->schema([
-                                                TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
+                                                TextInput::make('id')->label('Service ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
+                                                TextInput::make('supplier_id')->label('Supplier ID')->disabled()->columns(1),
+                                                TextInput::make('supplier_name')->label('Supplier Name')->disabled()->columns(2),
+                                                
+                                                // Processes repeater for each service
+                                                Repeater::make('processes')
+                                                    ->label('Service Processes')
+                                                    ->columns(6)
+                                                    ->disableItemCreation()
+                                                    ->disableItemDeletion()
+                                                    ->schema([
+                                                        TextInput::make('process_id')->label('Process ID')->disabled()->columns(1),
+                                                        TextInput::make('description')->label('Description')->disabled()->columns(2),
+                                                        TextInput::make('related_table')->label('Related Table')->disabled()->columns(1),
+                                                        TextInput::make('related_record_id')->label('Related Record ID')->disabled()->columns(1),
+                                                        TextInput::make('unit_of_measurement')->label('UOM')->disabled()->columns(1),
+                                                        TextInput::make('amount')->label('Available Amount')->numeric()->disabled()->columns(1),
+                                                        TextInput::make('unit_rate')->label('Unit Rate')->numeric()->disabled()->columns(1),
 
-                                                TextInput::make('machine_output')->label('Output')->numeric()->required()->reactive()->live()->columns(1),
-                                                TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
-                                                TextArea::make('machine_notes')->label('Notes')->columns(4),
+                                                        TextInput::make('used_amount')
+                                                            ->label('Used Amount')
+                                                            ->numeric()
+                                                            ->reactive()
+                                                            ->required()
+                                                            ->live()
+                                                            ->afterStateUpdated(function ($state, $set, $get) {
+                                                                $available = (float) ($get('amount') ?? 0);
+                                                                $unitRate = (float) ($get('unit_rate') ?? 0);
+
+                                                                if ($state > $available) {
+                                                                    $set('used_amount', null);
+                                                                    $set('total', null);
+
+                                                                    \Filament\Notifications\Notification::make()
+                                                                        ->title('Used amount exceeds available amount')
+                                                                        ->warning()
+                                                                        ->body("Used amount ({$state}) must not exceed available amount ({$available}).")
+                                                                        ->send();
+
+                                                                    return;
+                                                                }
+
+                                                                $set('total', $state * $unitRate);
+                                                            })
+                                                            ->columns(1),
+
+                                                        TextInput::make('total')
+                                                            ->label('Total Cost')
+                                                            ->disabled()
+                                                            ->numeric()
+                                                            ->columns(1),
+                                                    ])
+                                                    ->columnSpanFull(),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
+
                                 Section::make('Summary')
                                     ->schema([
-                                        Placeholder::make('machine_total_output')
-                                            ->label('Machine: Total Output')
-                                            ->content(function (callable $get) {
-                                                $details = $get('services') ?? [];
-                                                return collect($details)->sum('machine_output') ?: 0;
-                                            })
-                                            ->reactive()
-                                            ->live(),
+                                       Placeholder::make('process_total_cost')
+                                            ->label('Total Process Cost')
+                                            ->content(function (callable $get, callable $set) {
+                                                $services = $get('services') ?? [];
+                                                $total = 0;
 
-                                        Placeholder::make('machine_total_downtime')
-                                            ->label('Machine: Total Downtime (min)')
-                                            ->content(function (callable $get) {
-                                                $details = $get('services') ?? [];
-                                                return collect($details)->sum('machine_downtime') ?: 0;
+                                                foreach ($services as $service) {
+                                                    foreach ($service['processes'] ?? [] as $process) {
+                                                        $processTotal = is_numeric($process['total'] ?? null) ? (float) $process['total'] : 0;
+                                                        $total += $processTotal;
+                                                    }
+                                                }
+
+                                                $set('process_total_cost', $total);
+
+                                                return number_format($total, 2);
                                             })
                                             ->reactive()
                                             ->live(),
                                     ])
                             ]),
+
+                            Tabs\Tab::make('Summary of Production')
+                                ->visible(fn (callable $get) => $get('operation_id'))
+                                ->schema([
+
+                                    //  Section 1: Summary
+                                    Section::make('Production Summary')
+                                        ->columns(3)
+                                        ->schema([
+                                            Placeholder::make('live_emp_total_production')
+                                                ->label('Emp: Total Production')
+                                                ->content(fn (callable $get) => $get('emp_total_production') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_emp_total_waste')
+                                                ->label('Emp: Total Waste')
+                                                ->content(fn (callable $get) => $get('emp_total_waste') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_emp_total_downtime')
+                                                ->label('Emp: Total Downtime (min)')
+                                                ->content(fn (callable $get) => $get('emp_total_downtime') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_machine_total_output')
+                                                ->label('Machine: Total Production')
+                                                ->content(fn (callable $get) => $get('machine_total_output') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_machine_total_waste')
+                                                ->label('Machine: Total Waste')
+                                                ->content(fn (callable $get) => $get('machine_total_waste') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_machine_total_downtime')
+                                                ->label('Machine: Total Downtime (min)')
+                                                ->content(fn (callable $get) => $get('machine_total_downtime') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_total_sup_quantity')
+                                                ->label('Total Supervisored Quantity')
+                                                ->content(fn (callable $get) => $get('total_sup_quantity') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_total_acc_quantity')
+                                                ->label('Total Accepted Quantity')
+                                                ->content(fn (callable $get) => $get('total_acc_quantity') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_total_rej_quantity')
+                                                ->label('Total Rejected Quantity')
+                                                ->content(fn (callable $get) => $get('total_rej_quantity') ?: 0)
+                                                ->reactive(),
+
+                                            Placeholder::make('live_process_total_cost')
+                                                ->label('Total Third-Party Process Cost')
+                                                ->content(fn (callable $get) => $get('process_total_cost') ?: 0)
+                                                ->reactive(),
+                                        ]),
+
+                                    //  Section 2: Waste
+                                    Section::make('Waste Recording')
+                                        ->schema([
+                                            Repeater::make('inv_waste_products')
+                                                ->label('Inventory Waste Products')
+                                                ->columns(7)
+                                                ->schema([
+                                                    TextInput::make('waste')
+                                                        ->label('Waste')
+                                                        ->numeric()
+                                                        ->reactive()
+                                                        ->columnSpan(2),
+
+                                                    Select::make('waste_measurement_unit')
+                                                        ->label('UOM')
+                                                        ->options([
+                                                            'pcs' => 'Pieces',
+                                                            'kgs' => 'Kilograms',
+                                                            'liters' => 'Liters',
+                                                            'minutes' => 'Minutes',
+                                                            'hours' => 'Hours',
+                                                        ])
+                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                        ->columnSpan(1),
+
+                                                    Select::make('waste_item_id')
+                                                        ->label('Waste Item')
+                                                        ->searchable()
+                                                        ->options(function () {
+                                                            return InventoryItem::where('category', 'Waste Item')
+                                                                ->orderBy('item_code')
+                                                                ->get()
+                                                                ->mapWithKeys(fn($item) => [
+                                                                    $item->id => "ID - {$item->id} | Item Code - {$item->item_code} | Name - {$item->name}"
+                                                                ])
+                                                                ->toArray();
+                                                        })
+                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                        ->columnSpan(2),
+
+                                                    Select::make('waste_location_id')
+                                                        ->label('Waste Item Location')
+                                                        ->searchable()
+                                                        ->options(function () {
+                                                            return InventoryLocation::where('location_type', 'picking')
+                                                                ->orderBy('name')
+                                                                ->get()
+                                                                ->mapWithKeys(fn($location) => [
+                                                                    $location->id => "ID - {$location->id} | Name - {$location->name}"
+                                                                ])
+                                                                ->toArray();
+                                                        })
+                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                        ->columnSpan(2),
+                                                ])
+                                                ->createItemButtonLabel('Add Inventory Waste Product')
+                                                ->columnSpan('full'),
+
+                                                Repeater::make('non_inv_waste_products')
+                                                    ->label('Non-Inventory Waste Products')
+                                                    ->columns(6)
+                                                    ->schema([
+                                                        TextInput::make('amount')
+                                                            ->label('Amount')
+                                                            ->numeric()
+                                                            ->reactive()
+                                                            ->columnSpan(2),
+
+                                                        Select::make('item_id')
+                                                            ->label('Non-Inventory Waste Item')
+                                                            ->searchable()
+                                                            ->options(function () {
+                                                                return \App\Models\NonInventoryItem::orderBy('name')
+                                                                    ->get()
+                                                                    ->mapWithKeys(fn($item) => [
+                                                                        $item->id => "ID - {$item->id} | Name - {$item->name}"
+                                                                    ])
+                                                                    ->toArray();
+                                                            })
+                                                            ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                            ->columnSpan(3),
+
+                                                        Select::make('unit')
+                                                            ->label('Unit')
+                                                            ->options([
+                                                                'pcs' => 'Pieces',
+                                                                'kgs' => 'Kilograms',
+                                                                'liters' => 'Liters',
+                                                                'minutes' => 'Minutes',
+                                                                'hours' => 'Hours',
+                                                            ])
+                                                            ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                            ->columnSpan(1),
+                                                    ])
+                                                    ->createItemButtonLabel('Add Non-Inventory Waste Product')
+                                                    ->columnSpan('full'),
+                                                            
+                                            ]),
+
+                                    //  Section 3: By Products
+                                    Section::make('By Products')
+                                        ->schema([
+                                            Repeater::make('by_products')
+                                                ->label('By Products')
+                                                ->columns(7)
+                                                ->schema([
+                                                    TextInput::make('amount')
+                                                        ->label('Amount')
+                                                        ->numeric()
+                                                        ->reactive()
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                        ->columnSpan(2),
+
+                                                    Select::make('item_id')
+                                                        ->label('Item')
+                                                        ->searchable()
+                                                        ->options(function () {
+                                                            return InventoryItem::where('category', 'By Products')
+                                                                ->orderBy('item_code')
+                                                                ->get()
+                                                                ->mapWithKeys(fn($item) => [
+                                                                    $item->id => "ID - {$item->id} | Item Code - {$item->item_code} | Name - {$item->name}"
+                                                                ])
+                                                                ->toArray();
+                                                        })
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                        ->columnSpan(2),
+
+                                                    Select::make('by_location_id')
+                                                        ->label('By Product Location')
+                                                        ->searchable()
+                                                        ->options(function () {
+                                                            return InventoryLocation::where('location_type', 'picking')
+                                                                ->orderBy('name') 
+                                                                ->get()
+                                                                ->mapWithKeys(fn($location) => [
+                                                                    $location->id => "ID - {$location->id} | Name - {$location->name}"
+                                                                ])
+                                                                ->toArray();
+                                                        })
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                        ->columnSpan(2),
+
+                                                    Select::make('measurement_unit')
+                                                        ->label('UOM')
+                                                        ->options([
+                                                            'pcs' => 'Pieces',
+                                                            'kgs' => 'Kilograms',
+                                                            'liters' => 'Liters',
+                                                            'minutes' => 'Minutes',
+                                                            'hours' => 'Hours',
+                                                        ])
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                        ->columnSpan(1),
+                                                ])
+                                                ->createItemButtonLabel('Add By Product')
+                                                ->columnSpan('full'),
+                                        ]),
+                                ]),
+
+                            Tabs\Tab::make('Quality Checking')
+                                ->visible(fn (callable $get) => $get('operation_id'))
+                                ->schema([
+                                    Section::make('Quality Check')
+                                        ->schema([
+                                            Placeholder::make('quality_check_placeholder')
+                                                ->label('Quality check form will be defined later')
+                                                ->content('Coming soon...')
+                                        ])
+                                ]),
+
                     ]),
             ]);
     }
