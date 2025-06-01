@@ -12,26 +12,21 @@ class ReleaseMaterial extends Model
     protected $fillable = [
         'order_type',
         'order_id',
-        'production_line_id',
-        'workstation_id',
+        'cutting_station_id',
         'notes',
+        'status',
         'created_by',
         'updated_by',
     ];
-
-    public function productionLine()
-    {
-        return $this->belongsTo(ProductionLine::class);
-    }
 
     public function getWorkstationNameAttribute()
     {
         return $this->workstation ? $this->workstation->name : 'N/A';
     }
     
-    public function workstation()
+    public function cuttingStation()
     {
-        return $this->belongsTo(Workstation::class);
+        return $this->belongsTo(CuttingStation::class, 'cutting_station_id');
     }
 
     public function lines()

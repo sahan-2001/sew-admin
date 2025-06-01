@@ -11,9 +11,9 @@ class CreateReleaseMaterialsTable extends Migration
             $table->id();
             $table->string('order_type'); // 'customer_order' or 'sample_order'
             $table->unsignedBigInteger('order_id');
-            $table->unsignedBigInteger('production_line_id');
-            $table->unsignedBigInteger('workstation_id')->nullable();
+            $table->unsignedBigInteger('cutting_station_id')->nullable();
             $table->text('notes')->nullable();
+            $table->text('status')->default('released');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

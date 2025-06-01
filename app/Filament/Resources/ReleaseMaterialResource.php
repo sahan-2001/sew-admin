@@ -6,8 +6,7 @@ use App\Models\ReleaseMaterial;
 use App\Models\ReleaseMaterialLine;
 use App\Models\InventoryItem;
 use App\Models\Stock;
-use App\Models\ProductionLine;
-use App\Models\Workstation;
+use App\Models\CuttingStation;
 use Filament\Forms;
 use Filament\Forms\Components\{Select, Textarea, Grid, Section, Repeater, TextInput};
 use Filament\Resources\Resource;
@@ -108,19 +107,26 @@ class ReleaseMaterialResource extends Resource
                         ]),
                 ]),
 
-            // Section 2: Production Line Details
-            Section::make('Production Line Details')
+            // Section 2: Cutting Station Details
+            Section::make('Cutting Station Details')
                 ->schema([
-                    Select::make('production_line_id')
-                        ->label('Production Line')
-                        ->relationship('productionLine', 'name')
+                    Select::make('cutting_station_id')
+                        ->label('Cutting Station')
+                        ->options(fn () => \App\Models\CuttingStation::pluck('name', 'id'))
+                        ->searchable()
+                        ->reactive()
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            $station = \App\Models\CuttingStation::find($state);
+                            $set('cutting_station_name', $station?->name);
+                        })
                         ->required(),
 
-                    Select::make('workstation_id')
-                        ->label('Workstation')
-                        ->relationship('workstation', 'name')
-                        ->nullable(),
-                ]),
+                    TextInput::make('cutting_station_name')
+                        ->label('Selected Cutting Station Name')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn ($get) => filled($get('cutting_station_id'))),
+                    ]),
 
             // Section 3: Items
             Forms\Components\Section::make('Items')
@@ -257,8 +263,7 @@ class ReleaseMaterialResource extends Resource
                 TextColumn::make('id')->sortable(),
                 TextColumn::make('order_type')->sortable(),
                 TextColumn::make('order_id')->sortable(),
-                TextColumn::make('production_line_id')->sortable(),
-                TextColumn::make('workstation_id')->sortable(),
+                TextColumn::make('status'),
                 TextColumn::make('created_at')->sortable(),
             ])
             ->actions([
@@ -307,6 +312,7 @@ class ReleaseMaterialResource extends Resource
                 Tables\Actions\Action::make('re-correction')
                     ->label('Re-correct')
                     ->color('danger')
+                    ->visible(fn ($record) => $record->status === 'released')
                     ->requiresConfirmation()
                     ->action(function ($record) {
                         static::handleReCorrection($record);
