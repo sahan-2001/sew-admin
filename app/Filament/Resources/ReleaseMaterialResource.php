@@ -117,12 +117,12 @@ class ReleaseMaterialResource extends Resource
                         ->reactive()
                         ->afterStateUpdated(function ($state, callable $set) {
                             $station = \App\Models\CuttingStation::find($state);
-                            $set('cutting_station_name', $station?->name);
+                            $set('cutting_station_description', $station?->description);
                         })
                         ->required(),
 
-                    TextInput::make('cutting_station_name')
-                        ->label('Selected Cutting Station Name')
+                    TextInput::make('cutting_station_description')
+                        ->label('Description')
                         ->disabled()
                         ->dehydrated(false)
                         ->visible(fn ($get) => filled($get('cutting_station_id'))),

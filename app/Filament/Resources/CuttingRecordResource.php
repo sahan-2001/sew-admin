@@ -57,27 +57,7 @@ class CuttingRecordResource extends Resource
                                             ->required()
                                             ->default(now())
                                             ->maxDate(now()),
-                                            
-                                        Select::make('cutting_station_id')
-                                            ->label('Cutting Station')
-                                            ->required()
-                                            ->options(CuttingStation::all()->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->reactive()
-                                            ->afterStateUpdated(function ($state, callable $set) {
-                                                $station = CuttingStation::find($state);
-                                                if ($station) {
-                                                    $set('station_description', $station->description);
-                                                }
-                                            }),
-                                        
-                                        TextInput::make('station_description')
-                                            ->label('Cutting Station Name')
-                                            ->disabled()
-                                            ->columnSpanFull(),
-                                            
-                                        ]),
-
+                                    ]),
                                             
                                 Section::make('Order Details')
                                     ->columns(2)
@@ -89,7 +69,15 @@ class CuttingRecordResource extends Resource
                                                 'customer_order' => 'Customer Order',
                                                 'sample_order' => 'Sample Order',
                                             ])
-                                            ->reactive(),
+                                            ->reactive()
+                                            ->afterStateUpdated(function (callable $set) {
+                                                // Clear all related fields
+                                                $set('order_id', null);
+                                                $set('customer_id', null);
+                                                $set('wanted_date', null);
+                                                $set('cutting_station_name', null);
+                                                $set('fetched_release_material_items', []);
+                                            }),
 
                                         Select::make('order_id')
                                             ->label('Order')
@@ -107,20 +95,110 @@ class CuttingRecordResource extends Resource
 
                                                 return [];
                                             })
-                                            ->afterStateUpdated(function (callable $get, callable $set, $state) {
-                                                $orderType = $get('order_type');
+                                            ->afterStateUpdated(function (callable $get, callable $set, $state, \Filament\Forms\Set $formSet) {
+                                            // Clear all first
+                                            $set('customer_id', null);
+                                            $set('wanted_date', null);
+                                            $set('cutting_station_name', null);
+                                            $set('fetched_release_material_items', []);
+        
+                                            $orderType = $get('order_type');
 
-                                                if ($orderType === 'customer_order') {
-                                                    $order = \App\Models\CustomerOrder::find($state);
-                                                } elseif ($orderType === 'sample_order') {
-                                                    $order = \App\Models\SampleOrder::find($state);
-                                                } else {
-                                                    $order = null;
-                                                }
+                                            $order = match ($orderType) {
+                                                'customer_order' => \App\Models\CustomerOrder::find($state),
+                                                'sample_order' => \App\Models\SampleOrder::find($state),
+                                                default => null,
+                                            };
 
-                                                $set('customer_id', $order->customer_id ?? 'N/A');
-                                                $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
-                                            }),
+                                            $set('customer_id', $order->customer_id ?? 'N/A');
+                                            $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
+
+                                            $releaseMaterial = \App\Models\ReleaseMaterial::with('lines.item', 'lines.location')
+                                                ->where('order_type', $orderType)
+                                                ->where('order_id', $state)
+                                                ->first();
+
+                                            // Check if cutting_station_id exists
+                                            if (!$releaseMaterial || !$releaseMaterial->cutting_station_id) {
+                                                $set('customer_id', null);
+                                                $set('wanted_date', null);
+                                                $set('cutting_station_name', null);
+                                                $set('fetched_release_material_items', []);
+
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('No Released Materials')
+                                                    ->body('Materials were not released for any cutting station.')
+                                                    ->danger()
+                                                    ->persistent()
+                                                    ->duration(5000)
+                                                    ->send();
+
+                                                return;
+                                            }
+                                            
+                                            $set('cutting_station_name', $releaseMaterial->cuttingStation->name ?? 'N/A');
+
+                                            // If cutting_station_id is present, show lines
+                                            $items = $releaseMaterial->lines->map(function ($line) {
+                                                return [
+                                                    'item_code' => $line->item->item_code ?? 'N/A',
+                                                    'item_name' => $line->item->name ?? 'N/A',
+                                                    'quantity' => $line->quantity,
+                                                    'uom' => $line->item->uom ?? 'N/A',
+                                                    'location' => $line->location->name ?? 'N/A',
+                                                ];
+                                            })->toArray();
+
+                                            $set('fetched_release_material_items', $items);
+                                        
+                                            // Fetch order items based on order type
+                                            $orderItems = [];
+                                            if ($orderType === 'customer_order') {
+                                                $customerOrderItems = \App\Models\CustomerOrderDescription::with('variationItems')
+                                                    ->where('customer_order_id', $state)
+                                                    ->get();
+
+                                                $orderItems = $customerOrderItems->map(function ($item) {
+                                                    return [
+                                                        'item_name' => $item->item_name,
+                                                        'quantity' => $item->quantity,
+                                                        'is_variation' => false,
+                                                        'is_parent' => true,
+                                                        'variations' => $item->variationItems->map(function ($variation) {
+                                                            return [
+                                                                'item_name' => $variation->variation_name,
+                                                                'quantity' => $variation->quantity,
+                                                                'is_variation' => true,
+                                                                'is_parent' => false,
+                                                            ];
+                                                        })->toArray()
+                                                    ];
+                                                })->toArray();
+                                            } elseif ($orderType === 'sample_order') {
+                                                $sampleOrderItems = \App\Models\SampleOrderItem::with('variations')
+                                                    ->where('sample_order_id', $state)
+                                                    ->get();
+
+                                                $orderItems = $sampleOrderItems->map(function ($item) {
+                                                    return [
+                                                        'item_name' => $item->item_name,
+                                                        'quantity' => $item->quantity,
+                                                        'is_variation' => false,
+                                                        'is_parent' => true,
+                                                        'variations' => $item->variations->map(function ($variation) {
+                                                            return [
+                                                                'item_name' => $variation->variation_name,
+                                                                'quantity' => $variation->quantity,
+                                                                'is_variation' => true,
+                                                                'is_parent' => false,
+                                                            ];
+                                                        })->toArray()
+                                                    ];
+                                                })->toArray();
+                                            }
+
+                                            $set('fetched_order_items', $orderItems);
+                                        }),
 
                                         TextInput::make('customer_id')
                                             ->label('Customer ID')
@@ -129,6 +207,27 @@ class CuttingRecordResource extends Resource
                                         DatePicker::make('wanted_date')
                                             ->label('Wanted Delivery Date')
                                             ->disabled(),
+                                        
+                                        TextInput::make('cutting_station_name')
+                                            ->label('Cutting Station')
+                                            ->disabled(),
+
+                                        Forms\Components\Repeater::make('fetched_release_material_items')
+                                            ->label('Existing Released Materials for the Cutting Station')
+                                            ->schema([
+                                                Forms\Components\Grid::make(4)->schema([
+                                                    Forms\Components\TextInput::make('item_code')->label('Item Code')->disabled(),
+                                                    Forms\Components\TextInput::make('item_name')->label('Item Name')->disabled(),
+                                                    Forms\Components\TextInput::make('quantity')->label('Quantity')->disabled(),
+                                                    Forms\Components\TextInput::make('uom')->label('UOM')->disabled(),
+                                                    Forms\Components\TextInput::make('location')->label('Location')->disabled(),
+                                                ]),
+                                            ])
+                                            ->default([]) 
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->disableItemMovement()
+                                            ->columnSpan('full'),
                                     ]),
                                     
                                 Section::make('Operation Time')
@@ -221,70 +320,395 @@ class CuttingRecordResource extends Resource
                                     ]),
                             ]),
                             
-                        // Employees Tab
-                        Tabs\Tab::make('Employees')
-                            ->schema([
-                                Repeater::make('employees')
-                                    ->relationship()
-                                    ->label('Cutting Employees')
-                                    ->schema([
-                                        Select::make('employee_id')
-                                            ->label('Employee')
-                                            ->required()
-                                            ->searchable()
-                                            ->options(function (callable $get, $state) {
-                                                $selectedUserIds = collect($get('../../employees'))
-                                                    ->pluck('user_id')
-                                                    ->filter()
-                                                    ->reject(fn($id) => $id === $state)
-                                                    ->unique();
+                        // Cut Piece Label Tab
+                        Tabs\Tab::make('Cut Piece Labels')
+                            ->schema([         
+                                Section::make('Order Items')
+                                    ->schema([  
+                                        Forms\Components\Repeater::make('fetched_order_items')
+                                            ->label('Order Items')
+                                            ->default([]) 
+                                            ->schema([
+                                                // Hidden field to store the unique key (generated once)
+                                                Forms\Components\Hidden::make('unique_key')
+                                                    ->default(fn () => substr(md5(uniqid(mt_rand(), true)), 0, 6))
+                                                    ->dehydrated(),
+                                                    
+                                                // Main Item
+                                                Forms\Components\Grid::make(4)->schema([
+                                                    Forms\Components\TextInput::make('item_name')
+                                                        ->label('Item Name')
+                                                        ->disabled(),
+                                                    Forms\Components\TextInput::make('quantity')
+                                                        ->label('Quantity')
+                                                        ->disabled()
+                                                        ->visible(fn (callable $get) => empty($get('variations'))),
+                                                    Forms\Components\TextInput::make('no_of_pieces')
+                                                        ->label('Number of Pieces')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->visible(fn (callable $get) => empty($get('variations')))
+                                                        ->reactive()
+                                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                                            $items = $get('../../fetched_order_items') ?? [];
+                                                            $total = 0;
+                                                            foreach ($items as $item) {
+                                                                if (!empty($item['variations'])) {
+                                                                    $total += (int)($item['total_variation_pieces'] ?? 0);
+                                                                } else {
+                                                                    $total += (int)($item['no_of_pieces'] ?? 0);
+                                                                }
+                                                            }
+                                                            $set('../../grand_total_pieces', $total);
 
-                                                return \App\Models\User::role('employee')
-                                                    ->whereNotIn('id', $selectedUserIds)
-                                                    ->pluck('name', 'id');
-                                            }),
-                                            
-                                        TextInput::make('pieces_cut')
-                                            ->label('Pieces Cut')
+                                                            // Generate labels for main item if no variations
+                                                            if (empty($get('variations'))) {
+                                                                $orderType = $get('../../../../order_type');
+                                                                $orderId = $get('../../../../order_id');
+                                                                
+                                                                // Get the order line ID based on order type
+                                                                $lineId = '';
+                                                                if ($orderType === 'customer_order') {
+                                                                    $customerOrderDesc = \App\Models\CustomerOrderDescription::where('customer_order_id', $orderId)
+                                                                        ->where('item_name', $get('item_name'))
+                                                                        ->first();
+                                                                    $lineId = $customerOrderDesc ? $customerOrderDesc->id : '0';
+                                                                } elseif ($orderType === 'sample_order') {
+                                                                    $sampleOrderItem = \App\Models\SampleOrderItem::where('sample_order_id', $orderId)
+                                                                        ->where('item_name', $get('item_name'))
+                                                                        ->first();
+                                                                    $lineId = $sampleOrderItem ? $sampleOrderItem->id : '0';
+                                                                }
+                                                                
+                                                                // Generate labels
+                                                                $prefix = strtoupper(substr($orderType, 0, 1)) . 'O';
+                                                                $labels = [];
+                                                                for ($i = 1; $i <= $state; $i++) {
+                                                                    $labels[] = sprintf('%s%s-%s-%d', $prefix, $orderId, $lineId, $i);
+                                                                }
+                                                                
+                                                                $set('start_label', $labels[0] ?? '');
+                                                                if (count($labels) > 1) {
+                                                                    $set('end_label', end($labels));
+                                                                } else {
+                                                                    $set('end_label', $labels[0] ?? '');
+                                                                }
+                                                            }
+                                                        }),
+                                                        
+                                                    Forms\Components\TextInput::make('total_variation_pieces')
+                                                        ->label('Total Pieces of Variations')
+                                                        ->disabled()
+                                                        ->dehydrated(false)
+                                                        ->numeric()
+                                                        ->visible(fn (callable $get) => !empty($get('variations')))
+                                                        ->reactive()
+                                                        ->afterStateHydrated(function (callable $get, callable $set) {
+                                                            $variations = $get('variations') ?? [];
+                                                            $total = array_reduce($variations, fn ($carry, $item) => $carry + (int)($item['no_of_pieces_var'] ?? 0), 0);
+                                                            $set('total_variation_pieces', $total);
+                                                        })
+                                                        ->extraInputAttributes(['style' => 'font-weight: bold;']),
+
+                                                    TextInput::make('start_label')
+                                                        ->label('Start Label')
+                                                        ->formatStateUsing(function ($state, callable $get, callable $set) {
+                                                            // Generate full format when displaying
+                                                            $orderType = $get('../../../../order_type');
+                                                            $orderId = $get('../../../../order_id');
+                                                            $itemName = $get('item_name');
+                                                            
+                                                            if (empty($get('variations'))) {
+                                                                $lineId = $this->getLineId($orderType, $orderId, $itemName);
+                                                                return sprintf('%s%s-%s-%d',
+                                                                    strtoupper(substr($orderType, 0, 1)) . 'O',
+                                                                    $orderId,
+                                                                    $lineId,
+                                                                    1 // Starting number
+                                                                );
+                                                            }
+                                                            return $state;
+                                                        })
+                                                        ->disabled()
+                                                        ->dehydrated()
+                                                        ->visible(fn (callable $get) => empty($get('variations'))),
+
+                                                    TextInput::make('end_label')
+                                                        ->label('End Label')
+                                                        ->formatStateUsing(function ($state, callable $get, callable $set) {
+                                                            // Generate full format when displaying
+                                                            $orderType = $get('../../../../order_type');
+                                                            $orderId = $get('../../../../order_id');
+                                                            $itemName = $get('item_name');
+                                                            $pieces = (int) $get('no_of_pieces');
+                                                            
+                                                            if (empty($get('variations')) && $pieces > 0) {
+                                                                $lineId = $this->getLineId($orderType, $orderId, $itemName);
+                                                                return sprintf('%s%s-%s-%d',
+                                                                    strtoupper(substr($orderType, 0, 1)) . 'O',
+                                                                    $orderId,
+                                                                    $lineId,
+                                                                    $pieces
+                                                                );
+                                                            }
+                                                            return $state;
+                                                        })
+                                                        ->disabled()
+                                                        ->dehydrated()
+                                                        ->visible(fn (callable $get) => empty($get('variations'))),
+                                                    ]),
+                                                
+                                                // Nested Repeater for Variations
+                                                Forms\Components\Repeater::make('variations')
+                                                    ->label('Variations')
+                                                    ->schema([
+                                                        Forms\Components\Grid::make(4)->schema([
+                                                            Forms\Components\TextInput::make('item_name')
+                                                                ->label('Variation Name')
+                                                                ->disabled(),
+                                                            Forms\Components\TextInput::make('quantity')
+                                                                ->label('Quantity')
+                                                                ->disabled(),
+                                                            TextInput::make('no_of_pieces_var')
+                                                                ->label('Number of Pieces')
+                                                                ->numeric()
+                                                                ->required()
+                                                                ->reactive()
+                                                                ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                                                    $variations = $get('../../variations') ?? [];
+                                                                    $variationTotal = array_reduce($variations, fn ($carry, $item) => $carry + (int)($item['no_of_pieces_var'] ?? 0), 0);
+                                                                    $set('../../total_variation_pieces', $variationTotal);
+
+                                                                    $items = $get('../../../../fetched_order_items') ?? [];
+                                                                    $grandTotal = 0;
+                                                                    foreach ($items as $item) {
+                                                                        if (!empty($item['variations'])) {
+                                                                            $grandTotal += (int)($item['total_variation_pieces'] ?? 0);
+                                                                        } else {
+                                                                            $grandTotal += (int)($item['no_of_pieces'] ?? 0);
+                                                                        }
+                                                                    }
+                                                                    $set('../../../../grand_total_pieces', $grandTotal);
+
+                                                                    // Generate labels for variations
+                                                                    $orderType = $get('../../../../../../order_type');
+                                                                    $orderId = $get('../../../../../../order_id');
+                                                                    
+                                                                    // Get the order line ID based on order type
+                                                                    $lineId = '';
+                                                                    if ($orderType === 'customer_order') {
+                                                                        $customerOrderDesc = \App\Models\CustomerOrderDescription::where('customer_order_id', $orderId)
+                                                                            ->where('item_name', $get('../../item_name'))
+                                                                            ->first();
+                                                                        $lineId = $customerOrderDesc ? $customerOrderDesc->id : '0';
+                                                                    } elseif ($orderType === 'sample_order') {
+                                                                        $sampleOrderItem = \App\Models\SampleOrderItem::where('sample_order_id', $orderId)
+                                                                            ->where('item_name', $get('../../item_name'))
+                                                                            ->first();
+                                                                        $lineId = $sampleOrderItem ? $sampleOrderItem->id : '0';
+                                                                    }
+                                                                    
+                                                                    // Get variation ID
+                                                                    $variationId = '';
+                                                                    if ($orderType === 'customer_order') {
+                                                                        $variationItem = \App\Models\VariationItem::where('customer_order_description_id', $lineId)
+                                                                            ->where('variation_name', $get('item_name'))
+                                                                            ->first();
+                                                                        $variationId = $variationItem ? $variationItem->id : '0';
+                                                                    } elseif ($orderType === 'sample_order') {
+                                                                        $sampleVariation = \App\Models\SampleOrderVariation::where('sample_order_item_id', $lineId)
+                                                                            ->where('variation_name', $get('item_name'))
+                                                                            ->first();
+                                                                        $variationId = $sampleVariation ? $sampleVariation->id : '0';
+                                                                    }
+                                                                    
+                                                                    // Generate labels
+                                                                    $prefix = strtoupper(substr($orderType, 0, 1)) . 'O';
+                                                                    $labels = [];
+                                                                    for ($i = 1; $i <= $state; $i++) {
+                                                                        $labels[] = sprintf('%s%s-%s-%s-%d', $prefix, $orderId, $lineId, $variationId, $i);
+                                                                    }
+                                                                    
+                                                                    $set('start_label_var', $labels[0] ?? '');
+                                                                    if (count($labels) > 1) {
+                                                                        $set('end_label_var', end($labels));
+                                                                    } else {
+                                                                        $set('end_label_var', $labels[0] ?? '');
+                                                                    }
+                                                                }),
+
+                                                            TextInput::make('start_label_var')
+                                                                ->label('Start Label')
+                                                                ->formatStateUsing(function ($state, callable $get, callable $set) {
+                                                                    $orderType = $get('../../../../../../order_type');
+                                                                    $orderId = $get('../../../../../../order_id');
+                                                                    $parentItemName = $get('../../item_name');
+                                                                    $variationName = $get('item_name');
+                                                                    
+                                                                    $lineId = $this->getLineId($orderType, $orderId, $parentItemName);
+                                                                    $variationId = $this->getVariationId($orderType, $lineId, $variationName);
+                                                                    
+                                                                    return sprintf('%s%s-%s-%s-%d',
+                                                                        strtoupper(substr($orderType, 0, 1)) . 'O',
+                                                                        $orderId,
+                                                                        $lineId,
+                                                                        $variationId,
+                                                                        1 // Starting number
+                                                                    );
+                                                                })
+                                                                ->disabled()
+                                                                ->dehydrated()
+                                                                ->visible(fn (callable $get) => !empty($get('variations'))),
+
+                                                            TextInput::make('end_label_var')
+                                                                ->label('End Label')
+                                                                ->formatStateUsing(function ($state, callable $get, callable $set) {
+                                                                    $orderType = $get('../../../../../../order_type');
+                                                                    $orderId = $get('../../../../../../order_id');
+                                                                    $parentItemName = $get('../../item_name');
+                                                                    $variationName = $get('item_name');
+                                                                    $pieces = (int) $get('no_of_pieces_var');
+                                                                    
+                                                                    $lineId = $this->getLineId($orderType, $orderId, $parentItemName);
+                                                                    $variationId = $this->getVariationId($orderType, $lineId, $variationName);
+                                                                    
+                                                                    return sprintf('%s%s-%s-%s-%d',
+                                                                        strtoupper(substr($orderType, 0, 1)) . 'O',
+                                                                        $orderId,
+                                                                        $lineId,
+                                                                        $variationId,
+                                                                        $pieces
+                                                                    );
+                                                                })
+                                                                ->disabled()
+                                                                ->dehydrated()
+                                                                ->visible(fn (callable $get) => !empty($get('variations'))),
+                                                        ]),
+                                                    ])
+                                                    ->default([])
+                                                    ->disableItemCreation()
+                                                    ->disableItemDeletion()
+                                                    ->disableItemMovement()
+                                                    ->columnSpan('full')
+                                                    ->visible(fn (callable $get): bool => !empty($get('variations'))),
+                                            ])
+                                            ->default([])
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->disableItemMovement()
+                                            ->columnSpan('full')
+                                            ->visible(fn (callable $get): bool => !empty($get('fetched_order_items'))),
+                                        
+                                        Forms\Components\TextInput::make('grand_total_pieces')
+                                            ->label('Grand Total of All Pieces')
                                             ->numeric()
-                                            ->required()
+                                            ->disabled()
+                                            ->dehydrated(false)
                                             ->reactive()
-                                            ->default(0),
-                                            
-                                        Select::make('supervisor_id')
-                                            ->label('Supervisor')
-                                            ->searchable()
-                                            ->options(
-                                                \App\Models\User::role('supervisor')->pluck('name', 'id')
-                                            ),
-                                            
-                                        Textarea::make('notes')
-                                            ->label('Notes')
-                                            ->columnSpanFull(),
-                                    ])
-                                    ->columns(3)
-                                    ->columnSpanFull(),
-
-                                    Section::make('Summary')
-                                    ->schema([
-                                        Placeholder::make('total_pieces_cut')
-                                            ->label('Total Cut Pieces')
-                                            ->content(function (callable $get, callable $set) {
-                                                $details = $get('employees') ?? [];
-
-                                                $total = collect($details)->sum(function ($item) {
-                                                    return (int) ($item['pieces_cut'] ?? 0);  
-                                                });
-
-                                                $set('total_pieces_cut', $total); 
-                                                return $total;
-                                            })
-                                            ->reactive()
-                                            ->live(),
-                                        ]),
+                                            ->afterStateHydrated(function (callable $get, callable $set) {
+                                                $items = $get('fetched_order_items') ?? [];
+                                                $total = 0;
+                                                foreach ($items as $item) {
+                                                    if (!empty($item['variations'])) {
+                                                        $total += (int)($item['total_variation_pieces'] ?? 0);
+                                                    } else {
+                                                        $total += (int)($item['no_of_pieces'] ?? 0);
+                                                    }
+                                                }
+                                                $set('grand_total_pieces', $total);
+                                            }),
+                                    ]),
                             ]),
-                            
-                        
+
+                            // Employees Tab
+                            Tabs\Tab::make('Employees')
+                                ->schema([
+                                    Section::make('Employee Data')
+                                        ->schema([
+                                            // Moved the Label Summary inside this section
+                                            Group::make([
+                                                Placeholder::make('pieces')
+                                                    ->label('Grand Total of Cut Pieces')
+                                                    ->content(fn (callable $get) => $get('grand_total_pieces') ?: 0)
+                                                    ->reactive(),
+                                            ]),
+                                            
+                                            Repeater::make('employees')
+                                                ->relationship()
+                                                ->label('Cutting Employees')
+                                                ->schema([
+                                                    Select::make('employee_id')
+                                                        ->label('Employee')
+                                                        ->required()
+                                                        ->searchable()
+                                                        ->options(function (callable $get, $state) {
+                                                            $selectedUserIds = collect($get('../../employees'))
+                                                                ->pluck('user_id')
+                                                                ->filter()
+                                                                ->reject(fn($id) => $id === $state)
+                                                                ->unique();
+
+                                                            return \App\Models\User::role('employee')
+                                                                ->whereNotIn('id', $selectedUserIds)
+                                                                ->pluck('name', 'id');
+                                                        }),
+                                                        
+                                                    TextInput::make('pieces_cut')
+                                                        ->label('Pieces Cut')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->reactive()
+                                                        ->default(0),
+                                                        
+                                                    Select::make('supervisor_id')
+                                                        ->label('Supervisor')
+                                                        ->searchable()
+                                                        ->options(
+                                                            \App\Models\User::role('supervisor')->pluck('name', 'id')
+                                                        ),
+                                                        
+                                                    Textarea::make('notes')
+                                                        ->label('Notes')
+                                                        ->columnSpanFull(),
+                                                ])
+                                                ->columns(3)
+                                                ->columnSpanFull(),
+
+                                            Section::make('Summary')
+                                            ->schema([
+                                                Placeholder::make('total_pieces_cut')
+                                                    ->label('Total Cut Pieces')
+                                                    ->content(function (callable $get, callable $set) {
+                                                        $employees = $get('employees') ?? [];
+
+                                                        $totalCut = collect($employees)->sum(function ($item) {
+                                                            return (int) ($item['pieces_cut'] ?? 0);
+                                                        });
+
+                                                        $set('total_pieces_cut', $totalCut);
+
+                                                        // Perform validation logic
+                                                        $grandTotal = (int) ($get('grand_total_pieces') ?? 0);
+
+                                                        if ($totalCut > $grandTotal) {
+                                                            $set('employees', []);
+
+                                                            \Filament\Notifications\Notification::make()
+                                                                ->title('Too many pieces assigned')
+                                                                ->body("Total pieces cut ($totalCut) exceed the grand total ($grandTotal). Employee entries have been cleared.")
+                                                                ->danger()
+                                                                ->duration(5000)
+                                                                ->persistent()
+                                                                ->send();
+                                                        }
+
+                                                        return $totalCut;
+                                                    })
+                                                    ->reactive()
+                                                    ->live(),
+                                            ]),
+                                    ]),
+                                ]),                                                   
                             
                         // Waste Tab
                         Tabs\Tab::make('Waste')
@@ -346,6 +770,45 @@ class CuttingRecordResource extends Resource
                                                     ->required(fn (callable $get) => filled($get('non_i_item_id'))),
                                             ])
                                             ->columns(3),
+
+                                        Repeater::make('by_product_records')
+                                            ->label('By Products')
+                                            ->schema([
+                                                Select::make('inv_item_id')
+                                                    ->label('By Product Item')
+                                                    ->options(
+                                                        \App\Models\InventoryItem::where('category', 'By Products')
+                                                            ->pluck('name', 'id')
+                                                    )
+                                                    ->searchable()
+                                                    ->reactive(),
+
+                                                TextInput::make('inv_amount')
+                                                    ->label('Amount')
+                                                    ->numeric()
+                                                    ->required(fn (callable $get) => filled($get('inv_item_id'))),
+
+                                                Select::make('inv_unit')
+                                                    ->label('Unit')
+                                                    ->options([
+                                                        'pcs' => 'Pieces',
+                                                        'kgs' => 'Kilograms',
+                                                        'liters' => 'Liters',
+                                                        'meters' => 'Meters',
+                                                    ])
+                                                    ->required(fn (callable $get) => filled($get('inv_item_id'))),
+
+                                                Select::make('inv_location_id')
+                                                    ->label('Location')
+                                                    ->options(
+                                                        \App\Models\InventoryLocation::where('location_type', 'picking')
+                                                            ->pluck('name', 'id')
+                                                    )
+                                                    ->searchable()
+                                                    ->required(fn (callable $get) => filled($get('inv_item_id'))),
+                                            ])
+                                            ->columns(4)
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                             
@@ -392,47 +855,12 @@ class CuttingRecordResource extends Resource
                                             ->columnSpanFull(),
                                         ]),
                             ]),
-
-                        // Cut Piece Label Tab
-                        Tabs\Tab::make('Cut Piece Labels')
-    ->schema([
-        Section::make('Label Information')
-            ->description('Track cut pieces with label ranges to minimize storage')
-            ->schema([
-                Placeholder::make('cut_pieces')
-                    ->label('Total Cut Pieces')
-                    ->content(fn (callable $get) => $get('total_pieces_cut') ?: 0)
-                    ->reactive(),
-                
-                
-                Fieldset::make('Label Range')
-                    ->schema([
-                        TextInput::make('start_label')
-                            ->label('Start Label')
-                            ->required()
-                            ->helperText('Format: PREFIX-001'),
-                            
-                        TextInput::make('end_label')
-                            ->label('End Label')
-                            ->required()
-                            ->helperText('Format: PREFIX-999'),
-                            
-                        TextInput::make('no_of_pieces')
-                            ->label('Number of Pieces')
-                            ->numeric()
-                            ->disabled()
-                            ->dehydrated(),
-                    ])
-                    ->columns(3),
-                    
-                Textarea::make('label_notes')
-                    ->label('Label Notes')
-                    ->columnSpanFull(),
-            ]),
-    ]),
                     ]),
             ]);
     }
+
+
+
 
     public static function table(Table $table): Table
     {
