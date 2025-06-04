@@ -4,50 +4,75 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CuttingRecord extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
     protected $fillable = [
-        'cutting_station_id', 'date', 'time_from', 'time_to',
-        'order_type', 'order_id', 'release_material_line_id',
-        'waste', 'waste_item_id', 'waste_item_location_id',
-        'by_product_amount', 'by_product_id', 'by_product_location_id',
-        'created_by', 'updated_by'
+        'order_type',
+        'order_id',
+        'cutting_station_id',
+        'release_material_id',
+        'operation_date',
+        'operated_time_from',
+        'operated_time_to',
+        'notes',
+        'created_by',
+        'updated_by',
     ];
 
-    public function station()
+    public function cuttingStation(): BelongsTo
     {
-        return $this->belongsTo(CuttingStation::class, 'cutting_station_id');
+        return $this->belongsTo(CuttingStation::class);
     }
 
-    public function employees()
+    public function releaseMaterial(): BelongsTo
     {
-        return $this->hasMany(CuttingRecordEmployee::class);
+        return $this->belongsTo(ReleaseMaterial::class);
     }
 
-    public function pieceLabels()
+    public function employees(): HasMany
     {
-        return $this->hasMany(CutPieceLabel::class);
+        return $this->hasMany(CuttingEmployee::class);
     }
 
-    public function qualityControls()
+    public function qualityControls(): HasMany
     {
-        return $this->hasMany(CuttingQCRecord::class);
+        return $this->hasMany(CuttingQualityControl::class);
     }
 
-    public function sampleOrderItems()
+    public function wasteRecords()
     {
-        return $this->hasMany(SampleOrderItem::class);
+        return $this->hasMany(CuttingInventoryWaste::class);
     }
 
-    public function customerOrderDescriptions()
+    public function nonInventoryWaste()
     {
-        return $this->hasMany(CustomerOrderDescription::class);
+        return $this->hasMany(CuttingNonInventoryWaste::class);
     }
 
+    public function byProductRecords()
+    {
+        return $this->hasMany(CuttingByProduct::class);
+    }
+
+    public function cutPieceLabels()
+    {
+        return $this->hasMany(CuttingLabel::class);
+    }
+
+    public function orderItems()
+    {
+        return $this->hasMany(CuttingOrderItem::class);
+    }
+
+    public function orderVariations()
+    {
+        return $this->hasMany(CuttingOrderVariation::class);
+    }
 
     protected static function booted()
     {

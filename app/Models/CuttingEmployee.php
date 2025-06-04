@@ -2,33 +2,38 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CuttingQCRecord extends Model
+class CuttingEmployee extends Model
 {
-    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
-        'cutting_record_id', 'qc_type', 'qc_value', 'qc_status',
-        'remarks', 'created_by', 'updated_by'
+        'cutting_record_id',
+        'employee_id',
+        'pieces_cut',
+        'supervisor_id',
+        'notes',
+        'created_by',
+        'updated_by',
     ];
 
-    public function cuttingRecord()
+    public function cuttingRecord(): BelongsTo
     {
         return $this->belongsTo(CuttingRecord::class);
     }
 
-    public function qcUser()
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'qc_user_id');
+        return $this->belongsTo(User::class, 'employee_id');
     }
 
-    public function supervisor()
+    public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
     }
-
 
     protected static function booted()
     {

@@ -4,22 +4,31 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CuttingRecordEmployee extends Model
+class CuttingNonInventoryWaste extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
-    protected $fillable = ['cutting_record_id', 'user_id', 'created_by', 'updated_by'];
+    protected $table = 'cutting_non_inventory_waste'; 
 
-    public function cuttingRecord()
+    protected $fillable = [
+        'cutting_record_id',
+        'item_id',
+        'amount',
+        'unit',
+        'created_by',
+        'updated_by',
+    ];
+
+    public function cuttingRecord(): BelongsTo
     {
         return $this->belongsTo(CuttingRecord::class);
     }
 
-    public function user()
+    public function item(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(NonInventoryItem::class);
     }
 
     protected static function booted()
