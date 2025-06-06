@@ -22,7 +22,7 @@ class CreateReleaseMaterial extends CreateRecord
         }
 
         if (isset($order)) {
-            $order->status = 'started';
+            $order->status = 'material released';
             $order->save();
         }
 

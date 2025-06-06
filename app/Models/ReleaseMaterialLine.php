@@ -15,6 +15,7 @@ class ReleaseMaterialLine extends Model
         'stock_id',
         'location_id',
         'quantity',
+        'cut_quantity',
         'cost',
         'created_by',
         'updated_by',

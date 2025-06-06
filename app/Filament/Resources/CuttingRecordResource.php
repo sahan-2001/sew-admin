@@ -37,6 +37,8 @@ class CuttingRecordResource extends Resource
     protected static ?string $model = CuttingRecord::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Cutting Department';
+    protected static ?string $navigationLabel = 'Cutting Material Records';
 
     // Helper method to get line ID
     protected static function getLineId($orderType, $orderId, $itemName)
@@ -70,6 +72,45 @@ class CuttingRecordResource extends Resource
             return $sampleVariation ? $sampleVariation->id : '0';
         }
         return '0';
+    }
+
+    protected static function setReleaseMaterialItems($releaseMaterial, callable $set): void
+    {
+        // Filter out lines where remaining quantity is <= 0
+        $validLines = $releaseMaterial->lines->filter(function ($line) {
+            $cutQuantity = $line->cut_quantity ?? 0;
+            return ($line->quantity - $cutQuantity) > 0;
+        });
+
+        if ($validLines->isEmpty()) {
+            Notification::make()
+                ->title('No Available Materials')
+                ->body('All materials in this release have been fully used (remaining quantity = 0).')
+                ->danger()
+                ->persistent()
+                ->send();
+            
+            $set('fetched_release_material_items', []);
+            $set('release_material_id', null); // Clear invalid selection
+            return;
+        }
+
+        $items = $validLines->map(function ($line) {
+            $cutQuantity = $line->cut_quantity ?? 0;
+            $remainingQuantity = number_format($line->quantity - $cutQuantity, 2, '.', '');
+            
+            return [
+                'item_code' => $line->item->item_code ?? 'N/A',
+                'item_name' => $line->item->name ?? 'N/A',
+                'remaining_quantity' => $remainingQuantity,
+                'uom' => $line->item->uom ?? 'N/A',
+                'location' => $line->location->name ?? 'N/A',
+                'release_material_line_id' => $line->id,
+                'original_quantity' => $line->quantity, // Store original for validation
+            ];
+        })->toArray();
+
+        $set('fetched_release_material_items', $items);
     }
 
     public static function form(Form $form): Form
@@ -113,6 +154,7 @@ class CuttingRecordResource extends Resource
                                                 $set('release_material_id', null);
                                                 $set('fetched_release_material_items', []);
                                                 $set('fetched_order_items', []);
+                                                $set('available_release_materials', []);
                                             }),
 
                                         Select::make('order_id')
@@ -140,6 +182,7 @@ class CuttingRecordResource extends Resource
                                                 $set('release_material_id', null);
                                                 $set('fetched_release_material_items', []);
                                                 $set('fetched_order_items', []);
+                                                $set('available_release_materials', []);
 
                                                 if (!$state) return;
 
@@ -156,39 +199,53 @@ class CuttingRecordResource extends Resource
                                                     $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
                                                 }
 
-                                                $releaseMaterial = \App\Models\ReleaseMaterial::with('lines.item', 'lines.location')
+                                                // Get all release materials with remaining quantity
+                                                $releaseMaterials = \App\Models\ReleaseMaterial::with(['lines' => function($query) {
+                                                    $query->where('quantity', '>', 0);
+                                                }, 'lines.item', 'lines.location', 'cuttingStation'])
                                                     ->where('order_type', $orderType)
                                                     ->where('order_id', $state)
-                                                    ->first();
+                                                    ->get();
 
-                                                // Check if cutting_station_id exists
-                                                if (!$releaseMaterial || !$releaseMaterial->cutting_station_id) {
-                                                    \Filament\Notifications\Notification::make()
-                                                        ->title('No Released Materials')
-                                                        ->body('Materials were not released for any cutting station.')
+                                                // Filter materials with remaining quantity
+                                                $validReleaseMaterials = $releaseMaterials->filter(function ($rm) {
+                                                    $totalRemaining = $rm->lines->sum(function ($line) {
+                                                        $cutQuantity = $line->cut_quantity ?? 0;
+                                                        return $line->quantity - $cutQuantity;
+                                                    });
+                                                    return $totalRemaining > 0;
+                                                });
+
+                                                if ($validReleaseMaterials->isEmpty()) {
+                                                    Notification::make()
+                                                        ->title('No Available Materials')
+                                                        ->body('All released materials for this order have been fully used.')
                                                         ->danger()
                                                         ->persistent()
-                                                        ->duration(5000)
                                                         ->send();
                                                     return;
                                                 }
-                                                
-                                                $set('cutting_station_name', $releaseMaterial->cuttingStation->name ?? 'N/A');
-                                                $set('cutting_station_id', $releaseMaterial->cuttingStation->id ?? null);
-                                                $set('release_material_id', $releaseMaterial->id ?? null);
 
-                                                // Set release material items
-                                                $items = $releaseMaterial->lines->map(function ($line) {
-                                                    return [
-                                                        'item_code' => $line->item->item_code ?? 'N/A',
-                                                        'item_name' => $line->item->name ?? 'N/A',
-                                                        'quantity' => $line->quantity,
-                                                        'uom' => $line->item->uom ?? 'N/A',
-                                                        'location' => $line->location->name ?? 'N/A',
-                                                    ];
+                                                // Prepare options with remaining quantity info
+                                                $releaseMaterialOptions = $validReleaseMaterials->mapWithKeys(function ($rm) {
+                                                    $stationName = $rm->cuttingStation->name ?? 'Unknown Station';
+                                                    $date = $rm->created_at->format('Y-m-d');
+                                                    $remaining = $rm->lines->sum(function ($line) {
+                                                        return $line->quantity - ($line->cut_quantity ?? 0);
+                                                    });
+                                                    return [$rm->id => "Cutting st. - {$stationName} | {$date} | (Remaining: {$remaining})"];
                                                 })->toArray();
 
-                                                $set('fetched_release_material_items', $items);
+                                                $set('available_release_materials', $releaseMaterialOptions);
+
+                                                // Auto-select if only one valid material
+                                                if ($validReleaseMaterials->count() === 1) {
+                                                    $singleRM = $validReleaseMaterials->first();
+                                                    $set('release_material_id', $singleRM->id);
+                                                    $set('cutting_station_name', $singleRM->cuttingStation->name ?? 'N/A');
+                                                    $set('cutting_station_id', $singleRM->cuttingStation->id ?? null);
+                                                    self::setReleaseMaterialItems($singleRM, $set);
+                                                }
                                             
                                                 // Fetch order items based on order type
                                                 $orderItems = [];
@@ -239,10 +296,38 @@ class CuttingRecordResource extends Resource
                                                 $set('fetched_order_items', $orderItems);
                                             }),
 
+                                        Select::make('release_material_id')
+                                        ->label('Select Released Material')
+                                        ->options(function (callable $get) {
+                                            return $get('available_release_materials') ?? [];
+                                        })
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                            if (!$state) {
+                                                $set('fetched_release_material_items', []);
+                                                return;
+                                            }
+                                            
+                                            $releaseMaterial = \App\Models\ReleaseMaterial::with(['lines' => function($query) {
+                                                $query->where('quantity', '>', 0);
+                                            }, 'lines.item', 'lines.location', 'cuttingStation'])
+                                                ->find($state);
+                                            
+                                            if ($releaseMaterial) {
+                                                $set('cutting_station_name', $releaseMaterial->cuttingStation->name ?? 'N/A');
+                                                $set('cutting_station_id', $releaseMaterial->cuttingStation->id ?? null);
+                                                self::setReleaseMaterialItems($releaseMaterial, $set);
+                                            }
+                                        })
+                                        ->required()
+                                        ->disabled(function (callable $get) {
+                                            return empty($get('available_release_materials'));
+                                        }),
+                                        
                                         Hidden::make('order_type'),
                                         Hidden::make('cutting_station_id'),
                                         Hidden::make('release_material_id'),
-                                            
+
                                         TextInput::make('customer_id')
                                             ->label('Customer ID')
                                             ->disabled(),
@@ -259,11 +344,29 @@ class CuttingRecordResource extends Resource
                                             ->label('Existing Released Materials for the Cutting Station')
                                             ->schema([
                                                 Grid::make(5)->schema([
-                                                    TextInput::make('item_code')->label('Item Code')->disabled(),
+                                                    TextInput::make('item_code')->label('Item Code')->disabled()->dehydrated(),
                                                     TextInput::make('item_name')->label('Item Name')->disabled(),
-                                                    TextInput::make('quantity')->label('Quantity')->disabled(),
+                                                    TextInput::make('remaining_quantity')->label('Quantity')->disabled(),
                                                     TextInput::make('uom')->label('UOM')->disabled(),
                                                     TextInput::make('location')->label('Location')->disabled(),
+                                                    
+                                                    TextInput::make('cut_quantity')
+                                                        ->label('Cut Quantity')
+                                                        ->numeric()
+                                                        ->minValue(0)
+                                                        ->required()
+                                                        ->reactive()
+                                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                                            $remaining = $get('remaining_quantity');
+                                                            if ((float)$state > (float)$remaining) {
+                                                                Notification::make()
+                                                                    ->title('Invalid Quantity')
+                                                                    ->body('Cannot cut more than remaining quantity')
+                                                                    ->danger()
+                                                                    ->send();
+                                                                $set('cut_quantity', $remaining);
+                                                            }
+                                                        }),
                                                 ]),
                                             ])
                                             ->default([]) 
@@ -280,7 +383,7 @@ class CuttingRecordResource extends Resource
                                             ->label('From')
                                             ->required()
                                             ->withoutSeconds()
-                                            ->reactive()
+                                            ->live()
                                             ->afterStateUpdated(function (callable $get, callable $set) {
                                                 $from = $get('operated_time_from');
                                                 $to = $get('operated_time_to');
@@ -320,7 +423,7 @@ class CuttingRecordResource extends Resource
                                             ->label('To')
                                             ->required()
                                             ->withoutSeconds()
-                                            ->reactive()
+                                            ->live()
                                             ->afterStateUpdated(function (callable $get, callable $set) {
                                                 $from = $get('operated_time_from');
                                                 $to = $get('operated_time_to');
@@ -431,7 +534,7 @@ class CuttingRecordResource extends Resource
                                                         ->dehydrated(false)
                                                         ->numeric()
                                                         ->visible(fn (callable $get) => !empty($get('variations')))
-                                                        ->reactive(),
+                                                        ->live(),
 
                                                     TextInput::make('start_label')
                                                         ->label('Start Label')
@@ -467,7 +570,7 @@ class CuttingRecordResource extends Resource
                                                                 ->label('Number of Pieces')
                                                                 ->numeric()
                                                                 ->required()
-                                                                ->reactive()
+                                                                ->live()
                                                                 ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                                                     // Update variation total
                                                                     $variations = $get('../../variations') ?? [];
@@ -537,7 +640,7 @@ class CuttingRecordResource extends Resource
                                             ->numeric()
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->reactive(),
+                                            ->live(),
                                     ]),
                             ]),
 
@@ -550,7 +653,7 @@ class CuttingRecordResource extends Resource
                                             Placeholder::make('pieces_display')
                                                 ->label('Grand Total of Cut Pieces')
                                                 ->content(fn (callable $get) => $get('grand_total_pieces') ?: 0)
-                                                ->reactive(),
+                                                ->live(),
                                         ]),
                                         
                                         Repeater::make('employees')
@@ -576,7 +679,7 @@ class CuttingRecordResource extends Resource
                                                     ->label('Pieces Cut')
                                                     ->numeric()
                                                     ->required()
-                                                    ->reactive()
+                                                    ->live()
                                                     ->default(0),
                                                     
                                                 Select::make('supervisor_id')
@@ -612,7 +715,6 @@ class CuttingRecordResource extends Resource
 
                                                         return $totalCut;
                                                     })
-                                                    ->reactive()
                                                     ->live(),
                                             ]),
                                     ]),
@@ -630,7 +732,7 @@ class CuttingRecordResource extends Resource
                                                     ->label('Waste Item')
                                                     ->options(InventoryItem::where('category', 'Waste Item')->pluck('name', 'id'))
                                                     ->searchable()
-                                                    ->reactive(),
+                                                    ->live(),
 
                                                 TextInput::make('inv_amount')
                                                     ->label('Amount')
@@ -662,7 +764,7 @@ class CuttingRecordResource extends Resource
                                                     ->label('Item')
                                                     ->options(NonInventoryItem::pluck('name', 'id'))
                                                     ->searchable()
-                                                    ->reactive(),
+                                                    ->live(),
 
                                                 TextInput::make('non_i_amount')
                                                     ->label('Amount')
@@ -689,7 +791,7 @@ class CuttingRecordResource extends Resource
                                                             ->pluck('name', 'id')
                                                     )
                                                     ->searchable()
-                                                    ->reactive(),
+                                                    ->live(),
 
                                                 TextInput::make('by_amount')
                                                     ->label('Amount')
@@ -730,7 +832,6 @@ class CuttingRecordResource extends Resource
                                             ->schema([
                                                 Select::make('qc_user_id')
                                                     ->label('Quality Control Officer')
-                                                    ->required()
                                                     ->searchable()
                                                     ->options(function (callable $get, $state) {
                                                         $selectedUserIds = collect($get('../../qualityControls'))

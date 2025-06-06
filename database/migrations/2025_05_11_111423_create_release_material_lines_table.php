@@ -14,6 +14,7 @@ class CreateReleaseMaterialLinesTable extends Migration
             $table->unsignedBigInteger('stock_id');
             $table->unsignedBigInteger('location_id');
             $table->integer('quantity');
+            $table->decimal('cut_quantity', 10, 2)->default(0);
             $table->decimal('cost', 10, 2);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

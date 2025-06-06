@@ -74,6 +74,11 @@ class CuttingRecord extends Model
         return $this->hasMany(CuttingOrderVariation::class);
     }
 
+    public function cutMaterials()
+    {
+        return $this->hasMany(ReleaseMaterial::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

@@ -14,6 +14,8 @@ use Filament\Tables;
 use Filament\Tables\Columns\{TextColumn};
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Notification;
+
 
 class ReleaseMaterialResource extends Resource
 {
@@ -49,14 +51,25 @@ class ReleaseMaterialResource extends Resource
                             Select::make('order_id')
                                 ->label('Order')
                                 ->required()
-                                ->options(function ($get) {
+                                ->options(function ($get, $livewire) {
                                     $orderType = $get('order_type');
+                                    $options = [];
+
                                     if ($orderType === 'customer_order') {
-                                        return \App\Models\CustomerOrder::pluck('name', 'order_id');
+                                        $orders = \App\Models\CustomerOrder::with('customer')
+                                            ->whereNotIn('status', ['planned', 'paused'])
+                                            ->get();
+
+                                        $options = $orders->pluck('name', 'order_id')->toArray();
                                     } elseif ($orderType === 'sample_order') {
-                                        return \App\Models\SampleOrder::pluck('name', 'order_id');
+                                        $orders = \App\Models\SampleOrder::with('customer')
+                                            ->whereNotIn('status', ['planned', 'paused'])
+                                            ->get();
+
+                                        $options = $orders->pluck('name', 'order_id')->toArray();
                                     }
-                                    return [];
+
+                                    return $options;
                                 })
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, $set, $get) {

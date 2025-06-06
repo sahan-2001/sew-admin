@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CuttingRecordResource\Pages;
 
 use App\Filament\Resources\CuttingRecordResource;
 use App\Models\CuttingRecord;
+use App\Models\ReleaseMaterialLine;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -71,6 +72,28 @@ class CreateCuttingRecord extends CreateRecord
                     ];
                 }, $data['by_product_records']), fn($row) => array_filter($row))
             );
+
+            // Update release material lines with cut quantities
+            if (!empty($data['fetched_release_material_items'])) {
+                foreach ($data['fetched_release_material_items'] as $item) {
+                    if (isset($item['cut_quantity']) && $item['cut_quantity'] > 0) {
+                        $releaseMaterialLine = ReleaseMaterialLine::where('release_material_id', $data['release_material_id'])
+                            ->whereHas('item', function($query) use ($item) {
+                                $query->where('item_code', $item['item_code']);
+                            })
+                            ->first();
+
+                        if ($releaseMaterialLine) {
+                            // Update the cut quantity and remaining quantity
+                            $newCutQuantity = $releaseMaterialLine->cut_quantity + $item['cut_quantity'];
+
+                            $releaseMaterialLine->update([
+                                'cut_quantity' => $newCutQuantity,
+                            ]);
+                        }
+                    }
+                }
+            }
 
             // Create order items and labels
             if (!empty($data['fetched_order_items'])) {
@@ -178,5 +201,21 @@ class CreateCuttingRecord extends CreateRecord
             ->title('Cutting record created successfully')
             ->success()
             ->send();
+        
+
+        $record = $this->record;
+
+        // 1. Update Order Status
+        if ($record->order_type === 'customer_order') {
+            $order = \App\Models\CustomerOrder::find($record->order_id);
+        } elseif ($record->order_type === 'sample_order') {
+            $order = \App\Models\SampleOrder::find($record->order_id);
+        }
+
+        if (isset($order)) {
+            $order->status = 'cut';
+            $order->save();
+        }
+
     }
 }
