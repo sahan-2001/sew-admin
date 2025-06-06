@@ -18,6 +18,8 @@ class CuttingLabel extends Model
         'order_variation_id',
         'quantity',
         'label',
+        'status',
+        'barcode',
         'created_by',
         'updated_by',
     ];

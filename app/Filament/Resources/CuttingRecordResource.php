@@ -31,6 +31,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\URL;
+use Filament\Tables\Actions\Action;
 
 class CuttingRecordResource extends Resource
 {
@@ -904,8 +906,14 @@ class CuttingRecordResource extends Resource
                 
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Print Report')
+                    ->label('Print Report')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn ($record) => route('cutting-records.print', ['cutting_record' => $record->id]))
+                    ->openUrlInNewTab(),
+                    
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

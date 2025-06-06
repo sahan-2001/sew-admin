@@ -493,194 +493,194 @@ class EnterPerformanceRecordResource extends Resource
                             ]),
 
                         Tabs\Tab::make('Employees')
-    ->visible(fn (callable $get) => $get('operation_id'))
-    ->schema([
-        Section::make('Assigned Employees Details')
-            ->columns(1)
-            ->schema([
-                Repeater::make('employee_details')
-                    ->columns(4)
-                    ->disableItemCreation()
-                    ->disableItemDeletion()
-                    ->schema([
-                        TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
-                        TextInput::make('name')->label('Name')->columns(1)->disabled(),
-                        
-                        TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
-                        TextInput::make('emp_downtime')->label('Emp: Downtime (min)')->reactive()->live()->columns(1),
-                        TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
-                        
-                        // Label Selection Section
-                        Section::make('Label Selection')
-                            ->columns(2)
-                            ->columnSpanFull()
+                            ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-                                \Filament\Forms\Components\Actions::make([
-                                    \Filament\Forms\Components\Actions\Action::make('select_labels')
-                                        ->label('Select Labels')
-                                        ->icon('heroicon-o-tag')
-                                        ->color('primary')
-                                        ->form([
-                                            Placeholder::make('selected_labels_info')
-                                                ->label('Currently Selected Labels')
-                                                ->content(function (callable $get) {
-                                                    $selectedLabels = $get('selected_labels') ?? [];
-                                                    if (empty($selectedLabels)) {
-                                                        return 'No labels selected yet';
-                                                    }
-                                                    return collect($selectedLabels)->map(function ($label) {
-                                                        return "{$label['label']} (Qty: {$label['quantity']})";
-                                                    })->implode(', ');
-                                                })
-                                                ->columnSpanFull(),
-                                            
-                                            CheckboxList::make('selected_label_ids')
-                                                ->label('Available Labels')
-                                                ->searchable()
-                                                ->options(function (callable $get) {
-                                                    $allLabels = \App\Models\CuttingLabel::with(['orderItem', 'variation'])
-                                                        ->orderBy('label')
-                                                        ->limit(500)
-                                                        ->get();
+                                Section::make('Assigned Employees Details')
+                                    ->columns(1)
+                                    ->schema([
+                                        Repeater::make('employee_details')
+                                            ->columns(4)
+                                            ->disableItemCreation()
+                                            ->disableItemDeletion()
+                                            ->schema([
+                                                TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
+                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
+                                                
+                                                TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
+                                                TextInput::make('emp_downtime')->label('Emp: Downtime (min)')->reactive()->live()->columns(1),
+                                                TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
+                                                
+                                                // Label Selection Section
+                                                Section::make('Label Selection')
+                                                    ->columns(2)
+                                                    ->columnSpanFull()
+                                                    ->schema([
+                                                        \Filament\Forms\Components\Actions::make([
+                                                            \Filament\Forms\Components\Actions\Action::make('select_labels')
+                                                                ->label('Select Labels')
+                                                                ->icon('heroicon-o-tag')
+                                                                ->color('primary')
+                                                                ->form([
+                                                                    Placeholder::make('selected_labels_info')
+                                                                        ->label('Currently Selected Labels')
+                                                                        ->content(function (callable $get) {
+                                                                            $selectedLabels = $get('selected_labels') ?? [];
+                                                                            if (empty($selectedLabels)) {
+                                                                                return 'No labels selected yet';
+                                                                            }
+                                                                            return collect($selectedLabels)->map(function ($label) {
+                                                                                return "{$label['label']} (Qty: {$label['quantity']})";
+                                                                            })->implode(', ');
+                                                                        })
+                                                                        ->columnSpanFull(),
+                                                                    
+                                                                    CheckboxList::make('selected_label_ids')
+                                                                        ->label('Available Labels')
+                                                                        ->searchable()
+                                                                        ->options(function (callable $get) {
+                                                                            $allLabels = \App\Models\CuttingLabel::with(['orderItem', 'variation'])
+                                                                                ->orderBy('label')
+                                                                                ->limit(500)
+                                                                                ->get();
+                                                                                
+                                                                            $employeeDetails = $get('../../employee_details') ?? [];
+                                                                            $allSelectedLabels = collect($employeeDetails)
+                                                                                ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
+                                                                                ->pluck('id')
+                                                                                ->toArray();
+                                                                                
+                                                                            return $allLabels->mapWithKeys(function ($label) use ($allSelectedLabels) {
+                                                                                $itemName = $label->orderItem->name ?? 'Unknown Item';
+                                                                                $variationName = $label->variation->name ?? 'No Variation';
+                                                                                $displayText = "ID: {$label->id} | Label: {$label->label}";
+                                                                                
+                                                                                return [
+                                                                                    $label->id => new HtmlString(
+                                                                                        in_array($label->id, $allSelectedLabels) 
+                                                                                            ? "<span style='opacity: 0.5'>{$displayText} (already assigned)</span>" 
+                                                                                            : $displayText
+                                                                                    )
+                                                                                ];
+                                                                            })->toArray();
+                                                                        })
+                                                                        ->disableOptionWhen(function ($value, callable $get) {
+                                                                            $employeeDetails = $get('../../employee_details') ?? [];
+                                                                            $allSelectedLabels = collect($employeeDetails)
+                                                                                ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
+                                                                                ->pluck('id')
+                                                                                ->toArray();
+                                                                            return in_array($value, $allSelectedLabels);
+                                                                        })
+                                                                        ->columns(1)
+                                                                        ->gridDirection('row')
+                                                                        ->helperText('Check labels to assign to this employee')
+                                                                        ->columnSpanFull()
+                                                                        ->reactive(),
+                                                                ])
+                                                                ->action(function (array $data, callable $get, callable $set) {
+                                                                    $selectedLabelIds = $data['selected_label_ids'] ?? [];
+                                                                    
+                                                                    if (empty($selectedLabelIds)) {
+                                                                        Notification::make()
+                                                                            ->title('No labels selected')
+                                                                            ->warning()
+                                                                            ->send();
+                                                                        return;
+                                                                    }
+                                                                    
+                                                                    $selectedLabels = \App\Models\CuttingLabel::whereIn('id', $selectedLabelIds)
+                                                                        ->with(['orderItem', 'variation'])
+                                                                        ->get()
+                                                                        ->map(function ($label) {
+                                                                            return [
+                                                                                'id' => $label->id,
+                                                                                'label' => $label->label,
+                                                                                'quantity' => $label->quantity,
+                                                                                'item_name' => $label->orderItem->name ?? 'Unknown Item',
+                                                                                'variation_name' => $label->variation->name ?? 'No Variation',
+                                                                                'order_item_id' => $label->order_item_id,
+                                                                                'order_variation_id' => $label->order_variation_id,
+                                                                            ];
+                                                                        })
+                                                                        ->toArray();
+                                                                    
+                                                                    $currentLabels = $get('selected_labels') ?? [];
+                                                                    $newLabels = array_merge($currentLabels, $selectedLabels);
+                                                                    $set('selected_labels', $newLabels);
+                                                                    
+                                                                    Notification::make()
+                                                                        ->title('Labels added successfully')
+                                                                        ->success()
+                                                                        ->send();
+                                                                })
+                                                                ->modalHeading('Select Labels')
+                                                                ->modalWidth('4xl'),
+                                                        ])
+                                                        ->columnSpan(1),
                                                         
-                                                    $employeeDetails = $get('../../employee_details') ?? [];
-                                                    $allSelectedLabels = collect($employeeDetails)
-                                                        ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
-                                                        ->pluck('id')
-                                                        ->toArray();
-                                                        
-                                                    return $allLabels->mapWithKeys(function ($label) use ($allSelectedLabels) {
-                                                        $itemName = $label->orderItem->name ?? 'Unknown Item';
-                                                        $variationName = $label->variation->name ?? 'No Variation';
-                                                        $displayText = "ID: {$label->id} | Label: {$label->label}";
-                                                        
-                                                        return [
-                                                            $label->id => new HtmlString(
-                                                                in_array($label->id, $allSelectedLabels) 
-                                                                    ? "<span style='opacity: 0.5'>{$displayText} (already assigned)</span>" 
-                                                                    : $displayText
-                                                            )
-                                                        ];
-                                                    })->toArray();
-                                                })
-                                                ->disableOptionWhen(function ($value, callable $get) {
-                                                    $employeeDetails = $get('../../employee_details') ?? [];
-                                                    $allSelectedLabels = collect($employeeDetails)
-                                                        ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
-                                                        ->pluck('id')
-                                                        ->toArray();
-                                                    return in_array($value, $allSelectedLabels);
-                                                })
-                                                ->columns(1)
-                                                ->gridDirection('row')
-                                                ->helperText('Check labels to assign to this employee')
-                                                ->columnSpanFull()
-                                                ->reactive(),
-                                        ])
-                                        ->action(function (array $data, callable $get, callable $set) {
-                                            $selectedLabelIds = $data['selected_label_ids'] ?? [];
-                                            
-                                            if (empty($selectedLabelIds)) {
-                                                Notification::make()
-                                                    ->title('No labels selected')
-                                                    ->warning()
-                                                    ->send();
-                                                return;
-                                            }
-                                            
-                                            $selectedLabels = \App\Models\CuttingLabel::whereIn('id', $selectedLabelIds)
-                                                ->with(['orderItem', 'variation'])
-                                                ->get()
-                                                ->map(function ($label) {
-                                                    return [
-                                                        'id' => $label->id,
-                                                        'label' => $label->label,
-                                                        'quantity' => $label->quantity,
-                                                        'item_name' => $label->orderItem->name ?? 'Unknown Item',
-                                                        'variation_name' => $label->variation->name ?? 'No Variation',
-                                                        'order_item_id' => $label->order_item_id,
-                                                        'order_variation_id' => $label->order_variation_id,
-                                                    ];
-                                                })
-                                                ->toArray();
-                                            
-                                            $currentLabels = $get('selected_labels') ?? [];
-                                            $newLabels = array_merge($currentLabels, $selectedLabels);
-                                            $set('selected_labels', $newLabels);
-                                            
-                                            Notification::make()
-                                                ->title('Labels added successfully')
-                                                ->success()
-                                                ->send();
-                                        })
-                                        ->modalHeading('Select Labels')
-                                        ->modalWidth('4xl'),
-                                ])
-                                ->columnSpan(1),
-                                
-                                Placeholder::make('label_count')
-                                    ->label('Selected Labels')
-                                    ->content(function (callable $get) {
-                                        $labels = $get('selected_labels') ?? [];
-                                        return count($labels) . ' label(s) selected';
-                                    })
-                                    ->reactive()
-                                    ->columnSpan(1),
-                            ]),
-                        
-                        // Selected Labels Display
-                        Repeater::make('selected_labels')
-                            ->label('Selected Labels')
-                            ->columns(6)
-                            ->schema([
-                                TextInput::make('id')
-                                    ->label('ID')
-                                    ->disabled()
-                                    ->columnSpan(1),
-                                    
-                                TextInput::make('label')
-                                    ->label('Label')
-                                    ->disabled()
-                                    ->columnSpan(1),
-                                    
-                                TextInput::make('item_name')
-                                    ->label('Item')
-                                    ->disabled()
-                                    ->columnSpan(2),
-                                    
-                                TextInput::make('quantity')
-                                    ->label('Qty')
-                                    ->disabled()
-                                    ->columnSpan(1),
-                                    
-                                TextInput::make('completed_quantity')
-                                    ->label('Completed')
-                                    ->numeric()
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, $get, $set) {
-                                        $labelQty = (int) $get('quantity');
-                                        if ($state > $labelQty) {
-                                            $set('completed_quantity', $labelQty);
-                                            Notification::make()
-                                                ->title('Invalid quantity')
-                                                ->body("Cannot exceed label quantity ({$labelQty})")
-                                                ->warning()
-                                                ->send();
-                                        }
-                                    })
-                                    ->columnSpan(1),
-                                    
-                                Hidden::make('order_item_id'),
-                                Hidden::make('order_variation_id'),
-                            ])
-                            ->disableItemCreation()
-                            ->disableItemDeletion()
-                            ->columnSpanFull(),
-                        
-                        TextArea::make('emp_notes')->label('Notes')->columns(4),
-                    ])
-                    ->columnSpanFull(),
-            ]),
+                                                        Placeholder::make('label_count')
+                                                            ->label('Selected Labels')
+                                                            ->content(function (callable $get) {
+                                                                $labels = $get('selected_labels') ?? [];
+                                                                return count($labels) . ' label(s) selected';
+                                                            })
+                                                            ->reactive()
+                                                            ->columnSpan(1),
+                                                    ]),
+                                                
+                                                // Selected Labels Display
+                                                Repeater::make('selected_labels')
+                                                    ->label('Selected Labels')
+                                                    ->columns(6)
+                                                    ->schema([
+                                                        TextInput::make('id')
+                                                            ->label('ID')
+                                                            ->disabled()
+                                                            ->columnSpan(1),
+                                                            
+                                                        TextInput::make('label')
+                                                            ->label('Label')
+                                                            ->disabled()
+                                                            ->columnSpan(1),
+                                                            
+                                                        TextInput::make('item_name')
+                                                            ->label('Item')
+                                                            ->disabled()
+                                                            ->columnSpan(2),
+                                                            
+                                                        TextInput::make('quantity')
+                                                            ->label('Qty')
+                                                            ->disabled()
+                                                            ->columnSpan(1),
+                                                            
+                                                        TextInput::make('completed_quantity')
+                                                            ->label('Completed')
+                                                            ->numeric()
+                                                            ->reactive()
+                                                            ->afterStateUpdated(function ($state, $get, $set) {
+                                                                $labelQty = (int) $get('quantity');
+                                                                if ($state > $labelQty) {
+                                                                    $set('completed_quantity', $labelQty);
+                                                                    Notification::make()
+                                                                        ->title('Invalid quantity')
+                                                                        ->body("Cannot exceed label quantity ({$labelQty})")
+                                                                        ->warning()
+                                                                        ->send();
+                                                                }
+                                                            })
+                                                            ->columnSpan(1),
+                                                            
+                                                        Hidden::make('order_item_id'),
+                                                        Hidden::make('order_variation_id'),
+                                                    ])
+                                                    ->disableItemCreation()
+                                                    ->disableItemDeletion()
+                                                    ->columnSpanFull(),
+                                                
+                                                TextArea::make('emp_notes')->label('Notes')->columns(4),
+                                            ])
+                                            ->columnSpanFull(),
+                                    ]),
                                     Section::make('Summary')
                                         ->schema([
                                             Placeholder::make('emp_total_production')

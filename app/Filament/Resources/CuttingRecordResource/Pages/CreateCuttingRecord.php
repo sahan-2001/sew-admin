@@ -9,6 +9,8 @@ use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Milon\Barcode\Facades\DNS1DFacade as DNS1D;
+use Illuminate\Support\Facades\Storage;
 
 class CreateCuttingRecord extends CreateRecord
 {
@@ -132,52 +134,58 @@ class CreateCuttingRecord extends CreateRecord
 
     protected function generateLabels($parentModel, $itemData, $cuttingRecord, $orderId, $orderType)
     {
-        // Determine if we're dealing with an order item or variation
         $isVariation = $parentModel instanceof \App\Models\CuttingOrderVariation;
-        
-        // Get the appropriate quantity
+
         $quantity = $isVariation 
             ? ($itemData['quantity'] ?? $itemData['no_of_pieces_var'] ?? 0)
             : ($parentModel->quantity ?? $itemData['no_of_pieces'] ?? 0);
 
-        // Ensure we have at least 1 label if there's any data
         $quantity = max($quantity, 1);
 
         if ($quantity > 0) {
-            // Get all required IDs
             $cuttingRecordId = $cuttingRecord->id;
             $orderItemId = $isVariation 
                 ? $parentModel->order_item_id 
                 : $parentModel->id;
             $orderVariationId = $isVariation ? $parentModel->id : null;
 
-            // Determine padding length based on count
             $paddingLength = strlen((string) $quantity);
 
             for ($i = 1; $i <= $quantity; $i++) {
                 $paddedIndex = str_pad($i, $paddingLength, '0', STR_PAD_LEFT);
 
-                // Build label in the format: SO/CO-OrderID-CuttingRecordID-OrderItemID-OrderVariationID-Index
                 $labelParts = [
-                    $orderType,       // SO or CO
-                    $orderId,         // Order ID
-                    $cuttingRecordId,  // Cutting record ID
-                    $orderItemId,     // Order item ID
+                    $orderType,
+                    $orderId,
+                    $cuttingRecordId,
+                    $orderItemId,
                 ];
 
-                // Add variation ID only if it exists
                 if ($orderVariationId) {
                     $labelParts[] = $orderVariationId;
                 }
 
-                // Add the index
                 $labelParts[] = $paddedIndex;
 
-                // Join all parts with hyphens
                 $label = implode('-', $labelParts);
+
+                // Generate barcode image (Code 128 format)
+                $barcodeImage = DNS1D::getBarcodePNG($label, 'C128', 3, 100);
+
+                // Save image as PNG file to storage (public path)
+                $fileName = 'barcodes/' . $label . '.png';
+                $filePath = storage_path('app/public/' . $fileName);
+
+                // Ensure directory exists
+                Storage::disk('public')->makeDirectory('barcodes');
+
+                // Decode base64 and write the file
+                file_put_contents($filePath, base64_decode($barcodeImage));
 
                 $cuttingRecord->cutPieceLabels()->create([
                     'label' => $label,
+                    'barcode' => 'storage/' . $fileName,  // or asset('storage/' . $fileName) for full URL
+                    'status' => 'Non-completed',
                     'order_id' => $orderId,
                     'order_type' => $orderType,
                     'quantity' => 1,

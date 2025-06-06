@@ -14,6 +14,8 @@ use App\Http\Controllers\SampleOrderPdfController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PoFrontendController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\CuttingRecordPrintController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +36,7 @@ Route::get('/welcome', [PageController::class, 'index'])->name('welcome');
 
 Route::get('/purchase-order/{purchase_order}/pdf', [PurchaseOrderPdfController::class, 'show'])->name('purchase-order.pdf');
 Route::get('/sample-orders/{sample_order}/pdf', [SampleOrderPdfController::class, 'show'])->name('sample-orders.pdf');
-
+Route::get('/cutting-records/{cutting_record}/print', [CuttingRecordPrintController::class, 'print'])->name('cutting-records.print');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     ActivityLogResource::routes(Filament::getCurrentPanel());

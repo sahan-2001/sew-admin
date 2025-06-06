@@ -40,8 +40,7 @@ class AssignDailyOperationsResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Daily Production';
-    protected static ?string $navigationLabel = 'Assign Daily Operations - Orders with Released Materials';
-    protected static ?string $label = 'Assign Daily Operations(Released Materials)';
+    protected static ?string $navigationLabel = 'Assign Daily Operations';
 
     public static function form(Form $form): Form
     {
