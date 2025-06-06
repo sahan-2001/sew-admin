@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AssignDailyOperationsResource\Pages;
 
 use App\Models\AssignDailyOperation;
 use App\Models\AssignDailyOperationLine;
+use App\Models\AssignDailyOperationLabel;
 use App\Models\AssignedEmployee;
 use App\Models\AssignedSupervisor;
 use App\Models\AssignedProductionMachine;
@@ -25,7 +26,7 @@ class CreateAssignDailyOperations extends CreateRecord
         // Check for existing record with same order type, order ID, and date
         $existingRecord = AssignDailyOperation::where('order_type', $data['order_type'])
             ->where('order_id', $data['order_id'])
-            ->whereDate('created_at', Carbon::today())
+            ->whereDate('operation_date', Carbon::parse($data['operation_date']))
             ->first();
 
         if ($existingRecord) {
@@ -49,6 +50,11 @@ class CreateAssignDailyOperations extends CreateRecord
             'updated_by' => auth()->id(),
         ]);
 
+        // Save the selected labels if they exist
+        if (isset($data['selected_label_ids'])) {
+            $assignDailyOperation->labels()->sync($data['selected_label_ids']);
+        }
+    
         Notification::make()
             ->title('Record Created Successfully')
             ->success()
@@ -67,7 +73,8 @@ class CreateAssignDailyOperations extends CreateRecord
                 'machine_run_time' => $operation['machine_run_time'],
                 'labor_run_time' => $operation['labor_run_time'] ,
                 'target_duration' => $operation['target_duration'] ?? null,
-                'target' => $operation['target'] ?? null,
+                'target_e' => $operation['target_e'] ?? null,
+                'target_m' => $operation['target_m'] ?? null,
                 'measurement_unit' => $operation['measurement_unit'] ?? null,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
@@ -110,5 +117,10 @@ class CreateAssignDailyOperations extends CreateRecord
                 'updated_by' => auth()->id(),
             ]);
         }
+    }
+    
+    protected function getRedirectUrl(): string
+    {
+        return static::$resource::getUrl('index');
     }
 }

@@ -54,7 +54,8 @@ class EditAssignDailyOperations extends EditRecord
                 'labor_setup_time' => $line->labor_setup_time,
                 'labor_run_time' => $line->labor_run_time,
                 'target_duration' => $line->target_duration,
-                'target' => $line->target,
+                'target_e' => $line->target_e,
+                'target_m' => $line->target_m,
                 'measurement_unit' => $line->measurement_unit,
                 
 
@@ -88,7 +89,8 @@ class EditAssignDailyOperations extends EditRecord
                     'machine_run_time' => $operation['machine_run_time'],
                     'labor_run_time' => $operation['labor_run_time'] ,
                     'target_duration' => $operation['target_duration'] ?? null,
-                    'target' => $operation['target'] ?? null,
+                    'target_e' => $operation['target_e'] ?? null,
+                    'target_m' => $operation['target_m'] ?? null,
                     'measurement_unit' => $operation['measurement_unit'] ?? null,
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),

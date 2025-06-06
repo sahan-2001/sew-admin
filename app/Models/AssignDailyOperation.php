@@ -3,6 +3,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class AssignDailyOperation extends Model
 {
@@ -19,6 +21,14 @@ class AssignDailyOperation extends Model
     public function assignedWorkingHours()
     {
         return $this->hasMany(AssignedWorkingHour::class);
+    }
+
+    public function labels(): BelongsToMany
+    {
+        return $this->belongsToMany(CuttingLabel::class, 'assign_daily_operation_labels')
+            ->using(AssignDailyOperationLabel::class)
+            ->withTimestamps()
+            ->withPivot('id', 'deleted_at'); 
     }
 
     protected static function booted()

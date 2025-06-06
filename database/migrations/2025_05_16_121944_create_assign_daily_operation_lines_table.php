@@ -17,7 +17,8 @@ return new class extends Migration {
             $table->integer('labor_setup_time')->nullable()->default(0);
             $table->integer('labor_run_time')->nullable()->default(0);
             $table->string('target_duration')->nullable();
-            $table->integer('target')->nullable();
+            $table->integer('target_e')->nullable();
+            $table->integer('target_m')->nullable();
             $table->string('measurement_unit')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
