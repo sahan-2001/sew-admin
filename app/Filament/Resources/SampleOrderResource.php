@@ -207,21 +207,14 @@ class SampleOrderResource extends Resource
                 EditAction::make()
                 ->visible(fn ($record) => 
                     auth()->user()->can('edit sample orders') &&
-                    !in_array($record->status, ['accepted', 'rejected', 'released'])
+                    in_array($record->status, ['planned', 'released'])
                 ),
-
             DeleteAction::make()
-                ->visible(fn ($record) => 
-                    auth()->user()->can('delete sample orders') &&
-                    !in_array($record->status, ['accepted', 'rejected'])
-                ),
-                
- #               Action::make('download_pdf')
- #                   ->label('View')
-  #                  ->url(fn ($record) => route('sample-orders.pdf', ['sampleOrder' => $record]))
-  #                  ->openUrlInNewTab()
- #                   ->visible(fn ($record) => $record->status !== 'planned'),  // Hide View button if status is 'planned'
-                Action::make('handle')
+            ->visible(fn ($record) => 
+                auth()->user()->can('delete sample orders') &&
+                $record->status === 'planned'
+            ),
+            Action::make('handle')
                     ->label('Handle')
                     ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
                     ->openUrlInNewTab(false),

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Action;
 
 class SampleOrder extends Model
 {
@@ -60,7 +62,12 @@ class SampleOrder extends Model
     // Relationship to track the user who created the order (added_by)
     public function addedBy()
     {
-        return $this->belongsTo(User::class, 'added_by'); // 'added_by' references the 'id' field in the users table
+        return $this->belongsTo(User::class, 'added_by');
+    }
+
+    public function actions(): MorphMany
+    {
+        return $this->morphMany(Action::class, 'model');
     }
 
     // Configure activity log options

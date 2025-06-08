@@ -15,6 +15,7 @@ class RegisterArrivalItem extends Model
         'item_id',
         'quantity',
         'price',
+        'status',
         'total'
     ];
 
