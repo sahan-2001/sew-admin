@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('label');
             $table->string('status');
             $table->string('barcode');
+            $table->string('barcode_id');
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->softDeletes();

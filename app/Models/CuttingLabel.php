@@ -20,6 +20,7 @@ class CuttingLabel extends Model
         'label',
         'status',
         'barcode',
+        'barcode_id',
         'created_by',
         'updated_by',
     ];
@@ -46,12 +47,22 @@ class CuttingLabel extends Model
             ->withTimestamps()
             ->withPivot('id', 'deleted_at');
     }
-    
+
+    public function getBarcodeUrlAttribute()
+    {
+        return $this->barcode ? asset($this->barcode) : null;
+    }
+        
     protected static function booted()
     {
         static::creating(function ($model) {
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
+            
+            // Ensure barcode_id is set if not provided
+            if (empty($model->barcode_id)) {
+                $model->barcode_id = uniqid('CUT');
+            }
         });
 
         static::updating(function ($model) {

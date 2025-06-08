@@ -154,6 +154,22 @@ class CreateCuttingRecord extends CreateRecord
             for ($i = 1; $i <= $quantity; $i++) {
                 $paddedIndex = str_pad($i, $paddingLength, '0', STR_PAD_LEFT);
 
+                $barcodeIdParts = [
+                    strtoupper(substr($orderType, 0, 3)),
+                    $orderId,
+                    $cuttingRecordId,
+                    $orderItemId,
+                ];
+
+                if (!empty($orderVariationId)) {
+                    $barcodeIdParts[] = $orderVariationId;
+                }
+
+                $barcodeIdParts[] = $paddedIndex;
+
+                $barcodeId = implode('-', $barcodeIdParts);
+
+                // Full label for reference
                 $labelParts = [
                     $orderType,
                     $orderId,
@@ -167,28 +183,29 @@ class CreateCuttingRecord extends CreateRecord
 
                 $labelParts[] = $paddedIndex;
 
-                $label = implode('-', $labelParts);
+                $fullLabel = implode('-', $labelParts);
 
-                // Generate barcode image (Code 128 format)
-                $barcodeImage = DNS1D::getBarcodePNG($label, 'C128', 3, 100);
+                // Generate barcode image for the barcode ID (not full label)
+                $barcodeImage = DNS1D::getBarcodePNG($barcodeId, 'C128', 3, 100);
 
-                // Save image as PNG file to storage (public path)
-                $fileName = 'barcodes/' . $label . '.png';
+                // Save image as PNG file
+                $fileName = 'barcodes/' . $barcodeId . '.png';
                 $filePath = storage_path('app/public/' . $fileName);
 
                 // Ensure directory exists
                 Storage::disk('public')->makeDirectory('barcodes');
 
-                // Decode base64 and write the file
                 file_put_contents($filePath, base64_decode($barcodeImage));
 
+                // Store in DB
                 $cuttingRecord->cutPieceLabels()->create([
-                    'label' => $label,
-                    'barcode' => 'storage/' . $fileName,  // or asset('storage/' . $fileName) for full URL
+                    'label' => $fullLabel, // full human-readable label
+                    'barcode_id' => $barcodeId, // short barcode used to generate barcode image
+                    'barcode' => 'storage/' . $fileName, 
                     'status' => 'Non-completed',
                     'order_id' => $orderId,
                     'order_type' => $orderType,
-                    'quantity' => 1,
+                    'quantity' => $paddedIndex,
                     'order_item_id' => $orderItemId,
                     'order_variation_id' => $orderVariationId,
                     'parent_type' => get_class($parentModel),
@@ -197,6 +214,7 @@ class CreateCuttingRecord extends CreateRecord
             }
         }
     }
+
     
     protected function getRedirectUrl(): string
     {
