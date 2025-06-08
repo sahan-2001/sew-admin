@@ -17,4 +17,9 @@ class AssignDailyOperationLabel extends Pivot
     ];
 
     public $incrementing = true; 
+
+    public function cuttingLabel()
+    {
+        return $this->belongsTo(\App\Models\CuttingLabel::class, 'cutting_label_id');
+    }
 }

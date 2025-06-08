@@ -44,4 +44,16 @@ class EnterPerformanceRecord extends Model
         return $this->hasMany(EmployeePerformance::class);
     }
 
+    public function labels()
+    {
+        return $this->hasManyThrough(
+            \App\Models\CuttingLabel::class,
+            \App\Models\AssignDailyOperationLabel::class,
+            'assign_daily_operation_id', 
+            'id',
+            'id', 
+            'cutting_label_id' 
+        );
+    }
+
 }

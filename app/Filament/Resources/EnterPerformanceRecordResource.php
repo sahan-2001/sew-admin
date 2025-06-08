@@ -27,7 +27,6 @@ use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions;
 use Filament\Tables\Columns;
 use Filament\Forms\Components\Tab;
 use Illuminate\Support\HtmlString;
@@ -36,7 +35,11 @@ use Filament\Notifications\Notification;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Forms\Components\CheckboxList;
-
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Actions;
+use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Modal;
 
 
 class EnterPerformanceRecordResource extends Resource
@@ -48,6 +51,30 @@ class EnterPerformanceRecordResource extends Resource
     protected static ?string $navigationGroup = 'Daily Production';
 
 
+    public static function getAvailableLabels(string $operationType = null, int $modelId = null, string $orderType = null, int $orderId = null): array
+    {
+        if (!$operationType) return [];
+
+        return match ($operationType) {
+            'assigned' => $modelId ? \App\Models\AssignDailyOperationLabel::where('assign_daily_operation_id', $modelId)
+                ->get()
+                ->mapWithKeys(fn($label) => [
+                    $label->id => "Label #{$label->id} - {$label->label_name}"
+                ])->toArray() : [],
+
+            'temp' => ($orderType && $orderId) ? \App\Models\CuttingLabel::where('order_type', $orderType)
+                ->where('order_id', $orderId)
+                ->get()
+                ->mapWithKeys(fn($label) => [
+                    $label->id => "Label #{$label->id} - {$label->label_name}"
+                ])->toArray() : [],
+
+            default => [],
+        };
+    }
+
+
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -79,9 +106,10 @@ class EnterPerformanceRecordResource extends Resource
                                                 $set('target_duration', null);
                                                 $set('target', null);
                                                 $set('measurement_unit', null);
+                                                $set('model_id', null);
                                                 $set('employee_ids', null);
                                             }),
-                                        ]),
+                                    ]),
 
                                 Section::make()
                                     ->columns(2)
@@ -108,6 +136,7 @@ class EnterPerformanceRecordResource extends Resource
                                                 $set('target_duration', null);
                                                 $set('target', null);
                                                 $set('measurement_unit', null);
+                                                $set('model_id', null);
                                                 $set('employee_ids', null);
                                             }),
 
@@ -124,11 +153,14 @@ class EnterPerformanceRecordResource extends Resource
                                                 if (!$operationType || !$operatedDate) return [];
 
                                                 return match ($operationType) {
-                                                    'assigned' => \App\Models\AssignDailyOperationLine::with(['operation', 'workstation', 'productionLine'])
+                                                    'assigned' => \App\Models\AssignDailyOperationLine::with(['operation', 'workstation', 'productionLine', 'assignDailyOperation'])
                                                         ->whereHas('assignDailyOperation', fn($q) => $q->whereDate('operation_date', $operatedDate))
                                                         ->get()
                                                         ->mapWithKeys(fn($line) => [
-                                                            $line->id => "Assigned Line - {$line->id} | {$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id} ",
+                                                            $line->id => "Assigned Line - {$line->id} | " . 
+                                                                        ($line->assignDailyOperation ? 
+                                                                            "{$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id}" : 
+                                                                            'No Parent Operation')
                                                         ]),
 
                                                     'um' => \App\Models\UMOperationLine::with(['operation', 'workstation', 'productionLine'])
@@ -151,7 +183,7 @@ class EnterPerformanceRecordResource extends Resource
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                                 $operationType = $get('operation_type');
                                                 if (!$operationType || !$state) return;
-
+                                            
                                                 $model = match ($operationType) {
                                                     'assigned' => \App\Models\AssignDailyOperationLine::with(['operation', 'productionLine', 'workstation'])->find($state),
                                                     'um' => \App\Models\UMOperationLine::with(['operation', 'productionLine', 'workstation'])->find($state),
@@ -161,6 +193,7 @@ class EnterPerformanceRecordResource extends Resource
 
                                                 if ($model) {
                                                     $set('operation_type', $operationType);
+                                                    $set('model_id', $model->assignDailyOperation->id ?? $model->umOperation->id ?? $model->id ?? null);
                                                     $set('order_type', $model->assignDailyOperation->order_type ?? $model->umOperation->order_type ?? $model->order_type ?? null);
                                                     $set('order_id', $model->assignDailyOperation->order_id ?? $model->umOperation->order_id ?? $model->order_id ?? null);
                                                     $set('operation_date', $model->assignDailyOperation->operation_date ?? $model->umOperation->operation_date ?? $model->operation_date?? null);
@@ -204,19 +237,16 @@ class EnterPerformanceRecordResource extends Resource
                                                         default => collect(),
                                                     };
                                                     
-                                                    if ($machines->isEmpty()) {
-                                                        return 'No machines assigned.';
+                                                    if (!$machines->isEmpty()) {
+                                                        $machineDetails = $machines->map(function ($machine) {
+                                                            return [
+                                                                'id' => $machine->productionMachine->id ?? null,
+                                                                'name' => $machine->productionMachine->name ?? 'Unnamed',
+                                                            ];
+                                                        })->toArray();
+                                                        
+                                                        $set('machines', $machineDetails);
                                                     }
-
-                                                    $machineDetails = $machines->map(function ($machine) {
-                                                        return [
-                                                            'id' => $machine->productionMachine->id ?? null,
-                                                            'name' => $machine->productionMachine->name ?? 'Unnamed',
-                                                        ];
-                                                    })->toArray();
-                                                    
-                                                    $set('machines', $machineDetails);
-
 
                                                     // Fetch supervisor data 
                                                     $supervisors = match ($operationType) {
@@ -232,20 +262,17 @@ class EnterPerformanceRecordResource extends Resource
                                                         default => collect(),
                                                     };
                                                     
-                                                    if ($supervisors->isEmpty()) {
-                                                        return 'No supervisors assigned.';
+                                                    if (!$supervisors->isEmpty()) {
+                                                        $supervisorDetails = $supervisors->map(function ($supervisor) {
+                                                            return [
+                                                                'user_id' => $supervisor->user_id,
+                                                                'name' => $supervisor->user->name ?? 'N/A',
+                                                            ];
+                                                        })->toArray();
+
+                                                        $set('supervisor_details', $supervisorDetails);
+                                                        $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
                                                     }
-
-                                                    $supervisorDetails = $supervisors->map(function ($supervisor) {
-                                                        return [
-                                                            'user_id' => $supervisor->user_id,
-                                                            'name' => $supervisor->user->name ?? 'N/A',
-                                                        ];
-                                                    })->toArray();
-
-                                                    $set('supervisor_details', $supervisorDetails);
-                                                    $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
-
 
                                                     // Fetch third party service data and their processes
                                                     $services = match ($operationType) {
@@ -261,41 +288,44 @@ class EnterPerformanceRecordResource extends Resource
                                                         default => collect(),
                                                     };
 
-                                                    if ($services->isEmpty()) {
-                                                        return 'No services assigned.';
-                                                    }
+                                                    if (!$services->isEmpty()) {
+                                                        $serviceDetails = $services->map(function ($service) {
+                                                            $processes = $service->thirdPartyService->processes->map(function ($process) {
+                                                                // Get supplier name (assuming there's a relationship)
+                                                                $supplierName = $process->supplier->name ?? 'Unknown Supplier';
+                                                                
+                                                                return [
+                                                                    'process_id' => $process->id,
+                                                                    'description' => $process->description,
+                                                                    'related_table' => $process->related_table,
+                                                                    'related_record_id' => $process->related_record_id,
+                                                                    'unit_of_measurement' => $process->unit_of_measurement,
+                                                                    'amount' => $process->amount,
+                                                                    'unit_rate' => $process->unit_rate,
+                                                                    'used_amount' => 0, 
+                                                                    'total' => 0, 
+                                                                ];
+                                                            })->toArray();
 
-                                                    $serviceDetails = $services->map(function ($service) {
-                                                        $processes = $service->thirdPartyService->processes->map(function ($process) {
-                                                            // Get supplier name (assuming there's a relationship)
-                                                            $supplierName = $process->supplier->name ?? 'Unknown Supplier';
-                                                            
                                                             return [
-                                                                'process_id' => $process->id,
-                                                                'description' => $process->description,
-                                                                'related_table' => $process->related_table,
-                                                                'related_record_id' => $process->related_record_id,
-                                                                'unit_of_measurement' => $process->unit_of_measurement,
-                                                                'amount' => $process->amount,
-                                                                'unit_rate' => $process->unit_rate,
-                                                                'used_amount' => 0, 
-                                                                'total' => 0, 
+                                                                'id' => $service->thirdPartyService->id ?? null,
+                                                                'name' => $service->thirdPartyService->name ?? 'Unnamed',
+                                                                'supplier_id' => $service->thirdPartyService->supplier->supplier_id ?? 'Unnamed',
+                                                                'supplier_name' => $service->thirdPartyService->supplier->name ?? 'Unknown Supplier',
+                                                                'processes' => $processes,
                                                             ];
                                                         })->toArray();
 
-                                                        return [
-                                                            'id' => $service->thirdPartyService->id ?? null,
-                                                            'name' => $service->thirdPartyService->name ?? 'Unnamed',
-                                                            'supplier_id' => $service->thirdPartyService->supplier->supplier_id ?? 'Unnamed',
-                                                            'supplier_name' => $service->thirdPartyService->supplier->name ?? 'Unknown Supplier',
-                                                            'processes' => $processes,
-                                                        ];
-                                                    })->toArray();
-
-                                                    $set('services', $serviceDetails);
+                                                        $set('services', $serviceDetails);
+                                                    }
                                                 }
                                             }),
 
+                                        TextInput::make('model_id')
+                                            ->label('model id')
+                                            ->disabled()
+                                            ->columns(1),
+                                            
                                         TextInput::make('order_type')
                                             ->label('Order Type')
                                             ->disabled()
@@ -310,12 +340,23 @@ class EnterPerformanceRecordResource extends Resource
                                             ->label('Operation Date')
                                             ->disabled()
                                             ->columns(1),
-                                        ]),
+
+                                        CheckboxList::make('selected_labels')
+                                            ->label('Available Labels')
+                                            ->options(function (callable $get) {
+                                                return self::getAvailableLabels(
+                                                    $get('operation_type'),
+                                                    $get('model_id'),
+                                                    $get('order_type'),
+                                                    $get('order_id')
+                                                );
+                                            })
+                                    ]),
                             ]),
 
                         Tabs\Tab::make('Production Data')
                             ->schema([
-                                \Filament\Forms\Components\Section::make('Pre-Defined Performance Values')
+                                Section::make('Pre-Defined Performance Values')
                                     ->columns(4)
                                     ->schema([
                                         TextInput::make('machine_setup_time')
@@ -358,8 +399,7 @@ class EnterPerformanceRecordResource extends Resource
                                             ->columns(1),
                                     ]),
 
-
-                                \Filament\Forms\Components\Section::make('Actual Performance Values')
+                                Section::make('Actual Performance Values')
                                     ->columns(4)
                                     ->schema([
                                         TextInput::make('actual_machine_setup_time')
@@ -377,7 +417,6 @@ class EnterPerformanceRecordResource extends Resource
                                             ->required()
                                             ->reactive()
                                             ->columns(2),
-
 
                                         TextInput::make('actual_labor_setup_time')
                                             ->label('Actual Labor Setup Time')
@@ -399,97 +438,96 @@ class EnterPerformanceRecordResource extends Resource
                                 Section::make('Operated Time Frame')
                                     ->columns(4)
                                     ->schema([
-                                                Section::make()
-                                                    ->columns(4)
-                                                    ->schema([
-                                                        TimePicker::make('operated_time_from')
-                                                            ->label('From')
-                                                            ->required()
-                                                            ->withoutSeconds()
-                                                            ->reactive()
-                                                            ->afterStateUpdated(function (callable $get, callable $set) {
-                                                                $from = $get('operated_time_from');
-                                                                $to = $get('operated_time_to');
-                                                                $now = now()->format('H:i');
+                                        Section::make()
+                                            ->columns(4)
+                                            ->schema([
+                                                TimePicker::make('operated_time_from')
+                                                    ->label('From')
+                                                    ->required()
+                                                    ->withoutSeconds()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function (callable $get, callable $set) {
+                                                        $from = $get('operated_time_from');
+                                                        $to = $get('operated_time_to');
+                                                        $now = now()->format('H:i');
 
-                                                                if ($from && $from > $now) {
-                                                                    Notification::make()
-                                                                        ->title('Invalid time')
-                                                                        ->body('You cannot select a future time.')
-                                                                        ->danger()
-                                                                        ->send();
-                                                                    $set('operated_time_from', null);
-                                                                    return;
-                                                                }
+                                                        if ($from && $from > $now) {
+                                                            Notification::make()
+                                                                ->title('Invalid time')
+                                                                ->body('You cannot select a future time.')
+                                                                ->danger()
+                                                                ->send();
+                                                            $set('operated_time_from', null);
+                                                            return;
+                                                        }
 
-                                                                if ($from && $to) {
-                                                                    $fromTime = \Carbon\Carbon::createFromFormat('H:i', $from);
-                                                                    $toTime = \Carbon\Carbon::createFromFormat('H:i', $to);
+                                                        if ($from && $to) {
+                                                            $fromTime = \Carbon\Carbon::createFromFormat('H:i', $from);
+                                                            $toTime = \Carbon\Carbon::createFromFormat('H:i', $to);
 
-                                                                    if ($toTime->lt($fromTime)) {
-                                                                        $toTime->addDay();
-                                                                    }
+                                                            if ($toTime->lt($fromTime)) {
+                                                                $toTime->addDay();
+                                                            }
 
-                                                                    $minutes = $toTime->diffInMinutes($fromTime);
-                                                                    $hours = floor($minutes / 60);
-                                                                    $remainingMinutes = $minutes % 60;
+                                                            $minutes = $toTime->diffInMinutes($fromTime);
+                                                            $hours = floor($minutes / 60);
+                                                            $remainingMinutes = $minutes % 60;
 
-                                                                    $durationText = ($hours ? "{$hours}h " : '') . "{$remainingMinutes}m";
-                                                                    $set('operated_time_duration', trim($durationText));
-                                                                } else {
-                                                                    $set('operated_time_duration', null);
-                                                                }
-                                                            })
-                                                            ->columnSpan(1),
+                                                            $durationText = ($hours ? "{$hours}h " : '') . "{$remainingMinutes}m";
+                                                            $set('operated_time_duration', trim($durationText));
+                                                        } else {
+                                                            $set('operated_time_duration', null);
+                                                        }
+                                                    })
+                                                    ->columnSpan(1),
 
-                                                        TimePicker::make('operated_time_to')
-                                                            ->label('To')
-                                                            ->required()
-                                                            ->withoutSeconds()
-                                                            ->reactive()
-                                                            ->afterStateUpdated(function (callable $get, callable $set) {
-                                                                $from = $get('operated_time_from');
-                                                                $to = $get('operated_time_to');
-                                                                $now = now()->format('H:i');
+                                                TimePicker::make('operated_time_to')
+                                                    ->label('To')
+                                                    ->required()
+                                                    ->withoutSeconds()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function (callable $get, callable $set) {
+                                                        $from = $get('operated_time_from');
+                                                        $to = $get('operated_time_to');
+                                                        $now = now()->format('H:i');
 
-                                                                if ($to && $to > $now) {
-                                                                    Notification::make()
-                                                                        ->title('Invalid time')
-                                                                        ->body('You cannot select a future time.')
-                                                                        ->danger()
-                                                                        ->send();
-                                                                    $set('operated_time_to', null);
-                                                                    return;
-                                                                }
+                                                        if ($to && $to > $now) {
+                                                            Notification::make()
+                                                                ->title('Invalid time')
+                                                                ->body('You cannot select a future time.')
+                                                                ->danger()
+                                                                ->send();
+                                                            $set('operated_time_to', null);
+                                                            return;
+                                                        }
 
-                                                                if ($from && $to) {
-                                                                    $fromTime = \Carbon\Carbon::createFromFormat('H:i', $from);
-                                                                    $toTime = \Carbon\Carbon::createFromFormat('H:i', $to);
+                                                        if ($from && $to) {
+                                                            $fromTime = \Carbon\Carbon::createFromFormat('H:i', $from);
+                                                            $toTime = \Carbon\Carbon::createFromFormat('H:i', $to);
 
-                                                                    if ($toTime->lt($fromTime)) {
-                                                                        $toTime->addDay();
-                                                                    }
+                                                            if ($toTime->lt($fromTime)) {
+                                                                $toTime->addDay();
+                                                            }
 
-                                                                    $minutes = $toTime->diffInMinutes($fromTime);
-                                                                    $hours = floor($minutes / 60);
-                                                                    $remainingMinutes = $minutes % 60;
+                                                            $minutes = $toTime->diffInMinutes($fromTime);
+                                                            $hours = floor($minutes / 60);
+                                                            $remainingMinutes = $minutes % 60;
 
-                                                                    $durationText = ($hours ? "{$hours}h " : '') . "{$remainingMinutes}m";
-                                                                    $set('operated_time_duration', trim($durationText));
-                                                                } else {
-                                                                    $set('operated_time_duration', null);
-                                                                }
-                                                            })
-                                                            ->columnSpan(1),
+                                                            $durationText = ($hours ? "{$hours}h " : '') . "{$remainingMinutes}m";
+                                                            $set('operated_time_duration', trim($durationText));
+                                                        } else {
+                                                            $set('operated_time_duration', null);
+                                                        }
+                                                    })
+                                                    ->columnSpan(1),
 
-                                                        TextInput::make('operated_time_duration')
-                                                            ->label('Duration (hh:mm)')
-                                                            ->disabled()
-                                                            ->columnSpan(2),
-                                                    ]),
-                                            ])
-                                            ->columns(1)
-
+                                                TextInput::make('operated_time_duration')
+                                                    ->label('Duration (hh:mm)')
+                                                    ->disabled()
+                                                    ->columnSpan(2),
+                                            ]),
+                                    ])
+                                    ->columns(1)
                             ]),
 
                         Tabs\Tab::make('Employees')
@@ -505,227 +543,121 @@ class EnterPerformanceRecordResource extends Resource
                                             ->schema([
                                                 TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
-                                                
+
                                                 TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
                                                 TextInput::make('emp_downtime')->label('Emp: Downtime (min)')->reactive()->live()->columns(1),
                                                 TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
-                                                
-                                                // Label Selection Section
-                                                Section::make('Label Selection')
-                                                    ->columns(2)
-                                                    ->columnSpanFull()
+
+                                                Section::make('Select Labels')
+                                                    ->collapsible()
                                                     ->schema([
-                                                        \Filament\Forms\Components\Actions::make([
-                                                            \Filament\Forms\Components\Actions\Action::make('select_labels')
-                                                                ->label('Select Labels')
-                                                                ->icon('heroicon-o-tag')
-                                                                ->color('primary')
-                                                                ->form([
-                                                                    Placeholder::make('selected_labels_info')
-                                                                        ->label('Currently Selected Labels')
-                                                                        ->content(function (callable $get) {
-                                                                            $selectedLabels = $get('selected_labels') ?? [];
-                                                                            if (empty($selectedLabels)) {
-                                                                                return 'No labels selected yet';
-                                                                            }
-                                                                            return collect($selectedLabels)->map(function ($label) {
-                                                                                return "{$label['label']} (Qty: {$label['quantity']})";
-                                                                            })->implode(', ');
+                                                        // Range Selection
+                                                        Grid::make(3)
+                                                            ->schema([
+                                                                Select::make('range_start_label_id_e')
+                                                                    ->label('Start Label')
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id'),
+                                                                    ))
+                                                                    ->reactive()
+                                                                    ->searchable(),
+
+                                                                Select::make('range_end_label_id_e')
+                                                                    ->label('End Label')
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id'),
+                                                                    ))
+                                                                    ->reactive()
+                                                                    ->searchable(),
+
+                                                                Actions::make([
+                                                                    Action::make('apply_range_e')
+                                                                        ->label('Apply Label Range')
+                                                                        ->action(function ($get, $set) {
+                                                                            $labels = self::getAvailableLabels(
+                                                                                $get('operation_type'),
+                                                                                $get('model_id'),
+                                                                                $get('order_type'),
+                                                                                $get('order_id')
+                                                                            );
+
+                                                                            $startId = $get('range_start_label_id_e');
+                                                                            $endId = $get('range_end_label_id_e');
+                                                                            if (!$startId || !$endId) return;
+
+                                                                            $labelIds = array_keys($labels);
+                                                                            $startIndex = array_search($startId, $labelIds);
+                                                                            $endIndex = array_search($endId, $labelIds);
+
+                                                                            if ($startIndex === false || $endIndex === false) return;
+                                                                            if ($startIndex > $endIndex) [$startIndex, $endIndex] = [$endIndex, $startIndex];
+
+                                                                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
+                                                                            $existing = $get('selected_labels') ?? [];
+                                                                            $set('selected_labels_e', array_unique([...$existing, ...$range]));
                                                                         })
-                                                                        ->columnSpanFull(),
-                                                                    
-                                                                    CheckboxList::make('selected_label_ids')
-                                                                        ->label('Available Labels')
-                                                                        ->searchable()
-                                                                        ->options(function (callable $get) {
-                                                                            $allLabels = \App\Models\CuttingLabel::with(['orderItem', 'variation'])
-                                                                                ->orderBy('label')
-                                                                                ->limit(500)
-                                                                                ->get();
-                                                                                
-                                                                            $employeeDetails = $get('../../employee_details') ?? [];
-                                                                            $allSelectedLabels = collect($employeeDetails)
-                                                                                ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
-                                                                                ->pluck('id')
-                                                                                ->toArray();
-                                                                                
-                                                                            return $allLabels->mapWithKeys(function ($label) use ($allSelectedLabels) {
-                                                                                $itemName = $label->orderItem->name ?? 'Unknown Item';
-                                                                                $variationName = $label->variation->name ?? 'No Variation';
-                                                                                $displayText = "ID: {$label->id} | Label: {$label->label}";
-                                                                                
-                                                                                return [
-                                                                                    $label->id => new HtmlString(
-                                                                                        in_array($label->id, $allSelectedLabels) 
-                                                                                            ? "<span style='opacity: 0.5'>{$displayText} (already assigned)</span>" 
-                                                                                            : $displayText
-                                                                                    )
-                                                                                ];
-                                                                            })->toArray();
-                                                                        })
-                                                                        ->disableOptionWhen(function ($value, callable $get) {
-                                                                            $employeeDetails = $get('../../employee_details') ?? [];
-                                                                            $allSelectedLabels = collect($employeeDetails)
-                                                                                ->flatMap(fn($emp) => $emp['selected_labels'] ?? [])
-                                                                                ->pluck('id')
-                                                                                ->toArray();
-                                                                            return in_array($value, $allSelectedLabels);
-                                                                        })
-                                                                        ->columns(1)
-                                                                        ->gridDirection('row')
-                                                                        ->helperText('Check labels to assign to this employee')
-                                                                        ->columnSpanFull()
-                                                                        ->reactive(),
-                                                                ])
-                                                                ->action(function (array $data, callable $get, callable $set) {
-                                                                    $selectedLabelIds = $data['selected_label_ids'] ?? [];
-                                                                    
-                                                                    if (empty($selectedLabelIds)) {
-                                                                        Notification::make()
-                                                                            ->title('No labels selected')
-                                                                            ->warning()
-                                                                            ->send();
-                                                                        return;
-                                                                    }
-                                                                    
-                                                                    $selectedLabels = \App\Models\CuttingLabel::whereIn('id', $selectedLabelIds)
-                                                                        ->with(['orderItem', 'variation'])
-                                                                        ->get()
-                                                                        ->map(function ($label) {
-                                                                            return [
-                                                                                'id' => $label->id,
-                                                                                'label' => $label->label,
-                                                                                'quantity' => $label->quantity,
-                                                                                'item_name' => $label->orderItem->name ?? 'Unknown Item',
-                                                                                'variation_name' => $label->variation->name ?? 'No Variation',
-                                                                                'order_item_id' => $label->order_item_id,
-                                                                                'order_variation_id' => $label->order_variation_id,
-                                                                            ];
-                                                                        })
-                                                                        ->toArray();
-                                                                    
-                                                                    $currentLabels = $get('selected_labels') ?? [];
-                                                                    $newLabels = array_merge($currentLabels, $selectedLabels);
-                                                                    $set('selected_labels', $newLabels);
-                                                                    
-                                                                    Notification::make()
-                                                                        ->title('Labels added successfully')
-                                                                        ->success()
-                                                                        ->send();
-                                                                })
-                                                                ->modalHeading('Select Labels')
-                                                                ->modalWidth('4xl'),
-                                                        ])
-                                                        ->columnSpan(1),
-                                                        
-                                                        Placeholder::make('label_count')
-                                                            ->label('Selected Labels')
-                                                            ->content(function (callable $get) {
-                                                                $labels = $get('selected_labels') ?? [];
-                                                                return count($labels) . ' label(s) selected';
-                                                            })
-                                                            ->reactive()
-                                                            ->columnSpan(1),
-                                                    ]),
-                                                
-                                                // Selected Labels Display
-                                                Repeater::make('selected_labels')
-                                                    ->label('Selected Labels')
-                                                    ->columns(6)
-                                                    ->schema([
-                                                        TextInput::make('id')
-                                                            ->label('ID')
-                                                            ->disabled()
-                                                            ->columnSpan(1),
-                                                            
-                                                        TextInput::make('label')
-                                                            ->label('Label')
-                                                            ->disabled()
-                                                            ->columnSpan(1),
-                                                            
-                                                        TextInput::make('item_name')
-                                                            ->label('Item')
-                                                            ->disabled()
-                                                            ->columnSpan(2),
-                                                            
-                                                        TextInput::make('quantity')
-                                                            ->label('Qty')
-                                                            ->disabled()
-                                                            ->columnSpan(1),
-                                                            
-                                                        TextInput::make('completed_quantity')
-                                                            ->label('Completed')
-                                                            ->numeric()
-                                                            ->reactive()
-                                                            ->afterStateUpdated(function ($state, $get, $set) {
-                                                                $labelQty = (int) $get('quantity');
-                                                                if ($state > $labelQty) {
-                                                                    $set('completed_quantity', $labelQty);
-                                                                    Notification::make()
-                                                                        ->title('Invalid quantity')
-                                                                        ->body("Cannot exceed label quantity ({$labelQty})")
-                                                                        ->warning()
-                                                                        ->send();
-                                                                }
-                                                            })
-                                                            ->columnSpan(1),
-                                                            
-                                                        Hidden::make('order_item_id'),
-                                                        Hidden::make('order_variation_id'),
-                                                    ])
-                                                    ->disableItemCreation()
-                                                    ->disableItemDeletion()
-                                                    ->columnSpanFull(),
-                                                
-                                                TextArea::make('emp_notes')->label('Notes')->columns(4),
-                                            ])
-                                            ->columnSpanFull(),
+                                                                        ->color('primary'),
+                                                                ]),
+                                                            ]),
+
+                                                        // Select All + Count
+                                                        Grid::make(2)
+                                                            ->schema([
+                                                                Placeholder::make('selected_labels_count_e')
+                                                                    ->label('Selected Labels Count')
+                                                                    ->content(function (callable $get) {
+                                                                        $labels = $get('selected_labels_e');
+                                                                        
+                                                                        return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                                                                    })
+                                                                    ->reactive(),
+
+                                                                Checkbox::make('select_all_labels_e')
+                                                                    ->label('Select All Labels')
+                                                                    ->default(false)
+                                                                    ->reactive()
+                                                                    ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                                                                        $labels = self::getAvailableLabels(
+                                                                            $get('operation_type'),
+                                                                            $get('model_id'),
+                                                                            $get('order_type'),
+                                                                            $get('order_id')
+                                                                        );
+
+                                                                        $set('selected_labels_e', $state ? array_keys($labels) : []);
+                                                                    }),
+                                                            ]),
+
+                                                        // Label Picker
+                                                        Grid::make(1)
+                                                            ->schema([
+                                                                CheckboxList::make('selected_labels_e')
+                                                                    ->label('Available Labels')
+                                                                    ->default([]) 
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id')
+                                                                    ))
+                                                                    ->columns(3)
+                                                                    ->reactive()
+                                                                    ->searchable()
+                                                                    ->live()
+                                                                    ->dehydrated(),
+                                                            ]),
+                                                        ]),
+
+                                            ]),
                                     ]),
-                                    Section::make('Summary')
-                                        ->schema([
-                                            Placeholder::make('emp_total_production')
-                                                ->label('Emp: Total Production')
-                                                ->content(function (callable $get, callable $set) {
-                                                    $details = $get('employee_details') ?? [];
-                                                    $total = collect($details)->sum('emp_production') ?: 0;
-                                                    $set('emp_total_production', $total); 
-                                                    return $total;
-                                                })
-                                                ->reactive()
-                                                ->live(),
-
-                                            Placeholder::make('emp_total_waste')
-                                                ->label('Emp: Total Waste')
-                                                ->content(function (callable $get, callable $set) {
-                                                    $details = $get('employee_details') ?? [];
-                                                    $total = collect($details)->sum('emp_waste') ?: 0;
-                                                    $set('emp_total_waste', $total); 
-                                                    return $total;
-                                                })
-                                                ->reactive()
-                                                ->live(),
-
-                                            Placeholder::make('emp_total_downtime')
-                                                ->label('Emp: Total Downtime (min)')
-                                                ->content(function (callable $get, callable $set) {
-                                                    $details = $get('employee_details') ?? [];
-                                                    $total = collect($details)->sum('emp_downtime') ?: 0;
-                                                    $set('emp_total_downtime', $total); 
-                                                    return $total;
-                                                })
-                                                ->reactive()
-                                                ->live(),
-
-                                            Hidden::make('emp_total_production')
-                                                ->dehydrated(),
-                                            Hidden::make('emp_total_waste')
-                                                ->dehydrated(),
-                                            Hidden::make('emp_total_downtime')
-                                                ->dehydrated(),
-                                        ])
                             ]),
-
-
+                        
                         Tabs\Tab::make('Machines')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
@@ -740,6 +672,112 @@ class EnterPerformanceRecordResource extends Resource
                                                 TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
 
+                                                Section::make('Select Machine Labels')
+                                                    ->collapsible()
+                                                    ->schema([
+                                                        // Range Selection
+                                                        Grid::make(3)
+                                                            ->schema([
+                                                                Select::make('range_start_label_id_m')
+                                                                    ->label('Start Label')
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id'),
+                                                                    ))
+                                                                    ->reactive()
+                                                                    ->searchable(),
+
+                                                                Select::make('range_end_label_id_m')
+                                                                    ->label('End Label')
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id'),
+                                                                    ))
+                                                                    ->reactive()
+                                                                    ->searchable(),
+
+                                                                Actions::make([
+                                                                    Action::make('apply_range_m')
+                                                                        ->label('Apply Label Range')
+                                                                        ->action(function ($get, $set) {
+                                                                            $labels = self::getAvailableLabels(
+                                                                                $get('operation_type'),
+                                                                                $get('model_id'),
+                                                                                $get('order_type'),
+                                                                                $get('order_id')
+                                                                            );
+
+                                                                            $startId = $get('range_start_label_id_m');
+                                                                            $endId = $get('range_end_label_id_m');
+                                                                            if (!$startId || !$endId) return;
+
+                                                                            $labelIds = array_keys($labels);
+                                                                            $startIndex = array_search($startId, $labelIds);
+                                                                            $endIndex = array_search($endId, $labelIds);
+
+                                                                            if ($startIndex === false || $endIndex === false) return;
+                                                                            if ($startIndex > $endIndex) [$startIndex, $endIndex] = [$endIndex, $startIndex];
+
+                                                                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
+                                                                            $existing = $get('selected_labels') ?? [];
+                                                                            $set('selected_labels_m', array_unique([...$existing, ...$range]));
+                                                                        })
+                                                                        ->color('primary'),
+                                                                ]),
+                                                            ]),
+
+                                                        // Select All + Count
+                                                        Grid::make(2)
+                                                            ->schema([
+                                                                Placeholder::make('selected_labels_count_m')
+                                                                    ->label('Selected Labels Count')
+                                                                    ->content(function (callable $get) {
+                                                                        $labels = $get('selected_labels_m');
+                                                                        
+                                                                        return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                                                                    })
+                                                                    ->reactive(),
+
+                                                                Checkbox::make('select_all_labels_m')
+                                                                    ->label('Select All Labels')
+                                                                    ->default(false)
+                                                                    ->reactive()
+                                                                    ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                                                                        $labels = self::getAvailableLabels(
+                                                                            $get('operation_type'),
+                                                                            $get('model_id'),
+                                                                            $get('order_type'),
+                                                                            $get('order_id')
+                                                                        );
+
+                                                                        $set('selected_labels_m', $state ? array_keys($labels) : []);
+                                                                    }),
+                                                            ]),
+
+                                                        // Label Picker
+                                                        Grid::make(1)
+                                                            ->schema([
+                                                                CheckboxList::make('selected_labels_m')
+                                                                    ->label('Available Labels')
+                                                                    ->default([]) 
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
+                                                                        $get('../../operation_type'),
+                                                                        $get('../../model_id'),
+                                                                        $get('../../order_type'),
+                                                                        $get('../../order_id')
+                                                                    ))
+                                                                    ->columns(3)
+                                                                    ->reactive()
+                                                                    ->searchable()
+                                                                    ->live()
+                                                                    ->dehydrated(),
+                                                            ]),
+                                                        ]),
+                                                
                                                 TextInput::make('machine_output')->label('Machine Output')->numeric()->required()->reactive()->live()->columns(1),
                                                 TextInput::make('machine_waste')->label('Machine Waste')->numeric()->required()->reactive()->live()->columns(1),
                                                 TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
@@ -791,7 +829,6 @@ class EnterPerformanceRecordResource extends Resource
                                     ])
                             ]),
 
-
                         Tabs\Tab::make('Supervisors')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
@@ -835,8 +872,6 @@ class EnterPerformanceRecordResource extends Resource
                                                     ->dehydrated()
                                                     ->columns(1),
 
-
-
                                                 TextInput::make('sup_downtime')->label('Supervisor : Downtime (min)')->numeric()->reactive()->live()->columns(1),
                                                 TextArea::make('sup_notes')->label('Special Notes')->columns(4),
                                             ])
@@ -878,7 +913,6 @@ class EnterPerformanceRecordResource extends Resource
                                             ->live(),
                                         ])
                             ]),
-
 
                         Tabs\Tab::make('Third-Party Services')
                             ->visible(fn (callable $get) => $get('operation_id'))
@@ -951,7 +985,7 @@ class EnterPerformanceRecordResource extends Resource
 
                                 Section::make('Summary')
                                     ->schema([
-                                       Placeholder::make('process_total_cost')
+                                    Placeholder::make('process_total_cost')
                                             ->label('Total Process Cost')
                                             ->content(function (callable $get, callable $set) {
                                                 $services = $get('services') ?? [];
@@ -973,80 +1007,149 @@ class EnterPerformanceRecordResource extends Resource
                                     ])
                             ]),
 
-                            Tabs\Tab::make('Summary of Production')
-                                ->visible(fn (callable $get) => $get('operation_id'))
-                                ->schema([
+                        Tabs\Tab::make('Summary of Production')
+                            ->visible(fn (callable $get) => $get('operation_id'))
+                            ->schema([
 
-                                    //  Section 1: Summary
-                                    Section::make('Production Summary')
-                                        ->columns(3)
-                                        ->schema([
-                                            Placeholder::make('live_emp_total_production')
-                                                ->label('Emp: Total Production')
-                                                ->content(fn (callable $get) => $get('emp_total_production') ?: 0)
-                                                ->reactive(),
+                                //  Section 1: Summary
+                                Section::make('Production Summary')
+                                    ->columns(3)
+                                    ->schema([
+                                        Placeholder::make('live_emp_total_production')
+                                            ->label('Emp: Total Production')
+                                            ->content(fn (callable $get) => $get('emp_total_production') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_emp_total_waste')
-                                                ->label('Emp: Total Waste')
-                                                ->content(fn (callable $get) => $get('emp_total_waste') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_emp_total_waste')
+                                            ->label('Emp: Total Waste')
+                                            ->content(fn (callable $get) => $get('emp_total_waste') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_emp_total_downtime')
-                                                ->label('Emp: Total Downtime (min)')
-                                                ->content(fn (callable $get) => $get('emp_total_downtime') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_emp_total_downtime')
+                                            ->label('Emp: Total Downtime (min)')
+                                            ->content(fn (callable $get) => $get('emp_total_downtime') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_machine_total_output')
-                                                ->label('Machine: Total Production')
-                                                ->content(fn (callable $get) => $get('machine_total_output') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_machine_total_output')
+                                            ->label('Machine: Total Production')
+                                            ->content(fn (callable $get) => $get('machine_total_output') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_machine_total_waste')
-                                                ->label('Machine: Total Waste')
-                                                ->content(fn (callable $get) => $get('machine_total_waste') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_machine_total_waste')
+                                            ->label('Machine: Total Waste')
+                                            ->content(fn (callable $get) => $get('machine_total_waste') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_machine_total_downtime')
-                                                ->label('Machine: Total Downtime (min)')
-                                                ->content(fn (callable $get) => $get('machine_total_downtime') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_machine_total_downtime')
+                                            ->label('Machine: Total Downtime (min)')
+                                            ->content(fn (callable $get) => $get('machine_total_downtime') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_total_sup_quantity')
-                                                ->label('Total Supervisored Quantity')
-                                                ->content(fn (callable $get) => $get('total_sup_quantity') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_total_sup_quantity')
+                                            ->label('Total Supervisored Quantity')
+                                            ->content(fn (callable $get) => $get('total_sup_quantity') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_total_acc_quantity')
-                                                ->label('Total Accepted Quantity')
-                                                ->content(fn (callable $get) => $get('total_acc_quantity') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_total_acc_quantity')
+                                            ->label('Total Accepted Quantity')
+                                            ->content(fn (callable $get) => $get('total_acc_quantity') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_total_rej_quantity')
-                                                ->label('Total Rejected Quantity')
-                                                ->content(fn (callable $get) => $get('total_rej_quantity') ?: 0)
-                                                ->reactive(),
+                                        Placeholder::make('live_total_rej_quantity')
+                                            ->label('Total Rejected Quantity')
+                                            ->content(fn (callable $get) => $get('total_rej_quantity') ?: 0)
+                                            ->reactive(),
 
-                                            Placeholder::make('live_process_total_cost')
-                                                ->label('Total Third-Party Process Cost')
-                                                ->content(fn (callable $get) => $get('process_total_cost') ?: 0)
-                                                ->reactive(),
-                                        ]),
+                                        Placeholder::make('live_process_total_cost')
+                                            ->label('Total Third-Party Process Cost')
+                                            ->content(fn (callable $get) => $get('process_total_cost') ?: 0)
+                                            ->reactive(),
+                                    ]),
 
-                                    //  Section 2: Waste
-                                    Section::make('Waste Recording')
-                                        ->schema([
-                                            Repeater::make('inv_waste_products')
-                                                ->label('Inventory Waste Products')
-                                                ->columns(7)
+                                //  Section 2: Waste
+                                Section::make('Waste Recording')
+                                    ->schema([
+                                        Repeater::make('inv_waste_products')
+                                            ->label('Inventory Waste Products')
+                                            ->columns(7)
+                                            ->schema([
+                                                TextInput::make('waste')
+                                                    ->label('Waste')
+                                                    ->numeric()
+                                                    ->reactive()
+                                                    ->columnSpan(2),
+
+                                                Select::make('waste_measurement_unit')
+                                                    ->label('UOM')
+                                                    ->options([
+                                                        'pcs' => 'Pieces',
+                                                        'kgs' => 'Kilograms',
+                                                        'liters' => 'Liters',
+                                                        'minutes' => 'Minutes',
+                                                        'hours' => 'Hours',
+                                                    ])
+                                                    ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                    ->columnSpan(1),
+
+                                                Select::make('waste_item_id')
+                                                    ->label('Waste Item')
+                                                    ->searchable()
+                                                    ->options(function () {
+                                                        return InventoryItem::where('category', 'Waste Item')
+                                                            ->orderBy('item_code')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($item) => [
+                                                                $item->id => "ID - {$item->id} | Item Code - {$item->item_code} | Name - {$item->name}"
+                                                            ])
+                                                            ->toArray();
+                                                    })
+                                                    ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                    ->columnSpan(2),
+
+                                                Select::make('waste_location_id')
+                                                    ->label('Waste Item Location')
+                                                    ->searchable()
+                                                    ->options(function () {
+                                                        return InventoryLocation::where('location_type', 'picking')
+                                                            ->orderBy('name')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($location) => [
+                                                                $location->id => "ID - {$location->id} | Name - {$location->name}"
+                                                            ])
+                                                            ->toArray();
+                                                    })
+                                                    ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                    ->columnSpan(2),
+                                            ])
+                                            ->createItemButtonLabel('Add Inventory Waste Product')
+                                            ->columnSpan('full'),
+
+                                            Repeater::make('non_inv_waste_products')
+                                                ->label('Non-Inventory Waste Products')
+                                                ->columns(6)
                                                 ->schema([
-                                                    TextInput::make('waste')
-                                                        ->label('Waste')
+                                                    TextInput::make('amount')
+                                                        ->label('Amount')
                                                         ->numeric()
                                                         ->reactive()
                                                         ->columnSpan(2),
 
-                                                    Select::make('waste_measurement_unit')
-                                                        ->label('UOM')
+                                                    Select::make('item_id')
+                                                        ->label('Non-Inventory Waste Item')
+                                                        ->searchable()
+                                                        ->options(function () {
+                                                            return \App\Models\NonInventoryItem::orderBy('name')
+                                                                ->get()
+                                                                ->mapWithKeys(fn($item) => [
+                                                                    $item->id => "ID - {$item->id} | Name - {$item->name}"
+                                                                ])
+                                                                ->toArray();
+                                                        })
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
+                                                        ->columnSpan(3),
+
+                                                    Select::make('unit')
+                                                        ->label('Unit')
                                                         ->options([
                                                             'pcs' => 'Pieces',
                                                             'kgs' => 'Kilograms',
@@ -1054,82 +1157,13 @@ class EnterPerformanceRecordResource extends Resource
                                                             'minutes' => 'Minutes',
                                                             'hours' => 'Hours',
                                                         ])
-                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
+                                                        ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
                                                         ->columnSpan(1),
-
-                                                    Select::make('waste_item_id')
-                                                        ->label('Waste Item')
-                                                        ->searchable()
-                                                        ->options(function () {
-                                                            return InventoryItem::where('category', 'Waste Item')
-                                                                ->orderBy('item_code')
-                                                                ->get()
-                                                                ->mapWithKeys(fn($item) => [
-                                                                    $item->id => "ID - {$item->id} | Item Code - {$item->item_code} | Name - {$item->name}"
-                                                                ])
-                                                                ->toArray();
-                                                        })
-                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                        ->columnSpan(2),
-
-                                                    Select::make('waste_location_id')
-                                                        ->label('Waste Item Location')
-                                                        ->searchable()
-                                                        ->options(function () {
-                                                            return InventoryLocation::where('location_type', 'picking')
-                                                                ->orderBy('name')
-                                                                ->get()
-                                                                ->mapWithKeys(fn($location) => [
-                                                                    $location->id => "ID - {$location->id} | Name - {$location->name}"
-                                                                ])
-                                                                ->toArray();
-                                                        })
-                                                        ->required(fn (callable $get) => $get('waste') !== null && $get('waste') !== '')
-                                                        ->columnSpan(2),
                                                 ])
-                                                ->createItemButtonLabel('Add Inventory Waste Product')
+                                                ->createItemButtonLabel('Add Non-Inventory Waste Product')
                                                 ->columnSpan('full'),
-
-                                                Repeater::make('non_inv_waste_products')
-                                                    ->label('Non-Inventory Waste Products')
-                                                    ->columns(6)
-                                                    ->schema([
-                                                        TextInput::make('amount')
-                                                            ->label('Amount')
-                                                            ->numeric()
-                                                            ->reactive()
-                                                            ->columnSpan(2),
-
-                                                        Select::make('item_id')
-                                                            ->label('Non-Inventory Waste Item')
-                                                            ->searchable()
-                                                            ->options(function () {
-                                                                return \App\Models\NonInventoryItem::orderBy('name')
-                                                                    ->get()
-                                                                    ->mapWithKeys(fn($item) => [
-                                                                        $item->id => "ID - {$item->id} | Name - {$item->name}"
-                                                                    ])
-                                                                    ->toArray();
-                                                            })
-                                                            ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
-                                                            ->columnSpan(3),
-
-                                                        Select::make('unit')
-                                                            ->label('Unit')
-                                                            ->options([
-                                                                'pcs' => 'Pieces',
-                                                                'kgs' => 'Kilograms',
-                                                                'liters' => 'Liters',
-                                                                'minutes' => 'Minutes',
-                                                                'hours' => 'Hours',
-                                                            ])
-                                                            ->required(fn (callable $get) => $get('amount') !== null && $get('amount') !== '')
-                                                            ->columnSpan(1),
-                                                    ])
-                                                    ->createItemButtonLabel('Add Non-Inventory Waste Product')
-                                                    ->columnSpan('full'),
-                                                            
-                                            ]),
+                                                        
+                                        ]),
 
                                     //  Section 3: By Products
                                     Section::make('By Products')
@@ -1202,12 +1236,10 @@ class EnterPerformanceRecordResource extends Resource
                                                 ->content('Coming soon...')
                                         ])
                                 ]),
-
-                    ]),
+                            ]),
+                    
             ]);
     }
-
-
 
 
     public static function table(Table $table): Table

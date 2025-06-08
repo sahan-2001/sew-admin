@@ -158,7 +158,7 @@ class HandleSampleOrder extends Page
                 ->openUrlInNewTab(false),
         ];
 
-        // Only add "Release Sample Order" action if the status is 'planned' and not 'accepted'
+        // Only add "Release Sample Order" action if the status is 'planned'
         if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_sample_order')
                 ->label('Release Sample Order')
@@ -172,8 +172,72 @@ class HandleSampleOrder extends Page
                 ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
         }
 
+        // Actions for released status
+        if (in_array($this->record->status, ['released', 'started'])) {
+            $actions[] = Action::make('complete_order')
+                ->label('Complete Order')
+                ->color('success')
+                ->icon('heroicon-o-check-circle')
+                ->requiresConfirmation()
+                ->modalHeading('Complete Sample Order')
+                ->modalDescription('Please enter a completion message (optional) for this sample order.')
+                ->form([
+                    \Filament\Forms\Components\Textarea::make('completion_message')
+                        ->label('Completion Message')
+                        ->nullable(),
+                ])
+                ->modalButton('Complete Order')
+                ->action(function (array $data) {
+                    $this->record->update([
+                        'status' => 'completed',
+                        'completion_message' => $data['completion_message'] ?? null,
+                        'completed_by' => auth()->id(),
+                        'completed_at' => now(),
+                    ]);
+                    
+                    Notification::make()
+                        ->title('Sample Order Completed')
+                        ->success()
+                        ->body('The sample order has been marked as completed.')
+                        ->send();
+                })
+                ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
+        }
+
+            // Pause Order action
+        if (in_array($this->record->status, ['released', 'started'])) {
+            $actions[] = Action::make('pause_order')
+                ->label('Pause Order')
+                ->color('warning')
+                ->icon('heroicon-o-pause')
+                ->requiresConfirmation()
+                ->modalHeading('Pause Sample Order')
+                ->modalDescription('Please enter a reason for pausing this sample order.')
+                ->form([
+                    \Filament\Forms\Components\Textarea::make('pause_reason')
+                        ->label('Pause Reason')
+                        ->required(),
+                ])
+                ->modalButton('Pause Order')
+                ->action(function (array $data) {
+                    $this->record->update([
+                        'status' => 'paused',
+                        'pause_reason' => $data['pause_reason'],
+                        'paused_by' => auth()->id(),
+                        'paused_at' => now(),
+                    ]);
+                    
+                    Notification::make()
+                        ->title('Sample Order Paused')
+                        ->warning()
+                        ->body('The sample order has been paused.')
+                        ->send();
+                })
+                ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
+        }
+            
         // Accept Sample Order (Convert)
-        if ($this->record->status === 'released') {
+        if ($this->record->status === 'completed') {
             $actions[] = Action::make('convert_to_customer_order')
                 ->label('Accept Sample Order')
                 ->color('success')
@@ -192,7 +256,7 @@ class HandleSampleOrder extends Page
         }
 
         // Reject Sample Order
-        if ($this->record->status === 'released') {
+        if ($this->record->status === 'completed') {
             $actions[] = Action::make('reject_sample_order')
                 ->label('Reject Sample Order')
                 ->color('danger')
@@ -213,7 +277,7 @@ class HandleSampleOrder extends Page
 
 
         // Plan Order (Change status back to "planned") for 'released', 'accepted', 'rejected' statuses
-        if (in_array($this->record->status, ['released', 'accepted', 'rejected'])) {
+        if (in_array($this->record->status, ['released', 'paused', 'accepted', 'rejected'])) {
             $actions[] = Action::make('plan_order')
                 ->label('Plan Order')
                 ->color('gray')
