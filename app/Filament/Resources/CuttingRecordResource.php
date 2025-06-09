@@ -912,12 +912,17 @@ class CuttingRecordResource extends Resource
                     ->icon('heroicon-o-printer')
                     ->url(fn ($record) => route('cutting-records.print', ['cutting_record' => $record->id]))
                     ->openUrlInNewTab(),
+
+                Action::make('Print Labels')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(fn ($record) => route('cutting-records.print-labels', $record))
+                    ->openUrlInNewTab(),
                     
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 
