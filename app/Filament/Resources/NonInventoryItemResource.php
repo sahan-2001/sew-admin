@@ -8,6 +8,8 @@ use App\Models\NonInventoryCategory;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class NonInventoryItemResource extends Resource
 {
@@ -52,6 +54,16 @@ class NonInventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('price')->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

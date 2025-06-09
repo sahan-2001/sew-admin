@@ -278,6 +278,16 @@ class ReleaseMaterialResource extends Resource
                 TextColumn::make('order_id')->sortable(),
                 TextColumn::make('status'),
                 TextColumn::make('created_at')->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
             Tables\Actions\Action::make('viewItems')

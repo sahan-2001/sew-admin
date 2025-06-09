@@ -8,6 +8,9 @@ use App\Models\Category;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
+
 
 class InventoryItemResource extends Resource
 {
@@ -60,6 +63,16 @@ class InventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('category')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('uom')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('available_quantity')->sortable()->searchable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 // Define your filters if needed

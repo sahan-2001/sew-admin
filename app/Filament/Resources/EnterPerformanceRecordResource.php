@@ -40,6 +40,8 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Modal;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 
 class EnterPerformanceRecordResource extends Resource
@@ -1256,6 +1258,16 @@ class EnterPerformanceRecordResource extends Resource
                 Tables\Columns\TextColumn::make('performances.*.operation')->label('Operation'),
                 Tables\Columns\TextColumn::make('performances.*.actual_quantity')->label('Quantity'),
                 Tables\Columns\TextColumn::make('performances.*.actual_time')->label('Time (min)'),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

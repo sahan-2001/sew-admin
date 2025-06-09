@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class StockOverviewResource extends Resource
 {
@@ -140,6 +141,16 @@ class StockOverviewResource extends Resource
                 TextColumn::make('quantity')
                     ->label('Available Quantity')
                     ->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('warehouse_id')

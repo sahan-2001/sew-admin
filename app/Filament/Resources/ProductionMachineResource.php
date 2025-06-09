@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
+use Illuminate\Support\Facades\Auth;
 
 class ProductionMachineResource extends Resource
 {
@@ -80,10 +81,20 @@ class ProductionMachineResource extends Resource
                 TextColumn::make('purchased_date')->date(),
                 TextColumn::make('start_working_date')->date(),
                 TextColumn::make('expected_lifetime'),
-                TextColumn::make('purchased_cost')->money('USD'),
-                TextColumn::make('total_initial_cost')->money('USD'),
-                TextColumn::make('cumulative_depreciation')->money('USD'),
-                TextColumn::make('net_present_value')->money('USD'),
+                TextColumn::make('purchased_cost')->money('LKR'),
+                TextColumn::make('total_initial_cost')->money('LKR'),
+                TextColumn::make('cumulative_depreciation')->money('LKR'),
+                TextColumn::make('net_present_value')->money('LKR'),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
 
             ])
             ->filters([])

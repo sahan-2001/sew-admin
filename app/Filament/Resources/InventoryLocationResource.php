@@ -9,6 +9,8 @@ use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class InventoryLocationResource extends Resource
 {
@@ -99,9 +101,16 @@ class InventoryLocationResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('measurement_unit')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->sortable()
-                    ->dateTime(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([])
             ->actions([

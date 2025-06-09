@@ -22,6 +22,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
+use Illuminate\Support\Facades\Auth;
 
 class ThirdPartyServiceResource extends Resource
 {
@@ -173,6 +174,15 @@ class ThirdPartyServiceResource extends Resource
                 TextColumn::make('name')->label('Service Name'),
                 TextColumn::make('supplier.name')->label('Supplier'),
                 TextColumn::make('created_at')->label('Created Date')->date(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
                 EditAction::make()

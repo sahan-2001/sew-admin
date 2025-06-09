@@ -8,6 +8,8 @@ use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class WarehouseResource extends Resource
 {
@@ -66,6 +68,16 @@ class WarehouseResource extends Resource
                 Tables\Columns\TextColumn::make('capacity_width')->sortable(),
                 Tables\Columns\TextColumn::make('capacity_height')->sortable(),
                 Tables\Columns\TextColumn::make('measurement_unit')->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 // Add any necessary filters here

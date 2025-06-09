@@ -17,6 +17,7 @@ use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
+use Illuminate\Support\Facades\Auth;
 
 class CuttingStationResource extends Resource
 {
@@ -47,9 +48,16 @@ class CuttingStationResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('description')->limit(50)->wrap(),
-                TextColumn::make('creator.name')->label('Created By'),
-                TextColumn::make('updater.name')->label('Updated By'),
-                TextColumn::make('created_at')->dateTime(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 TrashedFilter::make(),

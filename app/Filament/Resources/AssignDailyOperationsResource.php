@@ -32,6 +32,8 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Checkbox;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 
 class AssignDailyOperationsResource extends Resource
@@ -397,6 +399,16 @@ class AssignDailyOperationsResource extends Resource
                 Tables\Columns\TextColumn::make('order_type'),
                 Tables\Columns\TextColumn::make('order_id')->sortable(),
                 Tables\Columns\TextColumn::make('operation_date')->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('order_type')

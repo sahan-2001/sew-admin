@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
+use Illuminate\Support\Facades\Auth;
 
 
 class TemporaryOperationResource extends Resource
@@ -205,6 +206,16 @@ class TemporaryOperationResource extends Resource
                 TextColumn::make('setup_time')->sortable(),
                 TextColumn::make('run_time')->sortable(),
                 TextColumn::make('created_at')->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
                 EditAction::make(),

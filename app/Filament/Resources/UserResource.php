@@ -8,6 +8,8 @@ use App\Models\User;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class UserResource extends Resource
 {
@@ -49,6 +51,16 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('roles.name')->label('Roles')->sortable()->searchable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable(true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 // Define your filters if needed

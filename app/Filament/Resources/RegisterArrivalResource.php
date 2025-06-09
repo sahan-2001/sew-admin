@@ -21,6 +21,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Illuminate\Support\Facades\Auth;
 
+
 class RegisterArrivalResource extends Resource
 {
     protected static ?string $model = RegisterArrival::class;

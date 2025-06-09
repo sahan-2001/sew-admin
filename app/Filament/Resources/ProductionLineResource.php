@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class ProductionLineResource extends Resource
 {
@@ -55,6 +57,16 @@ public static function table(Table $table): Table
             Tables\Columns\TextColumn::make('status')->sortable(),
             Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
             Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+            ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
         ])
         ->filters([
             Tables\Filters\Filter::make('Active')->query(fn (Builder $query) => $query->where('status', 'active')),

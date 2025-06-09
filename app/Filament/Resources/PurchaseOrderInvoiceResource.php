@@ -23,6 +23,8 @@ use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Set;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
 
 class PurchaseOrderInvoiceResource extends Resource
 {
@@ -262,7 +264,16 @@ class PurchaseOrderInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                //
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([
                 //

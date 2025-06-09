@@ -23,6 +23,7 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Auth;
 
 
 
@@ -202,6 +203,15 @@ class SampleOrderResource extends Resource
                     ])
                     ->getStateUsing(fn ($record) => $record->status),
                 TextColumn::make('created_at')->label('Created Date')->dateTime(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->actions([
                 EditAction::make()
