@@ -327,8 +327,9 @@ class RegisterArrivalResource extends Resource
                 ->color('danger')
                 ->requiresConfirmation()
                 ->authorize(fn ($record) => 
-                    auth()->user()->can('re-correct register arrivals')&&
-                    !$record->items->contains('status', 'inspected') 
+                    auth()->user()->can('re-correct register arrivals') &&
+                    !$record->items->contains('status', 'inspected') &&
+                    !$record->items->contains('status', 'invoiced') 
                 )
                 ->action(function ($record, $livewire) {
                     // Store purchase order ID before deletion
@@ -410,7 +411,6 @@ class RegisterArrivalResource extends Resource
         return [
             'index' => Pages\ListRegisterArrivals::route('/'),
             'create' => Pages\CreateRegisterArrival::route('/create'),
-            'edit' => Pages\EditRegisterArrival::route('/{record}/edit'),
         ];
     }
 }

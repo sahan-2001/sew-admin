@@ -14,12 +14,18 @@ return new class extends Migration
         Schema::create('purchase_order_invoices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('purchase_order_id')->constrained()->onDelete('cascade');
-            $table->string('invoice_number')->unique();
-            $table->date('invoice_date');
-            $table->decimal('amount', 12, 2);
-            $table->text('remarks')->nullable();
+            $table->foreignId('register_arrival_id')->constrained()->onDelete('cascade');
+            $table->string('provider_type');
+            $table->unsignedBigInteger('provider_id');
+            $table->string('status')->default('pending');
+
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+
+            $table->softDeletes();
             $table->timestamps();
         });
+
 
     }
 

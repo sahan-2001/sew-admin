@@ -51,14 +51,14 @@ class CreateMaterialQC extends CreateRecord
             
             $createdRecords[] = $createdRecord;
             
-            // Update the RegisterArrivalItem status
+            // Update RegisterArrivalItem status from 'To be inspected' to 'inspected'
             RegisterArrivalItem::where('item_id', $item['item_id'])
-                ->whereHas('registerArrival', function($query) use ($data) {
+                ->where('status', 'To be inspected') 
+                ->whereHas('registerArrival', function ($query) use ($data) {
                     $query->where('purchase_order_id', $data['purchase_order_id']);
                 })
                 ->update(['status' => 'inspected']);
-            
-            // Add a new row to the Stock table
+
             \App\Models\Stock::create([
                 'item_id' => $item['item_id'],
                 'quantity' => $item['available_to_store'], 

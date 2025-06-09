@@ -2,38 +2,38 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-
-class PurchaseOrderInvoice extends Model
+class PurchaseOrderInvoiceItem extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'purchase_order_id',
-        'register_arrival_id',
-        'provider_type',
-        'provider_id',
-        'status',
+        'purchase_order_invoice_id',
+        'item_id',
+        'stored_quantity',
+        'location_id',
+        'unit_price',
+        'total',
         'created_by',
         'updated_by',
     ];
 
-    public function invoiceItems()
+    public function invoice()
     {
-        return $this->hasMany(PurchaseOrderInvoiceItem::class);
+        return $this->belongsTo(PurchaseOrderInvoice::class, 'purchase_order_invoice_id');
     }
 
-    public function purchaseOrder()
+    public function item()
     {
-        return $this->belongsTo(PurchaseOrder::class);
+        return $this->belongsTo(InventoryItem::class);
     }
 
-    public function registerArrival()
+    public function location()
     {
-        return $this->belongsTo(RegisterArrival::class);
+        return $this->belongsTo(InventoryLocation::class);
     }
 
     protected static function booted()

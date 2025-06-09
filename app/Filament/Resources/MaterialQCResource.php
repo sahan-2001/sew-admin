@@ -28,140 +28,166 @@ class MaterialQCResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Tabs::make('Material QC Entry')
-                ->tabs([
-                    Tab::make('Arrival Info')
-                        ->schema([
-                            // Section 1: Purchase Order Details
-                            Forms\Components\Section::make('Purchase Order Details')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('purchase_order_id')
-                                                ->label('Purchase Order ID')
-                                                ->required()
-                                                ->reactive()
-                                                ->afterStateUpdated(function ($state, callable $set) {
-                                                    $purchaseOrder = \App\Models\PurchaseOrder::find($state);
+{
+    return $form->schema([
+        Tabs::make('Material QC Entry')
+            ->tabs([
+                Tab::make('Arrival Info')
+                    ->schema([
+                        // Section: Purchase Order Details
+                        Forms\Components\Section::make('Purchase Order Details')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('purchase_order_id')
+                                            ->label('Purchase Order ID')
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                $purchaseOrder = \App\Models\PurchaseOrder::find($state);
 
-                                                    if ($purchaseOrder) {
-                                                        $allInspected = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
-                                                            $query->where('purchase_order_id', $state);
-                                                        })
-                                                        ->where('status', '!=', 'inspected')
-                                                        ->doesntExist();
+                                                // Reset form state
+                                                $set('register_arrival_id', null);
+                                                $set('items', []);
+                                                $set('provider_type', null);
+                                                $set('provider_name', null);
+                                                $set('provider_id', null);
+                                                $set('wanted_date', null);
+                                                $set('location_id', null);
+                                                $set('location_name', null);
+                                                $set('received_date', null);
+                                                $set('invoice_number', null);
 
-                                                        if ($allInspected) {
-                                                            Notification::make()
-                                                                ->title('Purchase Order Inspected')
-                                                                ->body('All records for this purchase order have already been inspected.')
-                                                                ->danger()
-                                                                ->send();
+                                                if (!$purchaseOrder) {
+                                                    Notification::make()
+                                                        ->title('Purchase Order Not Found')
+                                                        ->body('The purchase order ID entered does not exist.')
+                                                        ->danger()
+                                                        ->send();
+                                                    return;
+                                                }
 
-                                                            $set('items', []);
-                                                            $set('provider_type', null);
-                                                            $set('provider_name', null);
-                                                            $set('provider_id', null);
-                                                            $set('wanted_date', null);
-                                                            $set('location_id', null);
-                                                            $set('location_name', null);
-                                                            $set('received_date', null);
-                                                            $set('invoice_number', null);
-                                                            $set('register_arrival_id', null);
-                                                            return;
-                                                        }
+                                                if (!in_array($purchaseOrder->status, ['arrived', 'partially arrived'])) {
+                                                    Notification::make()
+                                                        ->title('Invalid Purchase Order Status')
+                                                        ->body('Purchase order status must be "arrived" or "partially arrived".')
+                                                        ->danger()
+                                                        ->send();
+                                                    return;
+                                                }
 
-                                                        if (in_array($purchaseOrder->status, ['partially arrived', 'arrived'])) {
-                                                            $items = \App\Models\RegisterArrivalItem::whereHas('registerArrival', function ($query) use ($state) {
-                                                                $query->where('purchase_order_id', $state);
-                                                            })
-                                                            ->where('status', 'to be inspected')
-                                                            ->get();
+                                                // Set supplier info
+                                                $set('provider_type', $purchaseOrder->provider_type);
+                                                $set('provider_name', $purchaseOrder->provider_name);
+                                                $set('provider_id', $purchaseOrder->provider_id);
+                                                $set('wanted_date', $purchaseOrder->wanted_date);
+                                            }),
 
-                                                            $set('items', $items->map(function ($item) {
-                                                                $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
-                                                                return [
-                                                                    'item_id' => $item->item_id,
-                                                                    'item_code' => $inventoryItem?->item_code,
-                                                                    'name' => $inventoryItem?->name,
-                                                                    'quantity' => $item->quantity,
-                                                                    'cost_of_item' => $item->price ?? 0,
-                                                                    'status' => $item->status,
-                                                                ];
-                                                            })->toArray());
+                                        Forms\Components\TextInput::make('provider_type')->label('Provider Type')->disabled(),
+                                        Forms\Components\TextInput::make('provider_name')->label('Provider Name')->disabled(),
+                                        Forms\Components\TextInput::make('provider_id')->label('Provider ID')->disabled(),
+                                        Forms\Components\TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
+                                    ])
+                                ]),        
+                                    
+                                Forms\Components\Section::make('Purchase Order Details')
+                                    ->schema([    
+                                        Forms\Components\Select::make('register_arrival_id')
+                                            ->label('Register Arrival ID')
+                                            ->options(fn (callable $get) =>
+                                                \App\Models\RegisterArrival::where('purchase_order_id', $get('purchase_order_id'))
+                                                    ->get()
+                                                    ->mapWithKeys(function ($arrival) {
+                                                        $location = \App\Models\InventoryLocation::find($arrival->location_id);
+                                                        return [
+                                                            $arrival->id =>
+                                                                'ID: ' . $arrival->id .
+                                                                ' | Location: ' . ($location?->name ?? 'Unknown') .
+                                                                ' | Date: ' . $arrival->received_date,
+                                                        ];
+                                                    })
+                                                    ->toArray()
+                                            )
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                $set('items', []);
+                                                $registerArrival = \App\Models\RegisterArrival::find($state);
 
-                                                            $set('provider_type', $purchaseOrder->provider_type);
-                                                            $set('provider_name', $purchaseOrder->provider_name);
-                                                            $set('provider_id', $purchaseOrder->provider_id);
-                                                            $set('wanted_date', $purchaseOrder->wanted_date);
+                                                if (!$registerArrival) {
+                                                    return;
+                                                }
 
-                                                            $registerArrival = \App\Models\RegisterArrival::where('purchase_order_id', $state)->first();
-                                                            if ($registerArrival) {
-                                                                $set('location_id', $registerArrival->location_id);
-                                                                $set('received_date', $registerArrival->received_date);
-                                                                $set('invoice_number', $registerArrival->invoice_number);
-                                                                $set('register_arrival_id', $registerArrival->id);
+                                                $set('items', []);
 
-                                                                $location = \App\Models\InventoryLocation::find($registerArrival->location_id);
-                                                                $set('location_name', $location?->name);
-                                                            }
-                                                        } else {
-                                                            $set('items', []);
-                                                            $set('provider_type', null);
-                                                            $set('provider_name', null);
-                                                            $set('provider_id', null);
-                                                            $set('wanted_date', null);
-                                                            $set('location_id', null);
-                                                            $set('location_name', null);
-                                                            $set('received_date', null);
-                                                            $set('invoice_number', null);
-                                                            $set('register_arrival_id', null);
+                                                $registerArrival = \App\Models\RegisterArrival::find($state);
 
-                                                            Notification::make()
-                                                                ->title('Invalid Purchase Order Status')
-                                                                ->body('The purchase order status must be "partially arrived" or "arrived".')
-                                                                ->danger()
-                                                                ->send();
-                                                        }
-                                                    } else {
-                                                        $set('items', []);
-                                                        $set('provider_type', null);
-                                                        $set('provider_name', null);
-                                                        $set('provider_id', null);
-                                                        $set('wanted_date', null);
-                                                        $set('location_id', null);
-                                                        $set('location_name', null);
-                                                        $set('received_date', null);
-                                                        $set('invoice_number', null);
-                                                        $set('register_arrival_id', null);
+                                                if (!$registerArrival) {
+                                                    return;
+                                                }
 
-                                                        Notification::make()
-                                                            ->title('Purchase Order Not Found')
-                                                            ->body('The purchase order ID entered does not exist.')
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-                                            Forms\Components\TextInput::make('provider_type')->label('Provider Type')->disabled(),
-                                            Forms\Components\TextInput::make('provider_name')->label('Provider Name')->disabled(),
-                                            Forms\Components\TextInput::make('provider_id')->label('Provider ID')->disabled(),
-                                        ]),
-                                ]),
+                                                // Validate if all items for this arrival are already inspected
+                                                $allInspected = \App\Models\RegisterArrivalItem::where('register_arrival_id', $state)
+                                                    ->where('status', '!=', 'inspected')
+                                                    ->doesntExist();
 
-                            // Section 2: Arrival Details
-                            Forms\Components\Section::make('Arrival Details')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Hidden::make('register_arrival_id')->required(),
-                                            Forms\Components\TextInput::make('location_id')->label('Location ID')->disabled(),
-                                            Forms\Components\TextInput::make('location_name')->label('Location Name')->disabled(),
-                                            Forms\Components\DatePicker::make('received_date')->label('Received Date')->disabled(),
-                                            Forms\Components\TextInput::make('invoice_number')->label('Invoice Number')->disabled(),
-                                        ]),
-                                ]),
+                                                if ($allInspected) {
+                                                    Notification::make()
+                                                        ->title('Arrival Already Inspected')
+                                                        ->body('All items under this arrival record have already been inspected.')
+                                                        ->danger()
+                                                        ->send();
+
+                                                    return;
+                                                }  
+
+                                                // Validate if all items for this arrival are already Passed
+                                                $allInspected = \App\Models\RegisterArrivalItem::where('register_arrival_id', $state)
+                                                    ->where('status', '!=', 'QC Passed')
+                                                    ->doesntExist();
+
+                                                if ($allInspected) {
+                                                    Notification::make()
+                                                        ->title('Arrival Items Already QC passed')
+                                                        ->body('All items under this arrival record have already been Passed (QC Passed).')
+                                                        ->danger()
+                                                        ->send();
+
+                                                    return;
+                                                }  
+                                                       
+                                                       
+                                                // Set register arrival meta
+                                                $set('location_id', $registerArrival->location_id);
+                                                $set('received_date', $registerArrival->received_date);
+                                                $set('invoice_number', $registerArrival->invoice_number);
+
+                                                $location = \App\Models\InventoryLocation::find($registerArrival->location_id);
+                                                $set('location_name', $location?->name);
+
+                                                // Load items with status = 'to be inspected'
+                                                $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $state)
+                                                    ->where('status', 'to be inspected')
+                                                    ->get();
+
+                                                $set('items', $items->map(function ($item) {
+                                                    $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
+                                                    return [
+                                                        'item_id' => $item->item_id,
+                                                        'item_code' => $inventoryItem?->item_code,
+                                                        'name' => $inventoryItem?->name,
+                                                        'quantity' => $item->quantity,
+                                                        'cost_of_item' => $item->price ?? 0,
+                                                        'status' => $item->status,
+                                                    ];
+                                                })->toArray());
+                                            }),
+                                        
+                                        Forms\Components\TextInput::make('location_name')->label('Location')->disabled(),
+                                        Forms\Components\TextInput::make('received_date')->label('Received Date')->disabled(),
+                                        Forms\Components\TextInput::make('invoice_number')->label('Invoice Number')->disabled(),
+                            ])
+                            ->columns(2),
 
                             Forms\Components\Section::make('Arrival Items Details')
                                 ->schema([
@@ -227,10 +253,18 @@ class MaterialQCResource extends Resource
                                                 ->required()
                                                 ->live()
                                                 ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                    $inspected = (float) ($get('inspected_quantity') ?? 0);
-                                                    $returned = (float) ($get('returned_qty') ?? 0);
-                                                    $scrapped = (float) ($get('scrapped_qty') ?? 0);
                                                     $approved = (float) ($state ?? 0);
+                                                    $returned = (float) ($get('returned_qty') ?? 0);
+                                                    $inspected = (float) ($get('inspected_quantity') ?? 0);
+                                                    $scrapped = (float) ($get('scrapped_qty') ?? 0);
+
+                                                    if (($approved + $returned) > $inspected) {
+                                                        $set('approved_qty_error', 'Approved + Returned cannot exceed Inspected Quantity.');
+                                                    } elseif (($approved + $returned + $scrapped) !== $inspected && $scrapped > 0) {
+                                                        $set('approved_qty_error', 'Approved + Returned + Scrapped must equal Inspected Quantity.');
+                                                    } else {
+                                                        $set('approved_qty_error', null);
+                                                    }
                                                 })
                                                 ->helperText(fn (callable $get) => $get('approved_qty_error')),
 
@@ -240,14 +274,23 @@ class MaterialQCResource extends Resource
                                                 ->default(0)
                                                 ->live()
                                                 ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                    $scrapped = (float) ($get('scrapped_qty') ?? 0);
+                                                    $returned = (float) ($state ?? 0);
                                                     $approved = (float) ($get('approved_qty') ?? 0);
                                                     $inspected = (float) ($get('inspected_quantity') ?? 0);
-                                                    $returned = (float) ($state ?? 0);
+                                                    $scrapped = (float) ($get('scrapped_qty') ?? 0);
 
                                                     $available = ($get('quantity') ?? 0) - ($returned + $scrapped);
                                                     $set('available_to_store', max($available, 0));
                                                     $set('total_returned_qc', $returned);
+
+                                                    if (($approved + $returned) > $inspected) {
+                                                        $set('approved_qty_error', 'Approved + Returned cannot exceed Inspected Quantity.');
+                                                        $set('returned_qty', null);
+                                                    } elseif (($approved + $returned + $scrapped) !== $inspected && $scrapped > 0) {
+                                                        $set('approved_qty_error', 'Approved + Returned + Scrapped must equal Inspected Quantity.');
+                                                    } else {
+                                                        $set('approved_qty_error', null);
+                                                    }
                                                 }),
 
                                             Forms\Components\TextInput::make('scrapped_qty')
@@ -256,24 +299,24 @@ class MaterialQCResource extends Resource
                                                 ->default(0)
                                                 ->live()
                                                 ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                    $returned = (float) ($get('returned_qty') ?? 0);
-                                                    $approved = (float) ($get('approved_qty') ?? 0);
-                                                    $inspected = (float) ($get('inspected_quantity') ?? 0);
                                                     $scrapped = (float) ($state ?? 0);
+                                                    $approved = (float) ($get('approved_qty') ?? 0);
+                                                    $returned = (float) ($get('returned_qty') ?? 0);
+                                                    $inspected = (float) ($get('inspected_quantity') ?? 0);
 
                                                     $available = ($get('quantity') ?? 0) - ($returned + $scrapped);
                                                     $set('available_to_store', max($available, 0));
                                                     $set('total_scrapped_qc', $scrapped);
 
                                                     if (($approved + $returned + $scrapped) !== $inspected) {
-                                                        $set('approved_qty_error', 'Approved + Returned + Scrapped must equal Inspected.');
-                                                        $set('approved_qty', null);
+                                                        $set('approved_qty_error', 'Approved + Returned + Scrapped must equal Inspected Quantity.');
                                                         $set('returned_qty', null);
                                                         $set('scrapped_qty', null);
                                                     } else {
                                                         $set('approved_qty_error', null);
                                                     }
                                                 }),
+
 
                                             Select::make('inspected_by')
                                                 ->label('QC Officer')
@@ -283,9 +326,9 @@ class MaterialQCResource extends Resource
                                 ]),
                         ]),
 
-                        Tab::make('Register Arrival Items')
+                        Tab::make('Store QC Items')
                         ->schema([
-                            Forms\Components\Section::make('Arrival Items Details')
+                            Forms\Components\Section::make('Store QC Items')
                                 ->schema([
                                     Forms\Components\Repeater::make('items')
                                         ->columns(5)
@@ -398,6 +441,7 @@ class MaterialQCResource extends Resource
                 TextColumn::make('approved_qty')->label('Approved Quantity'),
                 TextColumn::make('returned_qty')->label('Returned Quantity'),
                 TextColumn::make('scrapped_qty')->label('Scrapped Quantity'),
+                TextColumn::make('status')->label('Status'),
             ])
             ->filters([])
             ->actions([
@@ -446,7 +490,8 @@ class MaterialQCResource extends Resource
                         }
                     })
                     ->requiresConfirmation()
-                    ->color('danger'),
+                    ->color('danger')
+                    ->visible(fn ($record) => $record->status !== 'invoiced'),  
             ]);
     }
 
@@ -462,7 +507,6 @@ class MaterialQCResource extends Resource
         return [
             'index' => Pages\ListMaterialQCS::route('/'),
             'create' => Pages\CreateMaterialQC::route('/create'),
-            'edit' => Pages\EditMaterialQC::route('/{record}/edit'),
         ];
     }
 }

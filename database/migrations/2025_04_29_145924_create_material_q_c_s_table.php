@@ -24,6 +24,7 @@ class CreateMaterialQCsTable extends Migration
             $table->decimal('available_to_store', 10, 2)->default(0);
             $table->unsignedBigInteger('store_location_id')->nullable();
             $table->unsignedBigInteger('register_arrival_id');
+            $table->string('status')->default('pending');
             $table->unsignedBigInteger('inspected_by');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

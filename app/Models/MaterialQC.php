@@ -28,6 +28,7 @@ class MaterialQC extends Model
         'store_location_id',
         'register_arrival_id',
         'inspected_by',
+        'status',
         'created_by',
         'updated_by',
     ];
