@@ -17,7 +17,12 @@ class CreateMaterialQCsTable extends Migration
             $table->decimal('returned_qty', 10, 2)->default(0);
             $table->decimal('scrapped_qty', 10, 2)->default(0);
             $table->decimal('cost_of_item', 10, 2);
-            $table->unsignedBigInteger('store_location_id');
+            $table->decimal('add_returned', 10, 2)->default(0);
+            $table->decimal('add_scrap', 10, 2)->default(0);
+            $table->decimal('total_returned', 10, 2)->default(0);
+            $table->decimal('total_scrap', 10, 2)->default(0);
+            $table->decimal('available_to_store', 10, 2)->default(0);
+            $table->unsignedBigInteger('store_location_id')->nullable();
             $table->unsignedBigInteger('register_arrival_id');
             $table->unsignedBigInteger('inspected_by');
             $table->unsignedBigInteger('created_by');
