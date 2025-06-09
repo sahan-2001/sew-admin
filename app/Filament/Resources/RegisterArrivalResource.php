@@ -342,6 +342,14 @@ class RegisterArrivalResource extends Resource
         ->defaultSort('id', 'desc')
         ->recordUrl(null)
         ->actions([
+            Action::make('Download PDF')
+                ->label('Print GRN')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->url(fn ($record) => route('register-arrivals.print', $record)) 
+                ->openUrlInNewTab() 
+                ->tooltip('Download PDF Report'),
+        
             Tables\Actions\Action::make('re-correction')
                 ->label('Re-correct')
                 ->color('danger')

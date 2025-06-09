@@ -171,7 +171,7 @@ class HandlePurchaseOrder extends Page
         }
 
         // Show "Delete Order" action if the status is 'planned' or 'released'
-        if (in_array($this->record->status, ['planned', 'released'])) {
+        if ($this->record->status === 'planned') {
             $actions[] = Action::make('delete_order')
                 ->label('Delete Order')
                 ->color('danger')

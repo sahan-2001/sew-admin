@@ -9,6 +9,7 @@ use App\Models\Company;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Http\Request;
 
 class PurchaseOrderPdfController extends Controller
@@ -48,12 +49,19 @@ class PurchaseOrderPdfController extends Controller
         // Create QR Code
         $qrCode = new QrCode($qrCodeData);
 
-        $writer = new PngWriter();
+        // Write SVG instead of PNG to avoid GD dependency
+        $writer = new SvgWriter();
         $result = $writer->write($qrCode);
 
-        // Save QR Code Image
-        $qrCodeFilename = 'qrcode_' . $purchase_order->id . '.png';
+        // Save QR Code as SVG
+        $qrCodeFilename = 'qrcode_' . $purchase_order->id . '.svg';
         $path = 'public/qrcodes/' . $qrCodeFilename;
+
+        Storage::makeDirectory('public/qrcodes');
+        Storage::put($path, $result->getString());
+
+        // Path to be used in the Blade view
+        $qrCodePath = storage_path('app/public/qrcodes/' . $qrCodeFilename);
 
         Storage::makeDirectory('public/qrcodes');
         Storage::put($path, $result->getString());

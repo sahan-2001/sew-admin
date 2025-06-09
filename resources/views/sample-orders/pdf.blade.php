@@ -90,7 +90,8 @@
     <!-- Second Section: QR Code -->
     <div class="qr-code">
         <h4>Scan to View Sample Order</h4>
-        <img src="{{ $qrCodePath }}" 
+        <img src="data:image/svg+xml;base64,{{ base64_encode(file_get_contents($qrCodePath)) }}" 
+            width="100" height="100"
             alt="QR Code for Sample Order {{ $sampleOrderDetails['id'] }}">
         <div style="margin-top: 10px;">
             <a href="{{ $qrCodeData }}" 

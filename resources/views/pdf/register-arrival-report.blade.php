@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Order</title>
+    <title>Arrival Report #{{ $registerArrival->id }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,22 +12,27 @@
         .header, .footer {
             text-align: center;
         }
-        .details, .provider-details {
+        .details, .arrival-details {
             margin-top: 20px;
             width: 48%;
             float: left;
             border-collapse: collapse;
         }
-        .details th, .details td, .provider-details th, .provider-details td {
+        .details th, .details td, 
+        .arrival-details th, .arrival-details td {
             border: 1px solid #ddd;
             padding: 10px;
             text-align: left;
         }
-        .details th, .provider-details th {
+        .details th, .arrival-details th {
             background-color: #f2f2f2;
         }
-        .items th {
-            text-align: center;
+        .items {
+            clear: both;
+            margin-top: 30px;
+        }
+        .items h2 {
+            margin-bottom: 15px;
         }
         .items table {
             width: 100%;
@@ -40,6 +45,7 @@
         }
         .items th {
             background-color: #f2f2f2;
+            text-align: center;
         }
         .items tfoot th {
             text-align: right;
@@ -58,11 +64,14 @@
             margin: 10px auto;
             width: 80%;
         }
-        .qr-code {
-            width: 48%;
-            float: right;
-            text-align: center;
-            margin-top: 20px;
+        .page-break {
+            page-break-after: always;
+            clear: both;
+        }
+        .invoice-image {
+            max-width: 200px;
+            max-height: 150px;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -73,76 +82,67 @@
         <p>Phone: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
     </div>
 
-    <div class="provider-details">
-        <h2>Purchase Order Details</h2>
+    <div class="arrival-details">
+        <h2>Arrival Details</h2>
         <table>
             <tr>
-                <th>Status</th>
-                <td>{{ $purchaseOrderDetails['status'] }}</td>
+                <th>Arrival ID</th>
+                <td>#{{ str_pad($registerArrival->id, 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
-                <th>Purchase Order ID</th>
-                <td>{{ str_pad($purchaseOrderDetails['id'], 5, '0', STR_PAD_LEFT) }}</td>
+                <th>Purchase Order</th>
+                <td>#{{ str_pad($registerArrival->purchase_order_id, 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
-                <th>Provider Type</th>
-                <td>{{ $purchaseOrderDetails['provider_type'] }}</td>
+                <th>Location</th>
+                <td>{{ $registerArrival->location->name ?? 'N/A' }}</td>
             </tr>
             <tr>
-                <th>Provider ID</th>
-                <td>{{ $purchaseOrderDetails['provider_id'] }}</td>
+                <th>Received Date</th>
+                <td>{{ $registerArrival->received_date }}</td>
             </tr>
             <tr>
-                <th>Provider Name</th>
-                <td>{{ $purchaseOrderDetails['provider_name'] }}</td>
+                <th>Invoice Number</th>
+                <td>{{ $registerArrival->invoice_number ?? 'N/A' }}</td>
             </tr>
             <tr>
-                <th>Wanted Date</th>
-                <td>{{ $purchaseOrderDetails['wanted_date'] }}</td>
-            </tr>
-            <tr>
-                <th>Created Date</th>
-                <td>{{ $purchaseOrderDetails['created_at'] }}</td>
+                <th>Notes</th>
+                <td>{{ $registerArrival->note ?? 'N/A' }}</td>
             </tr>
         </table>
     </div>
 
-    <div class="qr-code">
-        <h4>Scan to View Purchase Order</h4>
-        <img src="data:image/svg+xml;base64,{{ base64_encode(file_get_contents($qrCodePath)) }}" 
-            width="100" height="100"
-            alt="QR Code for Purchase Order {{ $purchaseOrderDetails['id'] }}"
-            style="width: 100px; height: 100px; border: 1px solid #eee;">
-        <div style="margin-top: 10px;">
-            <a href="{{ $qrCodeData }}" 
-            style="font-size: 12px; color: #3490dc; text-decoration: none;">
-            View Purchase Order Online
-            </a>
-        </div>
+    @if($registerArrival->image_of_invoice)
+    <div style="float: right; width: 48%; margin-top: 20px; text-align: center;">
+        <h4>Invoice Image</h4>
+        <img src="{{ storage_path('app/' . $registerArrival->image_of_invoice) }}" 
+             class="invoice-image" 
+             alt="Invoice Image">
     </div>
+    @endif
 
     <div class="items" style="clear: both;">
-        <h2>Purchase Order Items</h2>
+        <h2>Arrival Items</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Inventory Item ID</th>
-                    <th>Item Code</th>
+                    <th>Item ID</th>
                     <th>Item Name</th>
                     <th>Quantity</th>
-                    <th>Price</th>
+                    <th>Unit Price</th>
+                    <th>Status</th>
                     <th>Total</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($purchaseOrderItems as $item)
+                @foreach ($registerArrival->items as $item)
                 <tr>
-                    <td>{{ $item->inventory_item_id }}</td>
-                    <td>{{ $item->inventoryItem->item_code ?? 'N/A' }}</td>
+                    <td>{{ $item->item_id }}</td>
                     <td>{{ $item->inventoryItem->name ?? 'N/A' }}</td>
                     <td>{{ $item->quantity }}</td>
                     <td>{{ number_format($item->price, 2) }}</td>
-                    <td>{{ number_format($item->quantity * $item->price, 2) }}</td>
+                    <td>{{ ucfirst($item->status) }}</td>
+                    <td>{{ number_format($item->total, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -157,15 +157,14 @@
 
     <div class="signature">
         <div style="flex: 1; text-align: left;">
-            <p>Authorized Signature</p>
-            <div class="signature-line"></div>
-        </div>
-        <div style="flex: 1; text-align: right;">
             <p>Received By</p>
             <div class="signature-line"></div>
         </div>
+        <div style="flex: 1; text-align: right;">
+            <p>Verified By</p>
+            <div class="signature-line"></div>
+        </div>
     </div>
-
 
     <div class="footer">
         <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>

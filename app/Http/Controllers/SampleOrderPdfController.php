@@ -9,6 +9,7 @@ use App\Models\Company;
 use Illuminate\Http\Request;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Writer\SvgWriter;
 
 class SampleOrderPdfController extends Controller
 {
@@ -47,14 +48,13 @@ class SampleOrderPdfController extends Controller
         // Generate QR Code URL using ID + RANDOM CODE
         $qrCodeData = url('/sample-orders/' . $sample_order->order_id . '/' . $sample_order->random_code);
 
-        // Create QR Code
+        // Create QR Code (SVG)
         $qrCode = new QrCode($qrCodeData);
-
-        $writer = new PngWriter();
+        $writer = new SvgWriter();
         $result = $writer->write($qrCode);
 
-        // Save QR Code Image
-        $qrCodeFilename = 'qrcode_' . $sample_order->order_id . '.png';
+        // Save QR Code as SVG
+        $qrCodeFilename = 'qrcode_' . $sample_order->order_id . '.svg';
         $path = 'public/qrcodes/' . $qrCodeFilename;
 
         Storage::makeDirectory('public/qrcodes');

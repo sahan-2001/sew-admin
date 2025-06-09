@@ -190,7 +190,7 @@ class PurchaseOrderResource extends Resource
             DeleteAction::make()
                 ->visible(fn ($record) => 
                     auth()->user()->can('delete purchase orders') &&
-                    in_array($record->status, ['planned', 'released'])
+                    $record->status === 'planned'
                 ),
             
         ])

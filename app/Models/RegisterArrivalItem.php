@@ -31,6 +31,11 @@ class RegisterArrivalItem extends Model
         return $this->belongsTo(RegisterArrival::class, 'register_arrival_id');
     }
 
+    public function getTotalAttribute()
+    {
+        return $this->quantity * $this->price;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

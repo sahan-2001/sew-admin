@@ -1,176 +1,290 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Cutting Labels - Record #{{ $cuttingRecord->id }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cutting Record Report</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            font-size: 14px; /* base font size similar to PO */
         }
         .header, .footer {
             text-align: center;
-        }
-        .header h1 {
-            margin-bottom: 5px;
-            font-size: 32px; /* h1 size from PO */
-        }
-        .labels-page h3 {
-            font-size: 24px; /* h2 equivalent */
-            margin-top: 0;
-            margin-bottom: 15px;
         }
         .details, .record-details {
             margin-top: 20px;
             width: 48%;
             float: left;
             border-collapse: collapse;
-            font-size: 14px;
         }
         .details th, .details td, 
         .record-details th, .record-details td {
             border: 1px solid #ddd;
             padding: 10px;
             text-align: left;
-            font-size: 14px;
         }
         .details th, .record-details th {
             background-color: #f2f2f2;
-            width: 150px;
-            font-weight: 600;
+        }
+        .section {
+            clear: both;
+            margin-top: 30px;
+        }
+        .section h2 {
+            margin-bottom: 15px;
+        }
+        .section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .section th, .section td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .section th {
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+        .signature {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+        .signature div {
+            width: 45%;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px dotted black;
+            margin: 10px auto;
+            width: 80%;
         }
         .page-break {
             page-break-after: always;
             clear: both;
         }
-
-        /* Label pages */
-        .labels-page {
-            font-family: Arial, sans-serif;
-            margin: 15px;
-            clear: both;
-        }
-
-        /* Container for the labels */
-        .labels-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 15px;
-        }
-        .label-box {
-            padding: 10px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            height: {{ $labelSettings['label_height'] }};
-            width: calc({{ $labelSettings['label_width'] }} - 6px);
-            font-size: 14px;
-            @if($labelSettings['show_border'])
-                border: 1px solid #000;
-            @endif
-        }
-        .label-info {
-            margin-bottom: 5px;
-            line-height: 1.2;
-            font-size: 14px;
-        }
-        .label-info strong {
-            font-weight: 600;
-        }
-        .barcode-container {
-            text-align: center;
-            margin-top: auto;
-        }
-        .barcode {
-            width: auto;
-            max-width: 100%;
-            height: 30px;
-            object-fit: contain;
-        }
-        .barcode-id {
-            font-size: 12px; /* small text for barcode id */
-            margin-top: 5px;
-        }
-        .no-barcode {
-            text-align: center;
-            font-style: italic;
-            color: #666;
-            font-size: 12px;
-        }
     </style>
 </head>
 <body>
-
-    <!-- First Page: Company + Cutting Record Details -->
-    @if($labelSettings['include_company_header'])
     <div class="header">
         <h1>{{ $companyDetails['name'] ?? 'Company Name' }}</h1>
         <p>{{ $companyDetails['address'] ?? 'Company Address' }}</p>
         <p>Phone: {{ $companyDetails['phone'] ?? 'N/A' }} | Email: {{ $companyDetails['email'] ?? 'N/A' }}</p>
     </div>
-    @endif
 
-    <table class="details">
-        <thead>
-            <tr><th colspan="2">Cutting Record Details</th></tr>
-        </thead>
-        <tbody>
-            <tr><th>Cutting Record ID</th><td>#{{ str_pad($cuttingRecord->id, 5, '0', STR_PAD_LEFT) }}</td></tr>
-            <tr><th>Cutting Station</th><td>{{ $cuttingRecord->cuttingStation->name ?? 'N/A' }}</td></tr>
-            <tr><th>Order Type</th><td>{{ $cuttingRecord->order_type }}</td></tr>
-            <tr><th>Order ID</th><td>#{{ str_pad($cuttingRecord->order_id, 5, '0', STR_PAD_LEFT) }}</td></tr>
-            <tr><th>Created At</th><td>{{ $cuttingRecord->created_at->format('Y-m-d H:i') }}</td></tr>
-            <tr><th>Total Labels</th><td>{{ $labels->count() }}</td></tr>
-        </tbody>
-    </table>
+    <div class="details">
+        <h2>Cutting Record Details</h2>
+        <table>
+            <tr>
+                <th>Cutting Record ID</th>
+                <td>#{{ str_pad($cuttingRecord->id, 5, '0', STR_PAD_LEFT) }}</td>
+            </tr>
+            <tr>
+                <th>Cutting Station</th>
+                <td>{{ $cuttingRecord->cuttingStation->name ?? 'N/A' }}</td>
+            </tr>
+            <tr>
+                <th>Order Type</th>
+                <td>{{ $cuttingRecord->order_type }}</td>
+            </tr>
+            <tr>
+                <th>Order ID</th>
+                <td>#{{ str_pad($cuttingRecord->order_id, 5, '0', STR_PAD_LEFT) }}</td>
+            </tr>
+            <tr>
+                <th>Operation Date</th>
+                <td>{{ $cuttingRecord->operation_date }}</td>
+            </tr>
+            <tr>
+                <th>Created At</th>
+                <td>{{ $cuttingRecord->created_at->format('Y-m-d H:i') }}</td>
+            </tr>
+        </table>
+    </div>
 
-    <div class="page-break"></div>
+    
 
-    <!-- Labels Pages -->
-    @foreach($labels->chunk($labelSettings['labels_per_page']) as $pageLabels)
-        <div class="labels-page">
-            <h3>Cut Piece Labels (Record #{{ $cuttingRecord->id }}) - Page {{ $loop->iteration }}</h3>
-
-            <div class="labels-container">
-                @foreach($pageLabels as $label)
-                    <div class="label-box">
-                        <div class="label-info">
-                            <strong>Label ID:</strong> {{ $label->quantity }}<br>
-                            <strong>Label:</strong> {{ $label->label }}<br>
-                            <strong>Order Type:</strong> {{ $label->order_type }}<br>
-                            <strong>Order ID:</strong> {{ $label->order_id }}<br>
-                            <strong>Item ID:</strong> {{ $label->order_item_id }}<br>
-                            <strong>Variation ID:</strong> {{ $label->order_variation_id ?? '—' }}<br>
-                        </div>
-                        <div class="barcode-container">
-                            @if ($label->barcode_base64)
-                                <img class="barcode" src="{{ $label->barcode_base64 }}" alt="Barcode">
-                                <div class="barcode-id">{{ $label->barcode_id }}</div>
-                            @else
-                                <div class="no-barcode">
-                                    <p>Barcode Missing</p>
-                                    <p>ID: {{ $label->barcode_id ?? 'N/A' }}</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+    <div class="section">
+        <h2>Order Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Type</th>
+                    <th>Item ID</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($orderItems as $item)
+                <tr>
+                    <td>{{ $item->item_type }}</td>
+                    <td>{{ str_pad($item->item_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $item->quantity }}</td>
+                </tr>
                 @endforeach
-            </div>
+            </tbody>
+        </table>
+    </div>
 
-            <!-- Add empty label boxes to fill the last row if needed -->
-            @if($pageLabels->count() % $labelSettings['columns'] != 0)
-                @for($i = 0; $i < ($labelSettings['columns'] - ($pageLabels->count() % $labelSettings['columns'])); $i++)
-                    <div class="label-box" style="visibility: hidden;"></div>
-                @endfor
-            @endif
+    <div class="section">
+        <h2>Order Variations</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order Item ID</th>
+                    <th>Variation Type</th>
+                    <th>Variation ID</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($orderVariations as $variation)
+                <tr>
+                    <td>{{ str_pad($variation->order_item_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $variation->variation_type }}</td>
+                    <td>{{ str_pad($variation->variation_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $variation->quantity }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 
-            @if(!$loop->last)
-                <div class="page-break"></div>
-            @endif
+    <div class="section">
+        <h2>Cutting Employees</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Pieces Cut</th>
+                    <th>Supervisor ID</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($employees as $employee)
+                <tr>
+                    <td>{{ str_pad($employee->employee_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $employee->pieces_cut }}</td>
+                    <td>{{ str_pad($employee->supervisor_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $employee->notes }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2>Inventory Waste Item Records</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Amount</th>
+                    <th>Unit</th>
+                    <th>Location ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($wasteRecords as $waste)
+                <tr>
+                    <td>{{ str_pad($waste->item_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $waste->amount }}</td>
+                    <td>{{ $waste->unit }}</td>
+                    <td>{{ str_pad($waste->location_id, 5, '0', STR_PAD_LEFT) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Non-Inventory Waste Item Records</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Amount</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($nonInventoryWaste as $waste)
+                <tr>
+                    <td>{{ str_pad($waste->item_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $waste->amount }}</td>
+                    <td>{{ $waste->unit }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Cutting Outputs - By Products</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Amount</th>
+                    <th>Unit</th>
+                    <th>Location ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($byProductRecords as $product)
+                <tr>
+                    <td>{{ str_pad($product->item_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $product->amount }}</td>
+                    <td>{{ $product->unit }}</td>
+                    <td>{{ str_pad($product->location_id, 5, '0', STR_PAD_LEFT) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Cutting Quality Control Records</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>QC User ID</th>
+                    <th>Inspected Qty</th>
+                    <th>Accepted Qty</th>
+                    <th>Rejected Qty</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($qualityControls as $qc)
+                <tr>
+                    <td>{{ str_pad($qc->qc_user_id, 5, '0', STR_PAD_LEFT) }}</td>
+                    <td>{{ $qc->inspected_quantity }}</td>
+                    <td>{{ $qc->accepted_quantity }}</td>
+                    <td>{{ $qc->inspected_quantity - $qc->accepted_quantity }}</td>
+                    <td>{{ $qc->notes }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="signature">
+        <div style="flex: 1; text-align: left;">
+            <p>Supervisor Signature</p>
+            <div class="signature-line"></div>
         </div>
-    @endforeach
+        <div style="flex: 1; text-align: right;">
+            <p>QC Manager Signature</p>
+            <div class="signature-line"></div>
+        </div>
+    </div>
 
+    <div class="footer">
+        <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>
+    </div>
 </body>
 </html>
