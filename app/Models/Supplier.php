@@ -23,8 +23,9 @@ class Supplier extends Model
         'phone_1',
         'phone_2',
         'outstanding_balance',
-        'added_by',
         'approved_by',
+        'created_by',
+        'updated_by',
     ];
 
     public function addedBy()
@@ -45,7 +46,6 @@ class Supplier extends Model
         'phone_1',
         'phone_2',
         'outstanding_balance',
-        'added_by',
         'approved_by',
     ];
 
@@ -67,10 +67,20 @@ class Supplier extends Model
                 'phone_1',
                 'phone_2',
                 'outstanding_balance',
-                'added_by',
                 'approved_by',
             ])
-            ->useLogName('supplier')
-            ->setDescriptionForEvent(fn(string $eventName) => "Supplier {$this->supplier_id} has been {$eventName} by User {$this->added_by} ({$this->addedBy->email})");
+            ->useLogName('supplier');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

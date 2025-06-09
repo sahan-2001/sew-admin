@@ -19,6 +19,8 @@ class EmployeePerformance extends Model
         'working_hours',
         'efficiency',
         'notes',
+        'created_by',
+        'updated_by',
     ];
 
     public function employee()
@@ -29,5 +31,17 @@ class EmployeePerformance extends Model
     public function performanceRecord()
     {
         return $this->belongsTo(EnterPerformanceRecord::class, 'enter_performance_record_id');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

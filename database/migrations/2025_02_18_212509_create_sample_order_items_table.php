@@ -12,16 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sample_order_items', function (Blueprint $table) {
-            $table->id(); // Primary key
-            $table->unsignedBigInteger('sample_order_id'); // Foreign key to sample_orders
-            $table->string('item_name'); // Item name
-            $table->string('variation_name')->nullable(); // Variation name (if any)
-            $table->text('note')->nullable(); // Notes for the item
-            $table->integer('quantity')->nullable(); // Quantity of the item
-            $table->decimal('price', 10, 2)->nullable(); // Price of the item
-            $table->decimal('total', 10, 2)->nullable(); // Total price for the item
-            $table->boolean('is_variation')->default(0); // Indicator if it's a variation
-            $table->timestamps(); // Created_at and updated_at timestamps
+            $table->id(); 
+            $table->unsignedBigInteger('sample_order_id'); 
+            $table->string('item_name');
+            $table->string('variation_name')->nullable();
+            $table->text('note')->nullable(); 
+            $table->integer('quantity')->nullable(); 
+            $table->decimal('price', 10, 2)->nullable(); 
+            $table->decimal('total', 10, 2)->nullable(); 
+            $table->boolean('is_variation')->default(0); 
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
+            $table->timestamps(); 
 
             // Foreign key constraint
             $table->foreign('sample_order_id')

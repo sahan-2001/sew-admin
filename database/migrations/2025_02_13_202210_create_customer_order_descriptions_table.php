@@ -17,10 +17,12 @@ return new class extends Migration
             $table->string('item_name');
             $table->string('variation_name')->nullable();
             $table->text('note')->nullable();
-            $table->integer('quantity')->nullable(); // Ensure quantity is nullable
-            $table->decimal('price', 10, 2)->nullable(); // Ensure price is nullable
-            $table->decimal('total', 10, 2)->nullable(); // Ensure total is nullable
+            $table->integer('quantity')->nullable(); 
+            $table->decimal('price', 10, 2)->nullable(); 
+            $table->decimal('total', 10, 2)->nullable(); 
             $table->timestamps();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->boolean('is_variation')->default(0); 
         
             $table->foreign('customer_order_id')->references('order_id')->on('customer_orders')->onDelete('cascade');

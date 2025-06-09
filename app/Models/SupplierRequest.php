@@ -49,6 +49,8 @@ class SupplierRequest extends Model
         'approved_by',
         'note',
         'status',
+        'created_by',
+        'updated_by',
     ];
 
     protected static $logName = 'supplier_request';
@@ -76,5 +78,17 @@ class SupplierRequest extends Model
             ])
             ->useLogName('supplier_request')
             ->setDescriptionForEvent(fn(string $eventName) => "Supplier Request {$this->id} has been {$eventName} by User {$this->requested_by} ({$this->requestedBy->email})");
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

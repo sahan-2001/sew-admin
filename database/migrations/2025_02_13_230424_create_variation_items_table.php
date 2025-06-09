@@ -15,6 +15,8 @@ class CreateVariationItemsTable extends Migration
             $table->integer('quantity'); // Add the quantity column
             $table->decimal('price', 10, 2);
             $table->decimal('total', 10, 2);
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
         });
     }

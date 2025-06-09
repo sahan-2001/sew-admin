@@ -537,18 +537,6 @@ class CuttingRecordResource extends Resource
                                                         ->numeric()
                                                         ->visible(fn (callable $get) => !empty($get('variations')))
                                                         ->live(),
-
-                                                    TextInput::make('start_label')
-                                                        ->label('Start Label')
-                                                        ->disabled()
-                                                        ->dehydrated()
-                                                        ->visible(fn (callable $get) => empty($get('variations'))),
-
-                                                    TextInput::make('end_label')
-                                                        ->label('End Label')
-                                                        ->disabled()
-                                                        ->dehydrated()
-                                                        ->visible(fn (callable $get) => empty($get('variations'))),
                                                 ]),
                                                 
                                                 // Nested Repeater for Variations

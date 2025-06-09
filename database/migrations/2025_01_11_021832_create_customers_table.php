@@ -24,6 +24,8 @@ class CreateCustomersTable extends Migration
             $table->decimal('remaining_balance', 8, 2)->default(0);
             $table->unsignedBigInteger('requested_by');
             $table->unsignedBigInteger('approved_by')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
 

@@ -26,6 +26,8 @@ class CreateSuppliersTable extends Migration
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
 
             $table->foreign('added_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');

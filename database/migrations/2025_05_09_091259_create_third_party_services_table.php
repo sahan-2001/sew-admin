@@ -18,6 +18,8 @@ class CreateThirdPartyServicesTable extends Migration
                 ->on('suppliers')
                 ->onDelete('cascade');
             $table->string('name');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

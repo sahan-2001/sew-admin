@@ -22,4 +22,15 @@ class AssignDailyOperationLabel extends Pivot
     {
         return $this->belongsTo(\App\Models\CuttingLabel::class, 'cutting_label_id');
     }
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
 }

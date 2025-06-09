@@ -15,6 +15,8 @@ class Stock extends Model
         'cost',
         'location_id',
         'purchase_order_id', 
+        'created_by',
+        'updated_by',
     ];
 
 
@@ -55,6 +57,18 @@ class Stock extends Model
             $item->available_quantity = $sum;
             $item->saveQuietly();
         }
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 
 }

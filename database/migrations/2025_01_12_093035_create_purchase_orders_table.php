@@ -19,6 +19,8 @@ class CreatePurchaseOrdersTable extends Migration
             $table->text('special_note')->nullable();
             $table->string('status')->default('planned'); 
             $table->string('random_code')->nullable(); 
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

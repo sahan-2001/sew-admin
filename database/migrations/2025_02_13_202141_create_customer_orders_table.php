@@ -18,8 +18,9 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id');
             $table->text('special_notes')->nullable();
             $table->string('status')->default('planned');
-            $table->unsignedBigInteger('added_by'); 
             $table->string('random_code')->nullable(); 
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes(); 
 
@@ -27,11 +28,6 @@ return new class extends Migration
                   ->references('customer_id')
                   ->on('customers')
                   ->onDelete('cascade');
-
-            $table->foreign('added_by')
-                  ->references('id')
-                  ->on('users')  // Assuming you're using Laravel's default 'users' table
-                  ->onDelete('cascade'); // If the user is deleted, the order will be removed (or you can change this behavior)
         });
     }
 

@@ -104,8 +104,6 @@ class CreateCuttingRecord extends CreateRecord
                         'item_id' => $item['item_id'],
                         'item_type' => $data['order_type'],
                         'quantity' => $item['no_of_pieces'] ?? 0,
-                        'start_label' => $item['start_label'] ?? null,
-                        'end_label' => $item['end_label'] ?? null,
                     ]);
 
                     // Create variations if they exist
@@ -116,8 +114,6 @@ class CreateCuttingRecord extends CreateRecord
                                 'variation_id' => $variation['var_item_id'] ?? null,
                                 'variation_type' => $data['order_type'] ?? null,
                                 'quantity' => $variation['no_of_pieces_var'] ?? 0,
-                                'start_label' => $variation['start_label_var'] ?? null,
-                                'end_label' => $variation['end_label_var'] ?? null,
                             ]);
 
                             $this->generateLabels($orderVariation, $variation, $record, $data['order_id'], $data['order_type']);
@@ -241,6 +237,13 @@ class CreateCuttingRecord extends CreateRecord
         if (isset($order)) {
             $order->status = 'cut';
             $order->save();
+        }
+
+        // 2. Update Release Material Status
+        $releaseMaterial = \App\Models\ReleaseMaterial::find($record->release_material_id);
+        if ($releaseMaterial) {
+            $releaseMaterial->status = 'cut';
+            $releaseMaterial->save();
         }
 
     }

@@ -22,6 +22,8 @@ class ProductionMachine extends Model
         'depreciation_last',
         'cumulative_depreciation',
         'net_present_value',
+        'created_by',
+        'updated_by',
     ];
 
     protected static function booted()
@@ -35,7 +37,17 @@ class ProductionMachine extends Model
             $machine->total_initial_cost = $machine->purchased_cost + ($machine->additional_cost ?? 0);
             $machine->net_present_value = $machine->total_initial_cost - ($machine->cumulative_depreciation ?? 0);
         });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
+
     
 
     public function calculateDepreciation()
@@ -50,5 +62,4 @@ class ProductionMachine extends Model
         $this->net_present_value = $this->total_initial_cost - $this->cumulative_depreciation;
         $this->save();
     }
-
 }

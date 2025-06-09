@@ -25,6 +25,8 @@ class CreateCustomerRequestsTable extends Migration
             $table->unsignedBigInteger('requested_by');
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->string('status')->default('pending');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
 

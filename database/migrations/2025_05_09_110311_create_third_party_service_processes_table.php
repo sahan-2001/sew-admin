@@ -23,6 +23,8 @@ return new class extends Migration
             $table->decimal('unit_rate', 10, 2);
             $table->decimal('total', 10, 2)->storedAs('amount * unit_rate');
             $table->decimal('outstanding_balance', 10, 2)->storedAs('amount * unit_rate');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

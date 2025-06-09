@@ -19,6 +19,7 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Hidden;
+use Illuminate\Support\Facades\Auth;
 
 class RegisterArrivalResource extends Resource
 {
@@ -300,8 +301,16 @@ class RegisterArrivalResource extends Resource
 {
     return $table
         ->columns([
-            TextColumn::make('id')->sortable()->searchable(),
-            TextColumn::make('purchase_order_id')->sortable()->searchable(),
+            TextColumn::make('id')
+                ->label('ID')
+                ->sortable()
+                ->searchable()
+                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+            TextColumn::make('purchase_order_id')
+                ->label('Purchase Order ID')
+                ->sortable()
+                ->searchable()
+                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
             TextColumn::make('invoice_number')->sortable()->searchable(),
             TextColumn::make('received_date')->sortable()->searchable(),
             TextColumn::make('location_id')->sortable(),
@@ -313,13 +322,23 @@ class RegisterArrivalResource extends Resource
                     return implode(', ', $statuses);
                 })
                 ->sortable(),
+            ...(
+            Auth::user()->can('view audit columns')
+                ? [
+                    TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                    TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                    TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                    TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                ]
+                : []
+                ),
         ])
         ->filters([
             SelectFilter::make('purchase_order_id')
                 ->label('Purchase Order')
                 ->relationship('purchaseOrder', 'id'),
         ])
-        ->defaultSort('received_date', 'desc')
+        ->defaultSort('id', 'desc')
         ->recordUrl(null)
         ->actions([
             Tables\Actions\Action::make('re-correction')

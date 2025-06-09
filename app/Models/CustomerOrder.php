@@ -20,8 +20,9 @@ class CustomerOrder extends Model
         'customer_id',
         'special_notes',
         'status',
-        'added_by',  
         'random_code',
+        'created_by',
+        'updated_by',
     ];
 
     protected static function booted()
@@ -32,27 +33,28 @@ class CustomerOrder extends Model
                 $customerOrder->random_code .= mt_rand(0, 9);
             }
         });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
     
-    // Relationship with CustomerOrderDescription (OrderItems)
     public function orderItems()
     {
         return $this->hasMany(CustomerOrderDescription::class, 'customer_order_id', 'order_id');
     }
 
-    // Relationship with Customer
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id', 'customer_id');
     }
 
-    // Relationship to track the user who created the order (added_by)
-    public function addedBy()
-    {
-        return $this->belongsTo(User::class, 'added_by'); // 'added_by' references the 'id' field in the users table
-    }
 
-    // Relationship with VariationItems (if required)
     public function variationItems()
     {
         return $this->hasManyThrough(

@@ -16,6 +16,8 @@ class CreatePurchaseOrderItemsTable extends Migration
             $table->decimal('price', 10, 2);
             $table->integer('arrived_quantity')->default(0); 
             $table->integer('remaining_quantity');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
 

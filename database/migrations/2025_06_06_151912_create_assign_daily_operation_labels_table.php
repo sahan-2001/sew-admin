@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('assign_daily_operation_id')->constrained()->cascadeOnDelete();
             $table->foreignId('cutting_label_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
             

@@ -25,7 +25,8 @@ class Warehouse extends Model
         'capacity_width',
         'capacity_height',
         'measurement_unit',
-        'user_id',
+        'created_by',
+        'updated_by',
     ];
 
     // Defining the date attributes for soft deletes
@@ -76,6 +77,18 @@ class Warehouse extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'address_line_1', 'city', 'capacity_length', 'capacity_width', 'capacity_height', 'measurement_unit'])
             ->useLogName('warehouse')
-            ->setDescriptionForEvent(fn(string $eventName) => "Warehouse {$this->id} has been {$eventName} by User {$this->user_id} ({$this->user->email})");
+            ->setDescriptionForEvent(fn(string $eventName) => "Warehouse {$this->id} has been {$eventName} by User {$this->created_by}");
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

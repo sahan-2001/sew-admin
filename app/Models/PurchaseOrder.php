@@ -27,6 +27,8 @@ class PurchaseOrder extends Model
         'user_id',
         'status', 
         'random_code', 
+        'created_by',
+        'updated_by',
     ];
 
     protected static function booted()
@@ -37,11 +39,16 @@ class PurchaseOrder extends Model
                 $purchaseOrder->random_code .= mt_rand(0, 9);
             }
         });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
-
-
-
-    
 
     protected static $logName = 'purchase_order';
 
@@ -93,4 +100,5 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
+
 }

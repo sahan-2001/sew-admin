@@ -19,7 +19,8 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
-        'created_by', 
+        'created_by',
+        'updated_by',
     ];
 
     protected static function boot()
@@ -68,10 +69,16 @@ class InventoryItem extends Model
             ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName} by User " . ($this->createdBy ? $this->createdBy->email : 'Unknown'));
     }
 
-    // Define the relationship to the User model
-    public function createdBy()
+    protected static function booted()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 
     public function registerArrivalItems()

@@ -24,6 +24,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'created_by',
+        'updated_by',
     ];
 
     /**
@@ -60,5 +62,17 @@ class User extends Authenticatable
             ->logOnly(['name', 'email'])
             ->useLogName('user')
             ->setDescriptionForEvent(fn(string $eventName) => "User {$this->id} ({$this->email}) has been {$eventName}");
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

@@ -136,6 +136,9 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'select_previous_performance_dates']);
         Permission::firstOrCreate(['name' => 'select_next_operation_dates']);
 
+        // view audit columns
+        Permission::firstOrCreate(['name' => 'view audit columns']);
+
 
         // Roles
         $admin = Role::firstOrCreate(['name' => 'admin']);

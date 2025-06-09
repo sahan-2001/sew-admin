@@ -12,7 +12,6 @@ class InventoryLocation extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    // Defining the fillable properties to allow mass assignment
     protected $fillable = [
         'name',
         'warehouse_id',
@@ -20,14 +19,11 @@ class InventoryLocation extends Model
         'capacity',
         'measurement_unit',
         'created_by',
+        'updated_by',
     ];
 
-    // Defining the date attributes for soft deletes
     protected $dates = ['deleted_at'];
 
-    /**
-     * Get the warehouse that owns the inventory location.
-     */
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
@@ -38,19 +34,23 @@ class InventoryLocation extends Model
         return $this->hasMany(Stock::class, 'location_id');
     }
 
-    /**
-     * Get the user that created the inventory location.
-     */
-    public function creator()
+
+    protected static function booted()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 
     protected static $logAttributes = ['name', 'warehouse_id', 'location_type', 'capacity', 'measurement_unit'];
     protected static $logName = 'inventory_location';
 
     /**
-     * Get the options for activity logging.
      *
      * @return \Spatie\Activitylog\LogOptions
      */
@@ -59,6 +59,6 @@ class InventoryLocation extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'warehouse_id', 'location_type', 'capacity', 'measurement_unit'])
             ->useLogName('inventory_location')
-            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Location {$this->id} has been {$eventName} by User {$this->created_by} ({$this->creator->email})");
+            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Location {$this->id} has been {$eventName} by User {$this->created_by}");
     }
 }

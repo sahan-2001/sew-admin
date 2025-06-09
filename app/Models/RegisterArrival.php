@@ -20,7 +20,9 @@ class RegisterArrival extends Model
         'received_date',
         'invoice_number',
         'image_of_invoice',
-        'note'
+        'note',
+        'created_by',
+        'updated_by',
     ];
 
     public function items()
@@ -57,6 +59,18 @@ class RegisterArrival extends Model
             ->setDescriptionForEvent(function (string $eventName) {
                 return "Register Arrival record (ID: {$this->id}, Purchase Order ID: {$this->purchase_order_id}) has been {$eventName}.";
             });
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 
 }

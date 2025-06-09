@@ -17,8 +17,10 @@ class PurchaseOrderItem extends Model
         'inventory_item_id',
         'quantity',
         'price',
-        'arrived_quantity', // New column
-        'remaining_quantity', // New column
+        'arrived_quantity', 
+        'remaining_quantity', 
+        'created_by',
+        'updated_by',
     ];
 
     public function purchaseOrder()
@@ -36,8 +38,8 @@ class PurchaseOrderItem extends Model
         'inventory_item_id',
         'quantity',
         'price',
-        'arrived_quantity', // New column
-        'remaining_quantity', // New column
+        'arrived_quantity', 
+        'remaining_quantity', 
     ];
 
     protected static $logName = 'purchase_order_item';
@@ -47,5 +49,17 @@ class PurchaseOrderItem extends Model
      *
      * @return \Spatie\Activitylog\LogOptions
      */
+
+     protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
     
 }

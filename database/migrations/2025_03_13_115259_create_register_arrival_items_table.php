@@ -14,6 +14,8 @@ return new class extends Migration {
             $table->integer('quantity');
             $table->decimal('price', 10, 2);
             $table->string('status')->default('to be inspected');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
         });

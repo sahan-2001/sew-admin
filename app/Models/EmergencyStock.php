@@ -18,6 +18,7 @@ class EmergencyStock extends Model
         'updated_date',
         'received_date',
         'created_by',
+        'updated_by',
     ];
 
     protected static function boot()
@@ -25,6 +26,15 @@ class EmergencyStock extends Model
         parent::boot();
         static::creating(function ($model) {
             $model->created_by = auth()->id();
+        });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
         });
     }
 

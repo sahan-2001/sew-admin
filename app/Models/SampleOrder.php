@@ -32,6 +32,8 @@ class SampleOrder extends Model
         'rejected_by',
         'rejection_message',
         'random_code', 
+        'created_by',
+        'updated_by',
     ];
 
     protected static function booted()
@@ -41,6 +43,15 @@ class SampleOrder extends Model
             for ($i = 0; $i < 16; $i++) {
                 $sampleOrder->random_code .= mt_rand(0, 9);
             }
+        });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
         });
     }
     

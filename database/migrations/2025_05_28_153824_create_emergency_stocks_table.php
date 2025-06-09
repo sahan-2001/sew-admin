@@ -19,7 +19,8 @@ return new class extends Migration
             $table->decimal('cost', 10, 2)->nullable();
             $table->date('received_date');
             $table->date('updated_date');
-            $table->foreignId('created_by')->nullable()->constrained('users');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
         });

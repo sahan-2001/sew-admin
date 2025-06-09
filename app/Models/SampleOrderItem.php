@@ -24,6 +24,8 @@ class SampleOrderItem extends Model
         'note',
         'total',
         'is_variation',
+        'created_by',
+        'updated_by',
     ];
 
     public function sampleOrder()
@@ -61,6 +63,15 @@ class SampleOrderItem extends Model
             if (!$model->is_variation) {
                 $model->total = $model->quantity * $model->price;
             }
+        });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
         });
     }
 }

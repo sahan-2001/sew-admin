@@ -100,7 +100,7 @@ class ProductionLineOperationResource extends Resource
                                     Forms\Components\TextInput::make('machine_setup_time')
                                         ->label('Machine Setup Time')
                                         ->numeric()
-                                        ->minValue(0)
+                                        ->default(0)
                                         ->maxValue(24)
                                         ->placeholder('Enter machine setup time in minitues')
                                         ->columnSpan(2),
@@ -108,7 +108,7 @@ class ProductionLineOperationResource extends Resource
                                     Forms\Components\TextInput::make('machine_run_time')
                                         ->label('Machine Run Time')
                                         ->numeric()
-                                        ->minValue(0)
+                                        ->default(0)
                                         ->maxValue(24)
                                         ->placeholder('Enter machine run time in minitues')
                                         ->columnSpan(2),
@@ -116,7 +116,7 @@ class ProductionLineOperationResource extends Resource
                                     Forms\Components\TextInput::make('labor_setup_time')
                                         ->label('Labor Setup Time')
                                         ->numeric()
-                                        ->minValue(0)
+                                        ->default(0)
                                         ->maxValue(24)
                                         ->placeholder('Enter labor setup time in minitues')
                                         ->columnSpan(2),
@@ -124,7 +124,7 @@ class ProductionLineOperationResource extends Resource
                                     Forms\Components\TextInput::make('labor_run_time')
                                         ->label('Labor Run Time')
                                         ->numeric()
-                                        ->minValue(0)
+                                        ->default(0)
                                         ->maxValue(24)
                                         ->placeholder('Enter labor run time in minitues')
                                         ->columnSpan(2),

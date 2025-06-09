@@ -36,6 +36,18 @@ class CustomerRequest extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
+    
     protected static $logAttributes = [
         'name',
         'shop_name',
@@ -47,6 +59,8 @@ class CustomerRequest extends Model
         'requested_by',
         'approved_by',
         'status',
+        'created_by',
+        'updated_by',
     ];
 
     protected static $logName = 'customer_request';

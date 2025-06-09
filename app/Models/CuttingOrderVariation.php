@@ -16,8 +16,6 @@ class CuttingOrderVariation extends Model
         'variation_type',
         'variation_id',
         'quantity',
-        'start_label',
-        'end_label',
         'created_by',
         'updated_by',
     ];

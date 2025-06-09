@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('variation_type'); // 'variation_item' or 'sample_order_variation'
             $table->unsignedBigInteger('variation_id');
             $table->integer('quantity');
-            $table->string('start_label')->nullable();
-            $table->string('end_label')->nullable();
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->softDeletes();

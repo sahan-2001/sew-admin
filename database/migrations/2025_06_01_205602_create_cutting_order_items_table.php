@@ -17,8 +17,6 @@ return new class extends Migration
             $table->string('item_type'); // 'customer_order_description' or 'sample_order_item'
             $table->unsignedBigInteger('item_id');
             $table->integer('quantity');
-            $table->string('start_label')->nullable();
-            $table->string('end_label')->nullable();
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->softDeletes();

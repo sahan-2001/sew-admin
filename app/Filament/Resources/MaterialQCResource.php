@@ -19,6 +19,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 
 
@@ -26,7 +27,10 @@ class MaterialQCResource extends Resource
 {
     protected static ?string $model = MaterialQC::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
+    protected static ?string $navigationGroup = 'Quality Control';
+    protected static ?string $label = 'Material QC';
+    protected static ?string $pluralLabel = 'Material QCs';
+    protected static ?string $navigationLabel = 'Material QC';
     public static function form(Form $form): Form
 {
     return $form->schema([
@@ -435,13 +439,43 @@ class MaterialQCResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('QC Record ID'),
-                TextColumn::make('purchase_order_id')->label('Purchase Order ID'),
-                TextColumn::make('inspected_quantity')->label('Inspected Quantity'),
-                TextColumn::make('approved_qty')->label('Approved Quantity'),
-                TextColumn::make('returned_qty')->label('Returned Quantity'),
-                TextColumn::make('scrapped_qty')->label('Scrapped Quantity'),
+                TextColumn::make('id')
+                    ->label('QC Record ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('inspected_quantity')
+                    ->label('Inspected Quantity')
+                    ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
+
+                TextColumn::make('approved_qty')
+                    ->label('Approved Quantity')
+                    ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
+
+                TextColumn::make('returned_qty')
+                    ->label('Returned Quantity')
+                    ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
+
+                TextColumn::make('scrapped_qty')
+                    ->label('Scrapped Quantity')
+                    ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
                 TextColumn::make('status')->label('Status'),
+
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([])
             ->actions([

@@ -16,8 +16,6 @@ class CuttingOrderItem extends Model
         'item_type',
         'item_id',
         'quantity',
-        'start_label',
-        'end_label',
         'created_by',
         'updated_by',
     ];

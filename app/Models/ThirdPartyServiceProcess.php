@@ -20,10 +20,24 @@ class ThirdPartyServiceProcess extends Model
         'unit_rate',
         'total',
         'outstanding_balance',
+        'created_by',
+        'updated_by',
     ];
 
     public function thirdPartyService()
     {
         return $this->belongsTo(ThirdPartyService::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

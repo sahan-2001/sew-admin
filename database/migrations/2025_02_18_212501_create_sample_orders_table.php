@@ -21,6 +21,8 @@ return new class extends Migration
             $table->unsignedBigInteger('rejected_by')->nullable(); 
             $table->text('rejection_message')->nullable(); 
             $table->string('random_code')->nullable(); 
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps(); 
             $table->softDeletes(); 
 

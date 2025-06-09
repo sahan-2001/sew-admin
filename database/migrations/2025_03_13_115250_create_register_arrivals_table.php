@@ -15,6 +15,8 @@ return new class extends Migration {
             $table->string('invoice_number')->nullable();
             $table->string('image_of_invoice')->nullable();
             $table->text('note')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
         });

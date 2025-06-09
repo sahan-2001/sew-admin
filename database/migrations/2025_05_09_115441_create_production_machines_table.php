@@ -25,6 +25,8 @@ return new class extends Migration
             $table->decimal('depreciation_last', 5, 2)->nullable();
             $table->decimal('cumulative_depreciation', 15, 2)->default(0);
             $table->decimal('net_present_value', 15, 2)->default(0);
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

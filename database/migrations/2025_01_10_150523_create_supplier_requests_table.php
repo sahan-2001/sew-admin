@@ -21,6 +21,8 @@ class CreateSupplierRequestsTable extends Migration
             $table->foreignId('approved_by')->nullable()->constrained('users');
             $table->text('note')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

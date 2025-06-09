@@ -10,7 +10,7 @@ class ThirdPartyService extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['supplier_id', 'name'];
+    protected $fillable = ['supplier_id', 'name','created_by', 'updated_by'];
 
     public function supplier()
     {
@@ -20,5 +20,17 @@ class ThirdPartyService extends Model
     public function processes()
     {
         return $this->hasMany(ThirdPartyServiceProcess::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

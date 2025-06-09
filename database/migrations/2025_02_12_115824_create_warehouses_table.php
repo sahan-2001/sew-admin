@@ -23,7 +23,8 @@ return new class extends Migration
             $table->float('capacity_width');
             $table->float('capacity_height');
             $table->enum('measurement_unit', ['m', 'cm', 'ft', 'in'])->default('m');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
         });

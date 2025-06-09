@@ -19,6 +19,8 @@ class SampleOrderVariation extends Model
         'quantity',
         'price',
         'total',
+        'created_by',
+        'updated_by',
     ];
 
     public function sampleOrderItem()
@@ -31,6 +33,15 @@ class SampleOrderVariation extends Model
     {
         static::saving(function ($model) {
             $model->total = $model->quantity * $model->price;
+        });
+
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
         });
     }
 }
