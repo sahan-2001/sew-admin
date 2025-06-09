@@ -52,7 +52,7 @@
     <!-- Order Details (2 Columns) -->
     <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-            <p><strong>Order ID:</strong> {{ $record->id }}</p>
+            <p><strong>Order ID:</strong> {{ str_pad($record->id, 5, '0', STR_PAD_LEFT) }}</p>
             <p><strong>Provider:</strong> {{ $record->provider_name }}</p>
             <p><strong>Provider Email:</strong> {{ $record->provider_email }}</p>
         </div>
@@ -69,6 +69,7 @@
     <table class="w-full border-collapse border border-gray-300 mt-2">
         <thead>
             <tr class="bg-blue-100">
+                <th class="border border-gray-300 p-2">Item Code</th>
                 <th class="border border-gray-300 p-2">Item Name</th>
                 <th class="border border-gray-300 p-2">Quantity</th>
                 <th class="border border-gray-300 p-2 text-right">Price</th>
@@ -81,6 +82,7 @@
             @php $grandTotal = 0; @endphp
             @foreach ($record->items as $item)
                 <tr>
+                    <td class="border border-gray-300 p-2">{{ $item->inventoryItem->item_code }}</td>
                     <td class="border border-gray-300 p-2">{{ $item->inventoryItem->name }}</td>
                     <td class="border border-gray-300 p-2">{{ $item->quantity }}</td>
                     <td class="border border-gray-300 p-2 text-right">{{ $item->price }}</td>

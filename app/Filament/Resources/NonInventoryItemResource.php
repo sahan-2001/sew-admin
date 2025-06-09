@@ -50,7 +50,11 @@ class NonInventoryItemResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('item_id')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('id')
+                    ->label('Item ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('price')->sortable(),

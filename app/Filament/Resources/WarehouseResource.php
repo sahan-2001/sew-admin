@@ -60,6 +60,10 @@ class WarehouseResource extends Resource
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
                     ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                Tables\Columns\TextColumn::make('name') 
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('address_line_1')->sortable()->searchable(),

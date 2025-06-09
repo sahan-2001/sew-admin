@@ -88,7 +88,8 @@ class InventoryLocationResource extends Resource
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('warehouse.name')
                     ->label('Warehouse')
                     ->sortable()

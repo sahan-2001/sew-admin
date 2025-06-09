@@ -51,7 +51,10 @@ class CustomerResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('customer_id')->label('Customer ID')->sortable(),
+                Tables\Columns\TextColumn::make('customer_id')
+                    ->label('Customer ID')
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('address')->sortable()->searchable(),

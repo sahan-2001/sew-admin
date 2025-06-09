@@ -201,7 +201,7 @@ class TemporaryOperationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
+                TextColumn::make('id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('description')->sortable(),
                 TextColumn::make('setup_time')->sortable(),
                 TextColumn::make('run_time')->sortable(),

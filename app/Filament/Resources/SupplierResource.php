@@ -53,7 +53,7 @@ class SupplierResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('supplier_id')->sortable(),
+                Tables\Columns\TextColumn::make('supplier_id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('address')->sortable()->searchable(),

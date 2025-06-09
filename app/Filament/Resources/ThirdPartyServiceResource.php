@@ -170,7 +170,7 @@ class ThirdPartyServiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Service ID'),
+                TextColumn::make('id')->label('Service ID')->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('name')->label('Service Name'),
                 TextColumn::make('supplier.name')->label('Supplier'),
                 TextColumn::make('created_at')->label('Created Date')->date(),

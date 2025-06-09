@@ -273,9 +273,9 @@ class ReleaseMaterialResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
+                TextColumn::make('id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('order_type')->sortable(),
-                TextColumn::make('order_id')->sortable(),
+                TextColumn::make('order_id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('status'),
                 TextColumn::make('created_at')->sortable(),
                 ...(

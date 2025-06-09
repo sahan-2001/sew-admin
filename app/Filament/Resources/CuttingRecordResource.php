@@ -883,7 +883,8 @@ class CuttingRecordResource extends Resource
                     }),
                     
                 Tables\Columns\TextColumn::make('order_id')
-                    ->label('Order ID'),
+                    ->label('Order ID')
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                     
                 Tables\Columns\TextColumn::make('total_pieces')
                     ->label('Pieces'),

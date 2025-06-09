@@ -149,7 +149,9 @@ class PurchaseOrderResource extends Resource
 {
     return $table
         ->columns([
-            TextColumn::make('id')->label('Order ID'),
+            TextColumn::make('id')
+                ->label('Order ID')
+                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
             TextColumn::make('provider_type')->label('Provider Type'),
             TextColumn::make('provider_id')->label('Provider ID'),
             TextColumn::make('provider_name')->label('Provider Name'),

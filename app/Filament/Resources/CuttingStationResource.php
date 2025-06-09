@@ -46,6 +46,10 @@ class CuttingStationResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('id')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('description')->limit(50)->wrap(),
                 ...(

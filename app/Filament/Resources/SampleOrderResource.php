@@ -190,7 +190,9 @@ class SampleOrderResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('order_id')->label('ID'),
+                TextColumn::make('order_id')
+                    ->label('ID')
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('customer.name')->label('Customer Name'),
                 TextColumn::make('name')->label('Order Name'),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),

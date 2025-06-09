@@ -82,7 +82,7 @@
             </tr>
             <tr>
                 <th>Purchase Order ID</th>
-                <td>{{ $purchaseOrderDetails['id'] }}</td>
+                <td>{{ str_pad($purchaseOrderDetails['id'], 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
                 <th>Provider Type</th>
