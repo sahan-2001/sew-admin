@@ -53,30 +53,17 @@ class EnterPerformanceRecordResource extends Resource
     protected static ?string $navigationGroup = 'Daily Production';
 
 
-    public static function getAvailableLabels(string $operationType = null, int $modelId = null, string $orderType = null, int $orderId = null): array
+    public static function getAvailableLabels(int $modelId = null): array
     {
-        if (!$operationType) return [];
+        if (!$modelId) return [];
 
-        return match ($operationType) {
-            'assigned' => $modelId ? \App\Models\AssignDailyOperationLabel::where('assign_daily_operation_id', $modelId)
-                ->get()
-                ->mapWithKeys(fn($label) => [
-                    $label->id => "Label #{$label->id} - {$label->label_name}"
-                ])->toArray() : [],
-
-            'temp' => ($orderType && $orderId) ? \App\Models\CuttingLabel::where('order_type', $orderType)
-                ->where('order_id', $orderId)
-                ->get()
-                ->mapWithKeys(fn($label) => [
-                    $label->id => "Label #{$label->id} - {$label->label_name}"
-                ])->toArray() : [],
-
-            default => [],
-        };
+        return \App\Models\AssignDailyOperationLabel::where('assign_daily_operation_id', $modelId)
+            ->get()
+            ->mapWithKeys(fn($label) => [
+                $label->id => "ID - {$label->cuttingLabel->id} | Label -  {$label->cuttingLabel->label}"
+            ])->toArray();
     }
 
-
-    
     public static function form(Form $form): Form
     {
         return $form
@@ -116,32 +103,6 @@ class EnterPerformanceRecordResource extends Resource
                                 Section::make()
                                     ->columns(2)
                                     ->schema([
-                                        Select::make('operation_type')
-                                            ->label('Operation Type')
-                                            ->options([
-                                                'assigned' => 'Assigned Daily Operation - Released Materials',
-                                                'um' => 'Daily Operation - Unreleased Materials',
-                                                'temp' => 'Temporary Operation - All Orders',
-                                            ])
-                                            ->required()
-                                            ->reactive()
-                                            ->columns(1)
-                                            ->afterStateUpdated(function (callable $get, callable $set) {
-                                                $set('operation_id', null);
-                                                $set('order_type', null);
-                                                $set('order_id', null);
-                                                $set('operation_date', null);
-                                                $set('machine_setup_time', null);
-                                                $set('machine_run_time', null);
-                                                $set('labor_setup_time', null);
-                                                $set('labor_run_time', null);
-                                                $set('target_duration', null);
-                                                $set('target', null);
-                                                $set('measurement_unit', null);
-                                                $set('model_id', null);
-                                                $set('employee_ids', null);
-                                            }),
-
                                         Select::make('operation_id')
                                             ->label('Operation')
                                             ->reactive()
@@ -149,56 +110,30 @@ class EnterPerformanceRecordResource extends Resource
                                             ->required()
                                             ->searchable()
                                             ->options(function (callable $get) {
-                                                $operationType = $get('operation_type');
                                                 $operatedDate = $get('operated_date');
 
-                                                if (!$operationType || !$operatedDate) return [];
+                                                if (!$operatedDate) return [];
 
-                                                return match ($operationType) {
-                                                    'assigned' => \App\Models\AssignDailyOperationLine::with(['operation', 'workstation', 'productionLine', 'assignDailyOperation'])
-                                                        ->whereHas('assignDailyOperation', fn($q) => $q->whereDate('operation_date', $operatedDate))
-                                                        ->get()
-                                                        ->mapWithKeys(fn($line) => [
-                                                            $line->id => "Assigned Line - {$line->id} | " . 
-                                                                        ($line->assignDailyOperation ? 
-                                                                            "{$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id}" : 
-                                                                            'No Parent Operation')
-                                                        ]),
-
-                                                    'um' => \App\Models\UMOperationLine::with(['operation', 'workstation', 'productionLine'])
-                                                        ->whereHas('umOperation', fn($q) => $q->whereDate('operation_date', $operatedDate))
-                                                        ->get()
-                                                        ->mapWithKeys(fn($line) => [
-                                                            $line->id => "Setted Line - {$line->id} | {$line->umOperation->order_type} - {$line->umOperation->order_id}" ,
-                                                        ]),
-
-                                                    'temp' => \App\Models\TemporaryOperation::with(['workstation', 'productionLine'])
-                                                        ->whereDate('operation_date', $operatedDate)
-                                                        ->get()
-                                                        ->mapWithKeys(fn($op) => [
-                                                            $op->id => "Temporary OP Line - {$op->id} | {$op->order_type} - {$op->order_id} ",
-                                                        ]),
-
-                                                    default => [],
-                                                };
-                                            })
+                                                return \App\Models\AssignDailyOperationLine::with(['assignDailyOperation'])
+                                                    ->whereHas('assignDailyOperation', fn($q) => $q->whereDate('operation_date', $operatedDate))
+                                                    ->get()
+                                                    ->mapWithKeys(fn($line) => [
+                                                        $line->id => "Assigned Line - {$line->id} | " . 
+                                                                    ($line->assignDailyOperation ? 
+                                                                        "{$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id}" : 
+                                                                        'No Parent Operation')
+                                                    ]);
+                                                })
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                $operationType = $get('operation_type');
-                                                if (!$operationType || !$state) return;
-                                            
-                                                $model = match ($operationType) {
-                                                    'assigned' => \App\Models\AssignDailyOperationLine::with(['operation', 'productionLine', 'workstation'])->find($state),
-                                                    'um' => \App\Models\UMOperationLine::with(['operation', 'productionLine', 'workstation'])->find($state),
-                                                    'temp' => \App\Models\TemporaryOperation::with(['productionLine', 'workstation'])->find($state),
-                                                    default => null,
-                                                };
+                                                if (!$state) return;
+
+                                                $model = \App\Models\AssignDailyOperationLine::with(['assignDailyOperation'])->find($state);
 
                                                 if ($model) {
-                                                    $set('operation_type', $operationType);
-                                                    $set('model_id', $model->assignDailyOperation->id ?? $model->umOperation->id ?? $model->id ?? null);
-                                                    $set('order_type', $model->assignDailyOperation->order_type ?? $model->umOperation->order_type ?? $model->order_type ?? null);
-                                                    $set('order_id', $model->assignDailyOperation->order_id ?? $model->umOperation->order_id ?? $model->order_id ?? null);
-                                                    $set('operation_date', $model->assignDailyOperation->operation_date ?? $model->umOperation->operation_date ?? $model->operation_date?? null);
+                                                    $set('model_id', $model->assignDailyOperation->id);
+                                                    $set('order_type', $model->assignDailyOperation->order_type);
+                                                    $set('order_id', $model->assignDailyOperation->order_id);
+                                                    $set('operation_date', $model->assignDailyOperation->operation_date);
                                                     $set('machine_setup_time', $model->machine_setup_time ?? 0);
                                                     $set('machine_run_time', $model->machine_run_time ?? 0);
                                                     $set('labor_setup_time', $model->labor_setup_time ?? 0);
@@ -206,14 +141,11 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('target_duration', $model->target_duration ?? null);
                                                     $set('target', $model->target ?? null);
                                                     $set('measurement_unit', $model->measurement_unit ?? null);
-                                                    
+
                                                     // Fetch employee data and set employee IDs
-                                                    $employees = match ($operationType) {
-                                                        'assigned' => \App\Models\AssignedEmployee::with('user')->where('assign_daily_operation_line_id', $state)->get(),
-                                                        'um' => \App\Models\UMOperationLineEmployee::with('user')->where('u_m_operation_line_id', $state)->get(),
-                                                        'temp' => \App\Models\TemporaryOperationEmployee::with('user')->where('temporary_operation_id', $state)->get(),
-                                                        default => collect(),
-                                                    };
+                                                    $employees = \App\Models\AssignedEmployee::with('user')
+                                                        ->where('assign_daily_operation_line_id', $state)
+                                                        ->get();
 
                                                     $employeeDetails = $employees->map(function ($employee) {
                                                         return [
@@ -226,18 +158,9 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('employee_ids', $employees->pluck('user_id')->implode(', '));
 
                                                     // Fetch production machine data 
-                                                    $machines = match ($operationType) {
-                                                        'assigned' => \App\Models\AssignedProductionMachine::with('productionMachine')
+                                                    $machines = \App\Models\AssignedProductionMachine::with('productionMachine')
                                                             ->where('assign_daily_operation_line_id', $state)
-                                                            ->get(),
-                                                        'um' => \App\Models\UMOperationLineMachine::with('productionMachine')
-                                                            ->where('u_m_operation_line_id', $state)
-                                                            ->get(),
-                                                        'temp' => \App\Models\TemporaryOperationProductionMachine::with('productionMachine')
-                                                            ->where('temporary_operation_id', $state)
-                                                            ->get(),
-                                                        default => collect(),
-                                                    };
+                                                            ->get();
                                                     
                                                     if (!$machines->isEmpty()) {
                                                         $machineDetails = $machines->map(function ($machine) {
@@ -251,18 +174,9 @@ class EnterPerformanceRecordResource extends Resource
                                                     }
 
                                                     // Fetch supervisor data 
-                                                    $supervisors = match ($operationType) {
-                                                        'assigned' => \App\Models\AssignedSupervisor::with('user')
+                                                    $supervisors =  \App\Models\AssignedSupervisor::with('user')
                                                             ->where('assign_daily_operation_line_id', $state)
-                                                            ->get(),
-                                                        'um' => \App\Models\UMOperationLineSupervisor::with('user')
-                                                            ->where('u_m_operation_line_id', $state)
-                                                            ->get(),
-                                                        'temp' => \App\Models\TemporaryOperationSupervisor::with('user')
-                                                            ->where('temporary_operation_id', $state)
-                                                            ->get(),
-                                                        default => collect(),
-                                                    };
+                                                            ->get();
                                                     
                                                     if (!$supervisors->isEmpty()) {
                                                         $supervisorDetails = $supervisors->map(function ($supervisor) {
@@ -277,18 +191,9 @@ class EnterPerformanceRecordResource extends Resource
                                                     }
 
                                                     // Fetch third party service data and their processes
-                                                    $services = match ($operationType) {
-                                                        'assigned' => \App\Models\AssignedThirdPartyService::with('thirdPartyService.processes')
+                                                    $services =  \App\Models\AssignedThirdPartyService::with('thirdPartyService.processes')
                                                             ->where('assign_daily_operation_line_id', $state)
-                                                            ->get(),
-                                                        'um' => \App\Models\UMOperationLineService::with('thirdPartyService.processes')
-                                                            ->where('u_m_operation_line_id', $state)
-                                                            ->get(),
-                                                        'temp' => \App\Models\TemporaryOperationService::with('thirdPartyService.processes')
-                                                            ->where('temporary_operation_id', $state)
-                                                            ->get(),
-                                                        default => collect(),
-                                                    };
+                                                            ->get();
 
                                                     if (!$services->isEmpty()) {
                                                         $serviceDetails = $services->map(function ($service) {
@@ -346,13 +251,8 @@ class EnterPerformanceRecordResource extends Resource
                                         CheckboxList::make('selected_labels')
                                             ->label('Available Labels')
                                             ->options(function (callable $get) {
-                                                return self::getAvailableLabels(
-                                                    $get('operation_type'),
-                                                    $get('model_id'),
-                                                    $get('order_type'),
-                                                    $get('order_id')
-                                                );
-                                            })
+                                                return self::getAvailableLabels($get('model_id'));
+                                            }),
                                     ]),
                             ]),
 
@@ -533,132 +433,210 @@ class EnterPerformanceRecordResource extends Resource
                             ]),
 
                         Tabs\Tab::make('Employees')
-                            ->visible(fn (callable $get) => $get('operation_id'))
-                            ->schema([
-                                Section::make('Assigned Employees Details')
-                                    ->columns(1)
-                                    ->schema([
-                                        Repeater::make('employee_details')
-                                            ->columns(4)
-                                            ->disableItemCreation()
-                                            ->disableItemDeletion()
-                                            ->schema([
-                                                TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
-                                                TextInput::make('name')->label('Name')->columns(1)->disabled(),
+                        ->lazy()
+    ->visible(fn (callable $get) => $get('operation_id'))
+    ->schema([
+        Section::make('Assigned Employees Details')
+            ->columns(1)
+            ->schema([
+                Repeater::make('employee_details')
+                    ->columns(4)
+                    ->disableItemCreation()
+                    ->disableItemDeletion()
+                    ->schema([
+                        TextInput::make('user_id')
+                            ->label('User ID')
+                            ->columns(1)
+                            ->disabled(),
 
-                                                TextInput::make('emp_production')->label('Emp: Production')->numeric()->required()->reactive()->live()->columns(1),
-                                                TextInput::make('emp_downtime')->label('Emp: Downtime (min)')->reactive()->live()->columns(1),
-                                                TextInput::make('emp_waste')->label('Emp: Waste')->reactive()->live()->columns(1),
+                        TextInput::make('name')
+                            ->label('Name')
+                            ->columns(1)
+                            ->disabled(),
 
-                                                Section::make('Select Labels')
-                                                    ->collapsible()
-                                                    ->schema([
-                                                        // Range Selection
-                                                        Grid::make(3)
-                                                            ->schema([
-                                                                Select::make('range_start_label_id_e')
-                                                                    ->label('Start Label')
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id'),
-                                                                    ))
-                                                                    ->reactive()
-                                                                    ->searchable(),
+                        TextInput::make('emp_production')
+                            ->label('Emp: Production')
+                            ->numeric()
+                            ->required()
+                            ->reactive()
+                            ->live()
+                            ->columns(1),
 
-                                                                Select::make('range_end_label_id_e')
-                                                                    ->label('End Label')
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id'),
-                                                                    ))
-                                                                    ->reactive()
-                                                                    ->searchable(),
+                        TextInput::make('emp_downtime')
+                            ->label('Emp: Downtime (min)')
+                            ->reactive()
+                            ->live()
+                            ->columns(1),
 
-                                                                Actions::make([
-                                                                    Action::make('apply_range_e')
-                                                                        ->label('Apply Label Range')
-                                                                        ->action(function ($get, $set) {
-                                                                            $labels = self::getAvailableLabels(
-                                                                                $get('operation_type'),
-                                                                                $get('model_id'),
-                                                                                $get('order_type'),
-                                                                                $get('order_id')
-                                                                            );
+                        TextInput::make('emp_waste')
+                            ->label('Emp: Waste')
+                            ->reactive()
+                            ->live()
+                            ->columns(1),
 
-                                                                            $startId = $get('range_start_label_id_e');
-                                                                            $endId = $get('range_end_label_id_e');
-                                                                            if (!$startId || !$endId) return;
+                        Section::make('Select Labels')
+    ->collapsible()
+    ->schema([
+        // Range Selection
+        Grid::make(3)
+            ->schema([
+                Select::make('range_start_label_id_e')
+                    ->label('Start Label')
+                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
+                    ->reactive()
+                    ->searchable(),
 
-                                                                            $labelIds = array_keys($labels);
-                                                                            $startIndex = array_search($startId, $labelIds);
-                                                                            $endIndex = array_search($endId, $labelIds);
+                Select::make('range_end_label_id_e')
+                    ->label('End Label')
+                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
+                    ->reactive()
+                    ->searchable(),
 
-                                                                            if ($startIndex === false || $endIndex === false) return;
-                                                                            if ($startIndex > $endIndex) [$startIndex, $endIndex] = [$endIndex, $startIndex];
+                Actions::make([
+                    Action::make('apply_range_e')
+                        ->label('Apply Label Range')
+                        ->action(function (callable $get, callable $set) {
+                            $labels = self::getAvailableLabels($get('../../model_id'));
 
-                                                                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
-                                                                            $existing = $get('selected_labels') ?? [];
-                                                                            $set('selected_labels_e', array_unique([...$existing, ...$range]));
-                                                                        })
-                                                                        ->color('primary'),
-                                                                ]),
-                                                            ]),
+                            $startId = $get('range_start_label_id_e');
+                            $endId = $get('range_end_label_id_e');
 
-                                                        // Select All + Count
-                                                        Grid::make(2)
-                                                            ->schema([
-                                                                Placeholder::make('selected_labels_count_e')
-                                                                    ->label('Selected Labels Count')
-                                                                    ->content(function (callable $get) {
-                                                                        $labels = $get('selected_labels_e');
-                                                                        
-                                                                        return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
-                                                                    })
-                                                                    ->reactive(),
+                            if (!$startId || !$endId) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Invalid Range')
+                                    ->body('Both Start Label and End Label must be selected.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
 
-                                                                Checkbox::make('select_all_labels_e')
-                                                                    ->label('Select All Labels')
-                                                                    ->default(false)
-                                                                    ->reactive()
-                                                                    ->afterStateUpdated(function (callable $set, callable $get, $state) {
-                                                                        $labels = self::getAvailableLabels(
-                                                                            $get('operation_type'),
-                                                                            $get('model_id'),
-                                                                            $get('order_type'),
-                                                                            $get('order_id')
-                                                                        );
+                            $labelIds = array_keys($labels);
+                            $startIndex = array_search($startId, $labelIds);
+                            $endIndex = array_search($endId, $labelIds);
 
-                                                                        $set('selected_labels_e', $state ? array_keys($labels) : []);
-                                                                    }),
-                                                            ]),
+                            if ($startIndex === false || $endIndex === false) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Invalid Labels')
+                                    ->body('Selected labels are not valid.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
 
-                                                        // Label Picker
-                                                        Grid::make(1)
-                                                            ->schema([
-                                                                CheckboxList::make('selected_labels_e')
-                                                                    ->label('Available Labels')
-                                                                    ->default([]) 
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id')
-                                                                    ))
-                                                                    ->columns(3)
-                                                                    ->reactive()
-                                                                    ->searchable()
-                                                                    ->live()
-                                                                    ->dehydrated(),
-                                                            ]),
-                                                        ]),
+                            if ($startIndex > $endIndex) {
+                                [$startIndex, $endIndex] = [$endIndex, $startIndex];
+                            }
 
-                                            ]),
-                                    ]),
-                            ]),
+                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
+                            $existing = $get('selected_labels_e') ?? [];
+                            $set('selected_labels_e', array_unique([...$existing, ...$range]));
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Labels Applied')
+                                ->body(count($range) . ' labels have been applied.')
+                                ->success()
+                                ->send();
+                        })
+                        ->color('primary'),
+                ]),
+            ]),
+
+        // Enter Label Field
+        Grid::make(3)
+    ->schema([
+        TextInput::make('enter_label_e')
+            ->label('Enter Label (Index or Barcode ID)')
+            ->placeholder('Scan or enter index/barcode ID...')
+            ->reactive()
+            ->live()
+            ->columns(2)
+            ->extraAttributes([
+                'onkeydown' => "if(event.key === 'Enter') { document.getElementById('select_label_e_button').click(); }"
+            ]),
+
+        Actions::make([
+            Action::make('select_label_e')
+                ->label('Enter')
+                ->extraAttributes(['id' => 'select_label_e_button']) // Assign an ID for triggering via JavaScript
+                ->action(function (callable $get, callable $set) {
+                    $labels = self::getAvailableLabels($get('../../model_id'));
+                    $enteredLabel = $get('enter_label_e');
+
+                    if (!$enteredLabel) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Invalid Input')
+                            ->body('Please scan or enter a valid index or barcode ID.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    // Match entered label with available labels
+                    $selectedLabel = collect($labels)->filter(function ($label, $key) use ($enteredLabel) {
+                        return $key == $enteredLabel || str_contains($label, $enteredLabel);
+                    })->keys()->first();
+
+                    if (!$selectedLabel) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Label Not Found')
+                            ->body('No label matches the scanned or entered index/barcode ID.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    // Add selected label to the list
+                    $existing = $get('selected_labels_e') ?? [];
+                    $set('selected_labels_e', array_unique([...$existing, $selectedLabel]));
+
+                    \Filament\Notifications\Notification::make()
+                        ->title('Label Selected')
+                        ->body('Label has been successfully selected.')
+                        ->success()
+                        ->send();
+                })
+                ->color('primary'),
+        ]),
+    ]),
+
+        // Select All + Count
+        Grid::make(2)
+            ->schema([
+                Placeholder::make('selected_labels_count_e')
+                    ->label('Selected Labels Count')
+                    ->content(function (callable $get) {
+                        $labels = $get('selected_labels_e');
+                        return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                    })
+                    ->reactive(),
+
+                Checkbox::make('select_all_labels_e')
+                    ->label('Select All Labels')
+                    ->default(false)
+                    ->reactive()
+                    ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                        $labels = self::getAvailableLabels($get('../../model_id'));
+                        $set('selected_labels_e', $state ? array_keys($labels) : []);
+                    }),
+            ]),
+
+        // Label Picker
+        Grid::make(1)
+            ->schema([
+                CheckboxList::make('selected_labels_e')
+                    ->label('Available Labels')
+                    ->default([])
+                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
+                    ->columns(3)
+                    ->reactive()
+                    ->searchable()
+                    ->live()
+                    ->dehydrated(),
+            ]),
+        ]),
+                    ]),
+            ]),
+        ]),
                         
                         Tabs\Tab::make('Machines')
                             ->visible(fn (callable $get) => $get('operation_id'))

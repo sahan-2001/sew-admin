@@ -53,13 +53,13 @@ class AssignDailyOperationsResource extends Resource
                 ->tabs([
                     Tabs\Tab::make('Order & Operation Details')
                         ->schema([
-                            Section::make('Operation Date')
+                            Section::make('Operation Schedule')
                             ->schema([
                                 DatePicker::make('operation_date')
                                     ->label('Operation Date')
                                     ->required()
-                                    ->default(now())
-                                    ->minDate(now()) 
+                                    ->default(today())
+                                    ->minDate(today()) 
                                     ->columnSpan(1)
                                     ->afterStateUpdated(function ($state, $set) {
                                         $set('order_type', null);

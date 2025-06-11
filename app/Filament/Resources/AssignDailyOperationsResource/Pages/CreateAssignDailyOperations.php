@@ -23,7 +23,7 @@ class CreateAssignDailyOperations extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        // Check for existing record with same order type, order ID, and date
+        // Check for existing record with the same order type, order ID, and operation date
         $existingRecord = AssignDailyOperation::where('order_type', $data['order_type'])
             ->where('order_id', $data['order_id'])
             ->whereDate('operation_date', Carbon::parse($data['operation_date']))
@@ -54,7 +54,7 @@ class CreateAssignDailyOperations extends CreateRecord
         if (isset($data['selected_label_ids'])) {
             $assignDailyOperation->labels()->sync($data['selected_label_ids']);
         }
-    
+
         Notification::make()
             ->title('Record Created Successfully')
             ->success()
@@ -71,7 +71,7 @@ class CreateAssignDailyOperations extends CreateRecord
                 'machine_setup_time' => $operation['machine_setup_time'],
                 'labor_setup_time' => $operation['labor_setup_time'],
                 'machine_run_time' => $operation['machine_run_time'],
-                'labor_run_time' => $operation['labor_run_time'] ,
+                'labor_run_time' => $operation['labor_run_time'],
                 'target_duration' => $operation['target_duration'] ?? null,
                 'target_e' => $operation['target_e'] ?? null,
                 'target_m' => $operation['target_m'] ?? null,
