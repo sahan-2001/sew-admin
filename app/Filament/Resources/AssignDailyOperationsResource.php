@@ -34,6 +34,7 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Checkbox;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Carbon;
 
 
 class AssignDailyOperationsResource extends Resource
@@ -52,6 +53,39 @@ class AssignDailyOperationsResource extends Resource
                 ->tabs([
                     Tabs\Tab::make('Order & Operation Details')
                         ->schema([
+                            Section::make('Operation Date')
+                            ->schema([
+                                DatePicker::make('operation_date')
+                                    ->label('Operation Date')
+                                    ->required()
+                                    ->default(now())
+                                    ->minDate(now()) 
+                                    ->columnSpan(1)
+                                    ->afterStateUpdated(function ($state, $set) {
+                                        $set('order_type', null);
+                                        $set('order_id', null);
+                                        $set('customer_id', null);
+                                        $set('wanted_date', null);
+
+                                        $set('workstation_id', null);
+                                        $set('operation_id', null);
+                                        $set('machine_setup_time', 0);
+                                        $set('labor_setup_time', 0);
+                                        $set('machine_run_time', 0);
+                                        $set('labor_run_time', 0);
+                                        $set('employee_ids', []);
+                                        $set('supervisor_ids', []);
+                                        $set('machine_ids', []);
+                                        $set('third_party_service_ids', []);
+                                        $set('target_durattion', null);
+                                        $set('target_e', null);
+                                        $set('target_m', null);
+                                        $set('measurement_unit', null);
+                                        $set('start_time', null);
+                                        $set('end_time', null);
+                                    }),
+                            ])->columns(1),
+
                             Section::make('Order Details')
                                 ->schema([
                                     Grid::make(2)
@@ -71,6 +105,24 @@ class AssignDailyOperationsResource extends Resource
                                                     $set('order_id', null);
                                                     $set('customer_id', null);
                                                     $set('wanted_date', null);
+                                                    $set('production_line_id', null);
+
+                                                    $set('workstation_id', null);
+                                                    $set('operation_id', null);
+                                                    $set('machine_setup_time', 0);
+                                                    $set('labor_setup_time', 0);
+                                                    $set('machine_run_time', 0);
+                                                    $set('labor_run_time', 0);
+                                                    $set('employee_ids', []);
+                                                    $set('supervisor_ids', []);
+                                                    $set('machine_ids', []);
+                                                    $set('third_party_service_ids', []);
+                                                    $set('target_durattion', null);
+                                                    $set('target_e', null);
+                                                    $set('target_m', null);
+                                                    $set('measurement_unit', null);
+                                                    $set('start_time', null);
+                                                    $set('end_time', null);
 
                                                 }),
 
@@ -126,6 +178,23 @@ class AssignDailyOperationsResource extends Resource
                                                             $set('order_id', null);
                                                             $set('customer_id', null);
                                                             $set('wanted_date', null);
+
+                                                            $set('workstation_id', null);
+                                                            $set('operation_id', null);
+                                                            $set('machine_setup_time', 0);
+                                                            $set('labor_setup_time', 0);
+                                                            $set('machine_run_time', 0);
+                                                            $set('labor_run_time', 0);
+                                                            $set('employee_ids', []);
+                                                            $set('supervisor_ids', []);
+                                                            $set('machine_ids', []);
+                                                            $set('third_party_service_ids', []);
+                                                            $set('target_durattion', null);
+                                                            $set('target_e', null);
+                                                            $set('target_m', null);
+                                                            $set('measurement_unit', null);
+                                                            $set('start_time', null);
+                                                            $set('end_time', null);
                                                         }
                                                     }
                                                 })
@@ -190,13 +259,42 @@ class AssignDailyOperationsResource extends Resource
 
                                                         Select::make('operation_id')
                                                             ->label('Operation')
-                                                            ->options(fn (callable $get) => $get('workstation_id') ?
-                                                                Operation::where('workstation_id', $get('workstation_id'))->pluck('description', 'id') : [])
+                                                            ->options(fn (callable $get) =>
+                                                                $get('workstation_id')
+                                                                    ? Operation::where('workstation_id', $get('workstation_id'))->pluck('description', 'id')
+                                                                    : []
+                                                            )
                                                             ->required()
                                                             ->columns(2)
-                                                            ->disabled(fn (callable $get) => $get('workstation_id') === null),
+                                                            ->disabled(fn (callable $get) => $get('workstation_id') === null)
+                                                            ->reactive()
+                                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                                $operation = \App\Models\Operation::with(['employee', 'supervisor', 'machine', 'thirdPartyService'])->find($state);
 
-                                                        // All other inputs (times, targets, MultiSelects, etc.)
+                                                                if ($operation) {
+                                                                    $set('employee_ids', $operation->employee_id ? [$operation->employee_id] : []);
+                                                                    $set('supervisor_ids', $operation->supervisor_id ? [$operation->supervisor_id] : []);
+
+                                                                    $set('machine_ids', $operation->machine_id ? [$operation->machine_id] : []);
+
+                                                                    $set('third_party_service_ids', $operation->third_party_service_id ? [$operation->third_party_service_id] : []);
+
+                                                                    $set('machine_setup_time', $operation->machine_setup_time ?? 0);
+                                                                    $set('machine_run_time', $operation->machine_run_time ?? 0);
+                                                                    $set('labor_setup_time', $operation->labor_setup_time ?? 0);
+                                                                    $set('labor_run_time', $operation->labor_run_time ?? 0);
+                                                                } else {
+                                                                    $set('employee_ids', []);
+                                                                    $set('supervisor_ids', []);
+                                                                    $set('machine_ids', []);
+                                                                    $set('third_party_service_ids', []);
+                                                                    $set('machine_setup_time', 0);
+                                                                    $set('machine_run_time', 0);
+                                                                    $set('labor_setup_time', 0);
+                                                                    $set('labor_run_time', 0);
+                                                                }
+                                                            }),
+
                                                         TextInput::make('machine_setup_time')->label('Machine Setup Time')->numeric()->default(0)->reactive(),
                                                         TextInput::make('labor_setup_time')->label('Labor Setup Time')->numeric()->default(0)->reactive(),
                                                         TextInput::make('machine_run_time')->label('Machine Run Time')->numeric()->default(0)->reactive(),

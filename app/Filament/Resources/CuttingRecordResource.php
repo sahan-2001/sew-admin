@@ -134,7 +134,8 @@ class CuttingRecordResource extends Resource
                                             ->label('Operation Date')
                                             ->required()
                                             ->default(now())
-                                            ->maxDate(now()),
+                                            ->maxDate(now())
+                                            ->disabled(fn (string $context) => $context === 'edit'),
                                     ]),
                                             
                                 Section::make('Order Details')
@@ -159,13 +160,15 @@ class CuttingRecordResource extends Resource
                                                 $set('fetched_release_material_items', []);
                                                 $set('fetched_order_items', []);
                                                 $set('available_release_materials', []);
-                                            }),
+                                            })
+                                            ->disabled(fn (string $context) => $context === 'edit'),
 
                                         Select::make('order_id')
                                             ->label('Order')
                                             ->required()
                                             ->searchable()
                                             ->reactive()
+                                            ->disabled(fn (string $context) => $context === 'edit')
                                             ->options(function (callable $get) {
                                                 $orderType = $get('order_type');
 
