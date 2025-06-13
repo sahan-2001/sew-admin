@@ -30,7 +30,11 @@ class PurchaseOrderInvoiceResource extends Resource
 {
     protected static ?string $model = PurchaseOrderInvoice::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?string $navigationGroup = 'Invoices';
+    protected static ?string $label = 'Final PO Invoice';
+    protected static ?string $pluralLabel = 'Final PO Invoices';
+    protected static ?string $navigationLabel = 'Final PO Invoices';
 
     public static function form(Form $form): Form
     {
@@ -219,7 +223,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                 ]),
                         ]),
                         
-                    Tab::make('Invoice Details')
+                    Tab::make('Invoice Item Details')
                         ->schema([
                             Section::make('Final Invoice Items')
                                 ->schema([

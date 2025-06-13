@@ -543,61 +543,72 @@ class EnterPerformanceRecordResource extends Resource
 
         // Enter Label Field
         Grid::make(3)
-    ->schema([
-        TextInput::make('enter_label_e')
-            ->label('Enter Label (Index or Barcode ID)')
-            ->placeholder('Scan or enter index/barcode ID...')
-            ->reactive()
-            ->live()
-            ->columns(2)
-            ->extraAttributes([
-                'onkeydown' => "if(event.key === 'Enter') { document.getElementById('select_label_e_button').click(); }"
+        ->schema([
+            TextInput::make('enter_label_e')
+                ->label('Enter Label (Index or Barcode ID)')
+                ->placeholder('Scan or enter index/barcode ID...')
+                ->reactive()
+                ->live()
+                ->columns(2)
+                ->extraAttributes([
+                    'onkeydown' => "if(event.key === 'Enter') { document.getElementById('select_label_e_button').click(); }"
+                ]),
+
+            Actions::make([
+                Action::make('select_label_e')
+                    ->label('Enter')
+                    ->extraAttributes(['id' => 'select_label_e_button'])
+                    ->action(function (callable $get, callable $set) {
+                        $enteredLabel = trim($get('enter_label_e'));
+                        
+                        // Early validation
+                        if (empty($enteredLabel)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Invalid Input')
+                                ->body('Please scan or enter a valid index or barcode ID.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        
+                        $labels = self::getAvailableLabels($get('../../model_id'));
+                        
+                        // Direct key lookup first (faster than filtering)
+                        if (isset($labels[$enteredLabel])) {
+                            $selectedLabel = $enteredLabel;
+                        } else {
+                            // Only perform string search if direct lookup fails
+                            $selectedLabel = array_search($enteredLabel, $labels, true);
+                            
+                            if ($selectedLabel === false) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Label Not Found')
+                                    ->body('No label matches the scanned or entered index/barcode ID.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                        }
+                        
+                        // Update selected labels more efficiently
+                        $existing = $get('selected_labels_e') ?? [];
+                        if (!in_array($selectedLabel, $existing, true)) {
+                            $existing[] = $selectedLabel;
+                            $set('selected_labels_e', $existing);
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Label Selected')
+                                ->body('Label has been successfully selected.')
+                                ->success()
+                                ->send();
+                        }
+                        
+                        // Clear the input field for next entry
+                        $set('enter_label_e', '');
+                    })
+                    ->color('primary'),
             ]),
-
-        Actions::make([
-            Action::make('select_label_e')
-                ->label('Enter')
-                ->extraAttributes(['id' => 'select_label_e_button']) // Assign an ID for triggering via JavaScript
-                ->action(function (callable $get, callable $set) {
-                    $labels = self::getAvailableLabels($get('../../model_id'));
-                    $enteredLabel = $get('enter_label_e');
-
-                    if (!$enteredLabel) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Invalid Input')
-                            ->body('Please scan or enter a valid index or barcode ID.')
-                            ->danger()
-                            ->send();
-                        return;
-                    }
-
-                    // Match entered label with available labels
-                    $selectedLabel = collect($labels)->filter(function ($label, $key) use ($enteredLabel) {
-                        return $key == $enteredLabel || str_contains($label, $enteredLabel);
-                    })->keys()->first();
-
-                    if (!$selectedLabel) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Label Not Found')
-                            ->body('No label matches the scanned or entered index/barcode ID.')
-                            ->danger()
-                            ->send();
-                        return;
-                    }
-
-                    // Add selected label to the list
-                    $existing = $get('selected_labels_e') ?? [];
-                    $set('selected_labels_e', array_unique([...$existing, $selectedLabel]));
-
-                    \Filament\Notifications\Notification::make()
-                        ->title('Label Selected')
-                        ->body('Label has been successfully selected.')
-                        ->success()
-                        ->send();
-                })
-                ->color('primary'),
         ]),
-    ]),
 
         // Select All + Count
         Grid::make(2)
