@@ -30,6 +30,9 @@ class SupplierAdvanceInvoiceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
     protected static ?string $navigationGroup = 'Invoices';
+    protected static ?string $label = 'PO Advance Invoice';
+    protected static ?string $pluralLabel = 'PO Advance Invoices';
+    protected static ?string $navigationLabel = 'PO Advance Invoices';
 
     public static function form(Form $form): Form
     {
@@ -46,6 +49,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->label('Purchase Order')
                                         ->required()
                                         ->dehydrated()
+                                        ->disabled(fn (?string $context) => $context === 'edit')
                                         ->searchable()
                                         ->options(function () {
                                             return \App\Models\PurchaseOrder::all()->mapWithKeys(function ($order) {
@@ -235,7 +239,7 @@ class SupplierAdvanceInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('ADV. Invoice ID')->sortable()->searchable()
+                TextColumn::make('id')->label('Sup ADV. Invoice ID')->sortable()->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('purchase_order_id')->label('Purchase Order ID')->sortable()->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
@@ -259,7 +263,8 @@ class SupplierAdvanceInvoiceResource extends Resource
                 //
             ])
             ->actions([
-                //
+                Tables\Actions\DeleteAction::make()
+                    ->hidden(fn ($record) => $record->status !== 'pending')
             ]);
     }
 

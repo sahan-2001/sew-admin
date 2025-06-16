@@ -9,16 +9,31 @@ class CreateCustomerAdvanceInvoicesTable extends Migration
     {
         Schema::create('customer_advance_invoices', function (Blueprint $table) {
             $table->id();
-            $table->string('order_type');
+            $table->string('order_type'); 
             $table->unsignedBigInteger('order_id');
-            $table->date('wanted_date')->nullable();
-            $table->unsignedBigInteger('customer_id')->nullable();
+            $table->string('status')->default('pending'); 
+            $table->decimal('grand_total', 10, 2);
+            $table->string('payment_type');
+            $table->decimal('fix_payment_amount', 10, 2)->nullable();
+            $table->decimal('payment_percentage', 5, 2)->nullable();
+            $table->decimal('percent_calculated_payment', 10, 2)->nullable();
+
+            $table->decimal('paid_amount', 10, 2)->default(0);
+            $table->decimal('remaining_amount', 10, 2)->default(0);
+            $table->date('paid_date')->nullable();
+            $table->string('paid_via')->nullable();
+
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            
+            
+            $table->softDeletes();
             $table->timestamps();
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('customer_advance_invoices');
+        Schema::dropIfExists('supplier_advance_invoices');
     }
 }
