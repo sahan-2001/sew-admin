@@ -13,6 +13,7 @@ use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\SampleOrderPdfController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PoFrontendController;
+use App\Http\Controllers\SOFrontendController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\CuttingRecordPrintController;
 use App\Http\Controllers\RegisterArrivalPrintController;
@@ -47,5 +48,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 // Frontend route
-Route::get('/purchase-order/{id}', [POFrontendController::class, 'showPurchaseOrder'])->name('purchase-order.show');
+Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])
+    ->name('purchase-order.show');
 
+Route::get('/sample-orders/{id}/{random_code}', [SOFrontendController::class, 'showSampleOrder'])
+    ->name('sample-orders.show');

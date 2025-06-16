@@ -111,7 +111,7 @@
         <!-- Order Details -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
-                <p><strong>Order ID:</strong> {{ $purchaseOrder->id }}</p>
+                <p><strong>Order ID:</strong> #{{ str_pad($purchaseOrder->id, 5, '0', STR_PAD_LEFT) }}</p>
                 <p><strong>Provider:</strong> {{ $purchaseOrder->provider_name }}</p>
                 <p><strong>Provider Email:</strong> {{ $purchaseOrder->provider->email ?? 'N/A' }}</p>
             </div>

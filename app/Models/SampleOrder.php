@@ -12,13 +12,13 @@ use App\Models\Action;
 
 class SampleOrder extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity; // Enable soft deletes and activity logging
+    use HasFactory, SoftDeletes, LogsActivity; 
 
-    protected $primaryKey = 'order_id'; // Set the primary key to 'order_id'
+    protected $primaryKey = 'order_id'; 
 
-    public $incrementing = true; // Indicates that the primary key is auto-incrementing
+    public $incrementing = true; 
 
-    protected $keyType = 'int'; // Primary key is of integer type
+    protected $keyType = 'int';
 
     protected $fillable = [
         'name',
