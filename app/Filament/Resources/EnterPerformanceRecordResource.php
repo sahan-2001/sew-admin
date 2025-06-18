@@ -35,6 +35,7 @@ use Filament\Notifications\Notification;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Actions;
@@ -60,8 +61,26 @@ class EnterPerformanceRecordResource extends Resource
         return \App\Models\AssignDailyOperationLabel::where('assign_daily_operation_id', $modelId)
             ->get()
             ->mapWithKeys(fn($label) => [
-                $label->id => "ID - {$label->cuttingLabel->id} | Label -  {$label->cuttingLabel->label}"
+                $label->id => "{$label->cuttingLabel->quantity} | {$label->cuttingLabel->barcode_id}"
             ])->toArray();
+    }
+
+    public static function getLabelsInRange(array $allLabels, $fromId, $toId): array
+    {
+        $labelIds = array_keys($allLabels);
+        $fromIndex = array_search($fromId, $labelIds);
+        $toIndex = array_search($toId, $labelIds);
+        
+        if ($fromIndex === false || $toIndex === false) {
+            return [];
+        }
+        
+        // Ensure from is before to
+        if ($fromIndex > $toIndex) {
+            [$fromIndex, $toIndex] = [$toIndex, $fromIndex];
+        }
+        
+        return array_slice($labelIds, $fromIndex, $toIndex - $fromIndex + 1);
     }
 
     public static function form(Form $form): Form
@@ -147,15 +166,20 @@ class EnterPerformanceRecordResource extends Resource
                                                         ->where('assign_daily_operation_line_id', $state)
                                                         ->get();
 
-                                                    $employeeDetails = $employees->map(function ($employee) {
-                                                        return [
-                                                            'user_id' => $employee->user_id,
-                                                            'name' => $employee->user->name ?? 'N/A',
-                                                        ];
-                                                    })->toArray();
+                                                    if (!$employees->isEmpty()) {
+                                                        $employeeDetails = $employees->map(function ($employee) {
+                                                            return [
+                                                                'user_id' => $employee->user_id,
+                                                                'name' => $employee->user->name ?? 'N/A',
+                                                            ];
+                                                        })->toArray();
 
-                                                    $set('employee_details', $employeeDetails);
-                                                    $set('employee_ids', $employees->pluck('user_id')->implode(', '));
+                                                        $set('employee_details', $employeeDetails);
+                                                        $set('employee_ids', $employees->pluck('user_id')->implode(', '));
+                                                    } else {
+                                                        $set('employee_details', []);
+                                                        $set('employee_ids', null); 
+                                                    }
 
                                                     // Fetch production machine data 
                                                     $machines = \App\Models\AssignedProductionMachine::with('productionMachine')
@@ -171,6 +195,8 @@ class EnterPerformanceRecordResource extends Resource
                                                         })->toArray();
                                                         
                                                         $set('machines', $machineDetails);
+                                                    } else {
+                                                        $set('machines', []); 
                                                     }
 
                                                     // Fetch supervisor data 
@@ -188,6 +214,9 @@ class EnterPerformanceRecordResource extends Resource
 
                                                         $set('supervisor_details', $supervisorDetails);
                                                         $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
+                                                    } else {
+                                                        $set('supervisor_details', []);
+                                                        $set('supervisor_details', []); 
                                                     }
 
                                                     // Fetch third party service data and their processes
@@ -224,6 +253,8 @@ class EnterPerformanceRecordResource extends Resource
                                                         })->toArray();
 
                                                         $set('services', $serviceDetails);
+                                                    } else {
+                                                        $set('services', []); 
                                                     }
                                                 }
                                             }),
@@ -257,6 +288,7 @@ class EnterPerformanceRecordResource extends Resource
                             ]),
 
                         Tabs\Tab::make('Production Data')
+                            ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
                                 Section::make('Pre-Defined Performance Values')
                                     ->columns(4)
@@ -434,223 +466,206 @@ class EnterPerformanceRecordResource extends Resource
 
                         Tabs\Tab::make('Employees')
                         ->lazy()
-    ->visible(fn (callable $get) => $get('operation_id'))
-    ->schema([
-        Section::make('Assigned Employees Details')
-            ->columns(1)
-            ->schema([
-                Repeater::make('employee_details')
-                    ->columns(4)
-                    ->disableItemCreation()
-                    ->disableItemDeletion()
-                    ->schema([
-                        TextInput::make('user_id')
-                            ->label('User ID')
-                            ->columns(1)
-                            ->disabled(),
+                        ->visible(fn (callable $get) => $get('operation_id') && !empty($get('employee_details')))
+                        ->schema([
+                            Section::make('Assigned Employees Details')
+                                ->columns(1)
+                                ->schema([
+                                    Repeater::make('employee_details')
+                                        ->columns(4)
+                                        ->disableItemCreation()
+                                        ->disableItemDeletion()
+                                        ->schema([
+                                            TextInput::make('user_id')
+                                                ->label('User ID')
+                                                ->columns(1)
+                                                ->disabled(),
 
-                        TextInput::make('name')
-                            ->label('Name')
-                            ->columns(1)
-                            ->disabled(),
+                                            TextInput::make('name')
+                                                ->label('Name')
+                                                ->columns(1)
+                                                ->disabled(),
 
-                        TextInput::make('emp_production')
-                            ->label('Emp: Production')
-                            ->numeric()
-                            ->required()
-                            ->reactive()
-                            ->live()
-                            ->columns(1),
+                                            TextInput::make('emp_downtime')
+                                                ->label('Emp: Downtime (min)')
+                                                ->reactive()
+                                                ->live()
+                                                ->columns(1),
 
-                        TextInput::make('emp_downtime')
-                            ->label('Emp: Downtime (min)')
-                            ->reactive()
-                            ->live()
-                            ->columns(1),
+                                            Section::make('Select Labels_e')
+                                                ->label('Produced Labels - Employee')
+                                                ->collapsible()
+                                                ->schema([
+                                                    Grid::make(3)
+                                                        ->schema([
+                                                            Placeholder::make('selected_labels_count_e')
+                                                                ->label('Selected Labels Count')
+                                                                ->content(function (callable $get) {
+                                                                    $labels = $get('selected_labels_e');
+                                                                    return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                                                                })
+                                                                ->reactive(),
 
-                        TextInput::make('emp_waste')
-                            ->label('Emp: Waste')
-                            ->reactive()
-                            ->live()
-                            ->columns(1),
+                                                            Checkbox::make('select_all_labels_e')
+                                                                ->label('Select All Labels')
+                                                                ->default(false)
+                                                                ->reactive()
+                                                                ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                                                                    $labels = self::getAvailableLabels($get('../../model_id'));
+                                                                    $set('selected_labels_e', $state ? array_keys($labels) : []);
+                                                                    
+                                                                    // Reset range selection when select all is used
+                                                                    if ($state) {
+                                                                        $set('range_from_label_e', null);
+                                                                        $set('range_to_label_e', null);
+                                                                    }
+                                                                }),
 
-                        Section::make('Select Labels')
-    ->collapsible()
-    ->schema([
-        // Range Selection
-        Grid::make(3)
-            ->schema([
-                Select::make('range_start_label_id_e')
-                    ->label('Start Label')
-                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
-                    ->reactive()
-                    ->searchable(),
+                                                            Actions::make([
+                                                                Action::make('clear_selection')
+                                                                    ->label('Clear All')
+                                                                    ->color('danger')
+                                                                    ->size('sm')
+                                                                    ->action(function (callable $set) {
+                                                                        $set('selected_labels_e', []);
+                                                                        $set('select_all_labels_e', false);
+                                                                        $set('range_from_label_e', null);
+                                                                        $set('range_to_label_e', null);
+                                                                    })
+                                                            ])
+                                                        ]),
 
-                Select::make('range_end_label_id_e')
-                    ->label('End Label')
-                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
-                    ->reactive()
-                    ->searchable(),
+                                                    Fieldset::make('Label Selection')
+                                                    ->schema([
+                                                        Grid::make(12)
+                                                            ->schema([
+                                                                Actions::make([
+                                                                    Action::make('select_first_10')
+                                                                        ->label('First 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                            $selected = array_slice($labels, 0, 10);
+                                                                            $currentSelected = $get('selected_labels_e') ?: [];
+                                                                            $set('selected_labels_e', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3), 
 
-                Actions::make([
-                    Action::make('apply_range_e')
-                        ->label('Apply Label Range')
-                        ->action(function (callable $get, callable $set) {
-                            $labels = self::getAvailableLabels($get('../../model_id'));
+                                                                Actions::make([
+                                                                    Action::make('select_last_10')
+                                                                        ->label('Last 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                            $selected = array_slice($labels, -10);
+                                                                            $currentSelected = $get('selected_labels_e') ?: [];
+                                                                            $set('selected_labels_e', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3), 
 
-                            $startId = $get('range_start_label_id_e');
-                            $endId = $get('range_end_label_id_e');
+                                                                Actions::make([
+                                                                    Action::make('select_even')
+                                                                        ->label('Even Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                            $selected = [];
+                                                                            foreach ($labels as $index => $labelId) {
+                                                                                if ($index % 2 === 0) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_e') ?: [];
+                                                                            $set('selected_labels_e', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3), 
 
-                            if (!$startId || !$endId) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Invalid Range')
-                                    ->body('Both Start Label and End Label must be selected.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+                                                                Actions::make([
+                                                                    Action::make('select_odd')
+                                                                        ->label('Odd Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                            $selected = [];
+                                                                            foreach ($labels as $index => $labelId) {
+                                                                                if ($index % 2 === 1) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_e') ?: [];
+                                                                            $set('selected_labels_e', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3), 
+                                                            ]),
 
-                            $labelIds = array_keys($labels);
-                            $startIndex = array_search($startId, $labelIds);
-                            $endIndex = array_search($endId, $labelIds);
 
-                            if ($startIndex === false || $endIndex === false) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Invalid Labels')
-                                    ->body('Selected labels are not valid.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+                                                    Grid::make(4)
+                                                        ->schema([
+                                                            TextInput::make('range_start_position')
+                                                                ->label('Start Position')
+                                                                ->numeric()
+                                                                ->minValue(1)
+                                                                ->placeholder('1'),
 
-                            if ($startIndex > $endIndex) {
-                                [$startIndex, $endIndex] = [$endIndex, $startIndex];
-                            }
+                                                            TextInput::make('range_end_position')
+                                                                ->label('End Position')
+                                                                ->numeric()
+                                                                ->minValue(fn (callable $get) => $get('range_start_position') ?: 1)
+                                                                ->placeholder('10'),
 
-                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
-                            $existing = $get('selected_labels_e') ?? [];
-                            $set('selected_labels_e', array_unique([...$existing, ...$range]));
+                                                            Actions::make([
+                                                                Action::make('select_numeric_range')
+                                                                    ->label('Select by Position')
+                                                                    ->color('info')
+                                                                    ->size('sm')
+                                                                    ->action(function (callable $set, callable $get) {
+                                                                        $start = (int) $get('range_start_position') - 1; 
+                                                                        $end = (int) $get('range_end_position');
+                                                                        $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                        
+                                                                        if ($start >= 0 && $end > $start && $start < count($labels)) {
+                                                                            $selected = array_slice($labels, $start, $end - $start);
+                                                                            $currentSelected = $get('selected_labels_e') ?: [];
+                                                                            $set('selected_labels_e', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }
+                                                                    })
+                                                            ])
+                                                        ]),
+                                                    ]),
 
-                            \Filament\Notifications\Notification::make()
-                                ->title('Labels Applied')
-                                ->body(count($range) . ' labels have been applied.')
-                                ->success()
-                                ->send();
-                        })
-                        ->color('primary'),
-                ]),
-            ]),
-
-        // Enter Label Field
-        Grid::make(3)
-        ->schema([
-            TextInput::make('enter_label_e')
-                ->label('Enter Label (Index or Barcode ID)')
-                ->placeholder('Scan or enter index/barcode ID...')
-                ->reactive()
-                ->live()
-                ->columns(2)
-                ->extraAttributes([
-                    'onkeydown' => "if(event.key === 'Enter') { document.getElementById('select_label_e_button').click(); }"
-                ]),
-
-            Actions::make([
-                Action::make('select_label_e')
-                    ->label('Enter')
-                    ->extraAttributes(['id' => 'select_label_e_button'])
-                    ->action(function (callable $get, callable $set) {
-                        $enteredLabel = trim($get('enter_label_e'));
-                        
-                        // Early validation
-                        if (empty($enteredLabel)) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Invalid Input')
-                                ->body('Please scan or enter a valid index or barcode ID.')
-                                ->danger()
-                                ->send();
-                            return;
-                        }
-                        
-                        $labels = self::getAvailableLabels($get('../../model_id'));
-                        
-                        // Direct key lookup first (faster than filtering)
-                        if (isset($labels[$enteredLabel])) {
-                            $selectedLabel = $enteredLabel;
-                        } else {
-                            // Only perform string search if direct lookup fails
-                            $selectedLabel = array_search($enteredLabel, $labels, true);
-                            
-                            if ($selectedLabel === false) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Label Not Found')
-                                    ->body('No label matches the scanned or entered index/barcode ID.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-                        }
-                        
-                        // Update selected labels more efficiently
-                        $existing = $get('selected_labels_e') ?? [];
-                        if (!in_array($selectedLabel, $existing, true)) {
-                            $existing[] = $selectedLabel;
-                            $set('selected_labels_e', $existing);
-                            
-                            \Filament\Notifications\Notification::make()
-                                ->title('Label Selected')
-                                ->body('Label has been successfully selected.')
-                                ->success()
-                                ->send();
-                        }
-                        
-                        // Clear the input field for next entry
-                        $set('enter_label_e', '');
-                    })
-                    ->color('primary'),
-            ]),
-        ]),
-
-        // Select All + Count
-        Grid::make(2)
-            ->schema([
-                Placeholder::make('selected_labels_count_e')
-                    ->label('Selected Labels Count')
-                    ->content(function (callable $get) {
-                        $labels = $get('selected_labels_e');
-                        return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
-                    })
-                    ->reactive(),
-
-                Checkbox::make('select_all_labels_e')
-                    ->label('Select All Labels')
-                    ->default(false)
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, callable $get, $state) {
-                        $labels = self::getAvailableLabels($get('../../model_id'));
-                        $set('selected_labels_e', $state ? array_keys($labels) : []);
-                    }),
-            ]),
-
-        // Label Picker
-        Grid::make(1)
-            ->schema([
-                CheckboxList::make('selected_labels_e')
-                    ->label('Available Labels')
-                    ->default([])
-                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
-                    ->columns(3)
-                    ->reactive()
-                    ->searchable()
-                    ->live()
-                    ->dehydrated(),
-            ]),
-        ]),
-                    ]),
-            ]),
-        ]),
+                                                    // Label Picker
+                                                    Grid::make(1)
+                                                        ->schema([
+                                                            CheckboxList::make('selected_labels_e')
+                                                                ->label('Available Labels')
+                                                                ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
+                                                                ->columns(4)
+                                                                ->searchable()
+                                                                ->live()
+                                                                ->reactive()
+                                                                ->required()
+                                                                ->default([])
+                                                                ->dehydrated()
+                                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                    $set('selected_labels_e', is_array($state) ? $state : []);
+                                                                    
+                                                                    $allLabels = self::getAvailableLabels($get('../../model_id'));
+                                                                    $selectedCount = is_array($state) ? count($state) : 0;
+                                                                    $set('select_all_labels_e', $selectedCount === count($allLabels));
+                                                                })
+                                                                ->bulkToggleable(false)
+                                                        ])
+                                                ]),
+                                        ]),
+                                ]),
+                            ]),
                         
                         Tabs\Tab::make('Machines')
-                            ->visible(fn (callable $get) => $get('operation_id'))
+                            ->visible(fn (callable $get) => $get('operation_id') && !empty($get('machines')))
                             ->schema([
                                 Section::make('Assigned Machines Details')
                                     ->columns(1)
@@ -663,72 +678,16 @@ class EnterPerformanceRecordResource extends Resource
                                                 TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
 
-                                                Section::make('Select Machine Labels')
+                                                Section::make('Select Labels_m')
+                                                    ->label('Produced Labels - Machine')
                                                     ->collapsible()
                                                     ->schema([
-                                                        // Range Selection
                                                         Grid::make(3)
-                                                            ->schema([
-                                                                Select::make('range_start_label_id_m')
-                                                                    ->label('Start Label')
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id'),
-                                                                    ))
-                                                                    ->reactive()
-                                                                    ->searchable(),
-
-                                                                Select::make('range_end_label_id_m')
-                                                                    ->label('End Label')
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id'),
-                                                                    ))
-                                                                    ->reactive()
-                                                                    ->searchable(),
-
-                                                                Actions::make([
-                                                                    Action::make('apply_range_m')
-                                                                        ->label('Apply Label Range')
-                                                                        ->action(function ($get, $set) {
-                                                                            $labels = self::getAvailableLabels(
-                                                                                $get('operation_type'),
-                                                                                $get('model_id'),
-                                                                                $get('order_type'),
-                                                                                $get('order_id')
-                                                                            );
-
-                                                                            $startId = $get('range_start_label_id_m');
-                                                                            $endId = $get('range_end_label_id_m');
-                                                                            if (!$startId || !$endId) return;
-
-                                                                            $labelIds = array_keys($labels);
-                                                                            $startIndex = array_search($startId, $labelIds);
-                                                                            $endIndex = array_search($endId, $labelIds);
-
-                                                                            if ($startIndex === false || $endIndex === false) return;
-                                                                            if ($startIndex > $endIndex) [$startIndex, $endIndex] = [$endIndex, $startIndex];
-
-                                                                            $range = array_slice($labelIds, $startIndex, $endIndex - $startIndex + 1);
-                                                                            $existing = $get('selected_labels') ?? [];
-                                                                            $set('selected_labels_m', array_unique([...$existing, ...$range]));
-                                                                        })
-                                                                        ->color('primary'),
-                                                                ]),
-                                                            ]),
-
-                                                        // Select All + Count
-                                                        Grid::make(2)
                                                             ->schema([
                                                                 Placeholder::make('selected_labels_count_m')
                                                                     ->label('Selected Labels Count')
                                                                     ->content(function (callable $get) {
                                                                         $labels = $get('selected_labels_m');
-                                                                        
                                                                         return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
                                                                     })
                                                                     ->reactive(),
@@ -738,68 +697,163 @@ class EnterPerformanceRecordResource extends Resource
                                                                     ->default(false)
                                                                     ->reactive()
                                                                     ->afterStateUpdated(function (callable $set, callable $get, $state) {
-                                                                        $labels = self::getAvailableLabels(
-                                                                            $get('operation_type'),
-                                                                            $get('model_id'),
-                                                                            $get('order_type'),
-                                                                            $get('order_id')
-                                                                        );
-
+                                                                        $labels = self::getAvailableLabels($get('../../model_id'));
                                                                         $set('selected_labels_m', $state ? array_keys($labels) : []);
+                                                                        
+                                                                        // Reset range selection when select all is used
+                                                                        if ($state) {
+                                                                            $set('range_from_label_m', null);
+                                                                            $set('range_to_label_m', null);
+                                                                        }
                                                                     }),
+
+                                                                Actions::make([
+                                                                    Action::make('clear_selection')
+                                                                        ->label('Clear All')
+                                                                        ->color('danger')
+                                                                        ->size('sm')
+                                                                        ->action(function (callable $set) {
+                                                                            $set('selected_labels_m', []);
+                                                                            $set('select_all_labels_m', false);
+                                                                            $set('range_from_label_m', null);
+                                                                            $set('range_to_label_m', null);
+                                                                        })
+                                                                ])
                                                             ]),
+
+                                                        Fieldset::make('Label Selection')
+                                                        ->schema([
+                                                            Grid::make(12)
+                                                                ->schema([
+                                                                    Actions::make([
+                                                                        Action::make('select_first_10')
+                                                                            ->label('First 10')
+                                                                            ->size('sm')
+                                                                            ->color('gray')
+                                                                            ->action(function (callable $set, callable $get) {
+                                                                                $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                                $selected = array_slice($labels, 0, 10);
+                                                                                $currentSelected = $get('selected_labels_m') ?: [];
+                                                                                $set('selected_labels_m', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }),
+                                                                    ])->columns(3), 
+
+                                                                    Actions::make([
+                                                                        Action::make('select_last_10')
+                                                                            ->label('Last 10')
+                                                                            ->size('sm')
+                                                                            ->color('gray')
+                                                                            ->action(function (callable $set, callable $get) {
+                                                                                $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                                $selected = array_slice($labels, -10);
+                                                                                $currentSelected = $get('selected_labels_m') ?: [];
+                                                                                $set('selected_labels_m', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }),
+                                                                    ])->columns(3), 
+
+                                                                    Actions::make([
+                                                                        Action::make('select_even')
+                                                                            ->label('Even Positions')
+                                                                            ->size('sm')
+                                                                            ->color('gray')
+                                                                            ->action(function (callable $set, callable $get) {
+                                                                                $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                                $selected = [];
+                                                                                foreach ($labels as $index => $labelId) {
+                                                                                    if ($index % 2 === 0) {
+                                                                                        $selected[] = $labelId;
+                                                                                    }
+                                                                                }
+                                                                                $currentSelected = $get('selected_labels_m') ?: [];
+                                                                                $set('selected_labels_m', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }),
+                                                                    ])->columns(3), 
+
+                                                                    Actions::make([
+                                                                        Action::make('select_odd')
+                                                                            ->label('Odd Positions')
+                                                                            ->size('sm')
+                                                                            ->color('gray')
+                                                                            ->action(function (callable $set, callable $get) {
+                                                                                $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                                $selected = [];
+                                                                                foreach ($labels as $index => $labelId) {
+                                                                                    if ($index % 2 === 1) {
+                                                                                        $selected[] = $labelId;
+                                                                                    }
+                                                                                }
+                                                                                $currentSelected = $get('selected_labels_m') ?: [];
+                                                                                $set('selected_labels_m', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }),
+                                                                    ])->columns(3), 
+                                                                ]),
+
+
+                                                        Grid::make(4)
+                                                            ->schema([
+                                                                TextInput::make('range_start_position')
+                                                                    ->label('Start Position')
+                                                                    ->numeric()
+                                                                    ->minValue(1)
+                                                                    ->placeholder('1'),
+
+                                                                TextInput::make('range_end_position')
+                                                                    ->label('End Position')
+                                                                    ->numeric()
+                                                                    ->minValue(fn (callable $get) => $get('range_start_position') ?: 1)
+                                                                    ->placeholder('10'),
+
+                                                                Actions::make([
+                                                                    Action::make('select_numeric_range')
+                                                                        ->label('Select by Position')
+                                                                        ->color('info')
+                                                                        ->size('sm')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $start = (int) $get('range_start_position') - 1; 
+                                                                            $end = (int) $get('range_end_position');
+                                                                            $labels = array_keys(self::getAvailableLabels($get('../../model_id')));
+                                                                            
+                                                                            if ($start >= 0 && $end > $start && $start < count($labels)) {
+                                                                                $selected = array_slice($labels, $start, $end - $start);
+                                                                                $currentSelected = $get('selected_labels_m') ?: [];
+                                                                                $set('selected_labels_m', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }
+                                                                        })
+                                                                ])
+                                                            ]),
+                                                        ]),
 
                                                         // Label Picker
                                                         Grid::make(1)
                                                             ->schema([
                                                                 CheckboxList::make('selected_labels_m')
                                                                     ->label('Available Labels')
-                                                                    ->default([]) 
-                                                                    ->options(fn (callable $get) => self::getAvailableLabels(
-                                                                        $get('../../operation_type'),
-                                                                        $get('../../model_id'),
-                                                                        $get('../../order_type'),
-                                                                        $get('../../order_id')
-                                                                    ))
-                                                                    ->columns(3)
-                                                                    ->reactive()
+                                                                    ->options(fn (callable $get) => self::getAvailableLabels($get('../../model_id')))
+                                                                    ->columns(4)
                                                                     ->searchable()
                                                                     ->live()
-                                                                    ->dehydrated(),
-                                                            ]),
-                                                        ]),
+                                                                    ->required()
+                                                                    ->reactive()
+                                                                    ->default([])
+                                                                    ->dehydrated()
+                                                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                        $set('selected_labels_m', is_array($state) ? $state : []);
+                                                                        
+                                                                        $allLabels = self::getAvailableLabels($get('../../model_id'));
+                                                                        $selectedCount = is_array($state) ? count($state) : 0;
+                                                                        $set('select_all_labels_m', $selectedCount === count($allLabels));
+                                                                    })
+                                                                    ->bulkToggleable(false)
+                                                            ])
+                                                    ]),
                                                 
-                                                TextInput::make('machine_output')->label('Machine Output')->numeric()->required()->reactive()->live()->columns(1),
-                                                TextInput::make('machine_waste')->label('Machine Waste')->numeric()->required()->reactive()->live()->columns(1),
                                                 TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
                                                 TextArea::make('machine_notes')->label('Notes (Machines)')->columns(4),
                                             ])
                                             ->columnSpanFull(),
                                     ]),
                                 Section::make('Summary')
-                                    ->schema([
-                                        Placeholder::make('machine_total_output')
-                                            ->label('Machine: Total Output')
-                                            ->content(function (callable $get, callable $set) {
-                                                $details = $get('machines') ?? [];
-                                                $total = collect($details)->sum('machine_output') ?: 0;
-                                                $set('machine_total_output', $total); 
-                                                return $total;
-                                            })
-                                            ->reactive()
-                                            ->live(),
-
-                                        Placeholder::make('machine_total_waste')
-                                            ->label('Machine: Total Waste')
-                                            ->content(function (callable $get, callable $set) {
-                                                $details = $get('machines') ?? [];
-                                                $total = collect($details)->sum('machine_waste') ?: 0;
-                                                $set('machine_total_waste', $total); 
-                                                return $total;
-                                            })
-                                            ->reactive()
-                                            ->live(),
-                                            
+                                    ->schema([              
                                         Placeholder::make('machine_total_downtime')
                                             ->label('Machine: Total Downtime (min)')
                                             ->content(function (callable $get, callable $set) {
@@ -811,17 +865,13 @@ class EnterPerformanceRecordResource extends Resource
                                             ->reactive()
                                             ->live(),
 
-                                        Hidden::make('machine_total_output')
-                                            ->dehydrated(),
-                                        Hidden::make('machine_total_waste')
-                                            ->dehydrated(),
                                         Hidden::make('machine_total_downtime')
                                             ->dehydrated(),
                                     ])
                             ]),
 
                         Tabs\Tab::make('Supervisors')
-                            ->visible(fn (callable $get) => $get('operation_id'))
+                            ->visible(fn (callable $get) => $get('operation_id') && !empty($get('supervisor_details')))
                             ->schema([
                                 Section::make('Assigned Supervisor Details')
                                     ->columns(1)
@@ -906,7 +956,7 @@ class EnterPerformanceRecordResource extends Resource
                             ]),
 
                         Tabs\Tab::make('Third-Party Services')
-                            ->visible(fn (callable $get) => $get('operation_id'))
+                            ->visible(fn (callable $get) => $get('operation_id') && !empty($get('services')))
                             ->schema([
                                 Section::make('Third-Party Service Details')
                                     ->columns(1)
@@ -1001,62 +1051,6 @@ class EnterPerformanceRecordResource extends Resource
                         Tabs\Tab::make('Summary of Production')
                             ->visible(fn (callable $get) => $get('operation_id'))
                             ->schema([
-
-                                //  Section 1: Summary
-                                Section::make('Production Summary')
-                                    ->columns(3)
-                                    ->schema([
-                                        Placeholder::make('live_emp_total_production')
-                                            ->label('Emp: Total Production')
-                                            ->content(fn (callable $get) => $get('emp_total_production') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_emp_total_waste')
-                                            ->label('Emp: Total Waste')
-                                            ->content(fn (callable $get) => $get('emp_total_waste') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_emp_total_downtime')
-                                            ->label('Emp: Total Downtime (min)')
-                                            ->content(fn (callable $get) => $get('emp_total_downtime') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_machine_total_output')
-                                            ->label('Machine: Total Production')
-                                            ->content(fn (callable $get) => $get('machine_total_output') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_machine_total_waste')
-                                            ->label('Machine: Total Waste')
-                                            ->content(fn (callable $get) => $get('machine_total_waste') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_machine_total_downtime')
-                                            ->label('Machine: Total Downtime (min)')
-                                            ->content(fn (callable $get) => $get('machine_total_downtime') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_total_sup_quantity')
-                                            ->label('Total Supervisored Quantity')
-                                            ->content(fn (callable $get) => $get('total_sup_quantity') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_total_acc_quantity')
-                                            ->label('Total Accepted Quantity')
-                                            ->content(fn (callable $get) => $get('total_acc_quantity') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_total_rej_quantity')
-                                            ->label('Total Rejected Quantity')
-                                            ->content(fn (callable $get) => $get('total_rej_quantity') ?: 0)
-                                            ->reactive(),
-
-                                        Placeholder::make('live_process_total_cost')
-                                            ->label('Total Third-Party Process Cost')
-                                            ->content(fn (callable $get) => $get('process_total_cost') ?: 0)
-                                            ->reactive(),
-                                    ]),
-
                                 //  Section 2: Waste
                                 Section::make('Waste Recording')
                                     ->schema([
@@ -1217,18 +1211,461 @@ class EnterPerformanceRecordResource extends Resource
                                         ]),
                                 ]),
 
-                            Tabs\Tab::make('Quality Checking')
-                                ->visible(fn (callable $get) => $get('operation_id'))
-                                ->schema([
-                                    Section::make('Quality Check')
-                                        ->schema([
-                                            Placeholder::make('quality_check_placeholder')
-                                                ->label('Quality check form will be defined later')
-                                                ->content('Coming soon...')
-                                        ])
-                                ]),
-                            ]),
-                    
+                        Tabs\Tab::make('Quality Checking')
+                            ->visible(fn (callable $get) => $get('operation_id'))
+                            ->schema([
+                                Section::make('Quality Check Labels')
+                                    ->schema([
+                                        // QC Passed Section
+                                        Section::make('Select Labels QC Passed')
+                                            ->collapsible()
+                                            ->schema([
+                                                Grid::make(3)
+                                                    ->schema([
+                                                        Placeholder::make('selected_labels_count_qc_p')
+                                                            ->label('Selected Labels Count')
+                                                            ->content(function (callable $get) {
+                                                                $labels = $get('selected_labels_qc_p');
+                                                                return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                                                            })
+                                                            ->reactive(),
+
+                                                        Checkbox::make('select_all_labels_qc_p')
+                                                            ->label('Select All Labels')
+                                                            ->default(false)
+                                                            ->reactive()
+                                                            ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                                                                $labels = self::getAvailableLabels($get('model_id'));
+                                                                $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                $availableLabels = array_diff(array_keys($labels), $failedLabels);
+
+                                                                // Update the selected labels for QC Passed
+                                                                $set('selected_labels_qc_p', $state ? $availableLabels : []);
+
+                                                                // Reset range selection when "Select All" is used
+                                                                if ($state) {
+                                                                    $set('range_from_label_qc_p', null);
+                                                                    $set('range_to_label_qc_p', null);
+                                                                }
+                                                            }),
+
+                                                        Actions::make([
+                                                            Action::make('clear_selection')
+                                                                ->label('Clear All')
+                                                                ->color('danger')
+                                                                ->size('sm')
+                                                                ->action(function (callable $set) {
+                                                                    $set('selected_labels_qc_p', []);
+                                                                    $set('select_all_labels_qc_p', false);
+                                                                    $set('range_from_label_qc_p', null);
+                                                                    $set('range_to_label_qc_p', null);
+                                                                })
+                                                        ])
+                                                    ]),
+
+                                                Fieldset::make('Label Selection')
+                                                    ->schema([
+                                                        Grid::make(12)
+                                                            ->schema([
+                                                                Actions::make([
+                                                                    Action::make('select_first_10')
+                                                                        ->label('First 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                            $availableLabels = array_diff($labels, $failedLabels);
+
+                                                                            $selected = array_slice($availableLabels, 0, 10);
+                                                                            $currentSelected = $get('selected_labels_qc_p') ?: [];
+                                                                            $set('selected_labels_qc_p', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_last_10')
+                                                                        ->label('Last 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                            $availableLabels = array_diff($labels, $failedLabels);
+
+                                                                            $selected = array_slice($availableLabels, -10);
+                                                                            $currentSelected = $get('selected_labels_qc_p') ?: [];
+                                                                            $set('selected_labels_qc_p', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_even')
+                                                                        ->label('Even Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                            $availableLabels = array_diff($labels, $failedLabels);
+
+                                                                            $selected = [];
+                                                                            foreach ($availableLabels as $index => $labelId) {
+                                                                                if ($index % 2 === 0) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_qc_p') ?: [];
+                                                                            $set('selected_labels_qc_p', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_odd')
+                                                                        ->label('Odd Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                            $availableLabels = array_diff($labels, $failedLabels);
+
+                                                                            $selected = [];
+                                                                            foreach ($availableLabels as $index => $labelId) {
+                                                                                if ($index % 2 === 1) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_qc_p') ?: [];
+                                                                            $set('selected_labels_qc_p', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+                                                            ]),
+
+                                                        Grid::make(4)
+                                                            ->schema([
+                                                                TextInput::make('range_start_position')
+                                                                    ->label('Start Position')
+                                                                    ->numeric()
+                                                                    ->minValue(1)
+                                                                    ->placeholder('1'),
+
+                                                                TextInput::make('range_end_position')
+                                                                    ->label('End Position')
+                                                                    ->numeric()
+                                                                    ->minValue(fn (callable $get) => $get('range_start_position') ?: 1)
+                                                                    ->placeholder('10'),
+
+                                                                Actions::make([
+                                                                    Action::make('select_numeric_range')
+                                                                        ->label('Select by Position')
+                                                                        ->color('info')
+                                                                        ->size('sm')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $start = (int) $get('range_start_position') - 1;
+                                                                            $end = (int) $get('range_end_position');
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                            $availableLabels = array_diff($labels, $failedLabels);
+
+                                                                            if ($start >= 0 && $end > $start && $start < count($availableLabels)) {
+                                                                                $selected = array_slice($availableLabels, $start, $end - $start);
+                                                                                $currentSelected = $get('selected_labels_qc_p') ?: [];
+                                                                                $set('selected_labels_qc_p', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }
+                                                                        })
+                                                                ])
+                                                            ]),
+                                                    ]),
+
+                                                // Label Picker
+                                                Grid::make(1)
+                                                    ->schema([
+                                                        CheckboxList::make('selected_labels_qc_p')
+                                                            ->label('Available Labels')
+                                                            ->options(function (callable $get) {
+                                                                $labels = self::getAvailableLabels($get('model_id'));
+                                                                $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                                return array_diff_key($labels, array_flip($failedLabels));
+                                                            })
+                                                            ->columns(4)
+                                                            ->searchable()
+                                                            ->live()
+                                                            ->reactive()
+                                                            ->required()
+                                                            ->default([])
+                                                            ->dehydrated()
+                                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                $set('selected_labels_qc_p', is_array($state) ? $state : []);
+                                                            })
+                                                            ->bulkToggleable(false)
+                                                    ])
+                                            ]),
+
+                                        // QC Failed Section
+                                        Section::make('Select Labels QC Failed')
+                                            ->collapsible()
+                                            ->schema([
+                                                Grid::make(3)
+                                                    ->schema([
+                                                        Placeholder::make('selected_labels_count_qc_f')
+                                                            ->label('Selected Labels Count')
+                                                            ->content(function (callable $get) {
+                                                                $labels = $get('selected_labels_qc_f');
+                                                                return (is_array($labels) ? count($labels) : 0) . ' label(s) selected';
+                                                            })
+                                                            ->reactive(),
+
+                                                        Checkbox::make('select_all_labels_qc_f')
+                                                            ->label('Select All Labels')
+                                                            ->default(false)
+                                                            ->reactive()
+                                                            ->afterStateUpdated(function (callable $set, callable $get, $state) {
+                                                                $labels = self::getAvailableLabels($get('model_id'));
+                                                                $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                $availableLabels = array_diff(array_keys($labels), $passedLabels);
+
+                                                                $set('selected_labels_qc_f', $state ? $availableLabels : []);
+
+                                                                if ($state) {
+                                                                    $set('range_from_label_qc_f', null);
+                                                                    $set('range_to_label_qc_f', null);
+                                                                }
+                                                            }),
+
+                                                        Actions::make([
+                                                            Action::make('clear_selection')
+                                                                ->label('Clear All')
+                                                                ->color('danger')
+                                                                ->size('sm')
+                                                                ->action(function (callable $set) {
+                                                                    $set('selected_labels_qc_f', []);
+                                                                    $set('select_all_labels_qc_f', false);
+                                                                    $set('range_from_label_qc_f', null);
+                                                                    $set('range_to_label_qc_f', null);
+                                                                })
+                                                        ])
+                                                    ]),
+
+                                                Fieldset::make('Label Selection')
+                                                    ->schema([
+                                                        Grid::make(12)
+                                                            ->schema([
+                                                                Actions::make([
+                                                                    Action::make('select_first_10')
+                                                                        ->label('First 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                            $availableLabels = array_diff($labels, $passedLabels);
+
+                                                                            $selected = array_slice($availableLabels, 0, 10);
+                                                                            $currentSelected = $get('selected_labels_qc_f') ?: [];
+                                                                            $set('selected_labels_qc_f', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_last_10')
+                                                                        ->label('Last 10')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                            $availableLabels = array_diff($labels, $passedLabels);
+
+                                                                            $selected = array_slice($availableLabels, -10);
+                                                                            $currentSelected = $get('selected_labels_qc_f') ?: [];
+                                                                            $set('selected_labels_qc_f', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_even')
+                                                                        ->label('Even Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                            $availableLabels = array_diff($labels, $passedLabels);
+
+                                                                            $selected = [];
+                                                                            foreach ($availableLabels as $index => $labelId) {
+                                                                                if ($index % 2 === 0) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_qc_f') ?: [];
+                                                                            $set('selected_labels_qc_f', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+
+                                                                Actions::make([
+                                                                    Action::make('select_odd')
+                                                                        ->label('Odd Positions')
+                                                                        ->size('sm')
+                                                                        ->color('gray')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                            $availableLabels = array_diff($labels, $passedLabels);
+
+                                                                            $selected = [];
+                                                                            foreach ($availableLabels as $index => $labelId) {
+                                                                                if ($index % 2 === 1) {
+                                                                                    $selected[] = $labelId;
+                                                                                }
+                                                                            }
+                                                                            $currentSelected = $get('selected_labels_qc_f') ?: [];
+                                                                            $set('selected_labels_qc_f', array_unique(array_merge($currentSelected, $selected)));
+                                                                        }),
+                                                                ])->columns(3),
+                                                            ]),
+
+                                                        Grid::make(4)
+                                                            ->schema([
+                                                                TextInput::make('range_start_position')
+                                                                    ->label('Start Position')
+                                                                    ->numeric()
+                                                                    ->minValue(1)
+                                                                    ->placeholder('1'),
+
+                                                                TextInput::make('range_end_position')
+                                                                    ->label('End Position')
+                                                                    ->numeric()
+                                                                    ->minValue(fn (callable $get) => $get('range_start_position') ?: 1)
+                                                                    ->placeholder('10'),
+
+                                                                Actions::make([
+                                                                    Action::make('select_numeric_range')
+                                                                        ->label('Select by Position')
+                                                                        ->color('info')
+                                                                        ->size('sm')
+                                                                        ->action(function (callable $set, callable $get) {
+                                                                            $start = (int) $get('range_start_position') - 1;
+                                                                            $end = (int) $get('range_end_position');
+                                                                            $labels = array_keys(self::getAvailableLabels($get('model_id')));
+                                                                            $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                            $availableLabels = array_diff($labels, $passedLabels);
+
+                                                                            if ($start >= 0 && $end > $start && $start < count($availableLabels)) {
+                                                                                $selected = array_slice($availableLabels, $start, $end - $start);
+                                                                                $currentSelected = $get('selected_labels_qc_f') ?: [];
+                                                                                $set('selected_labels_qc_f', array_unique(array_merge($currentSelected, $selected)));
+                                                                            }
+                                                                        })
+                                                                ])
+                                                            ]),
+                                                    ]),
+
+                                                // Label Picker
+                                                Grid::make(1)
+                                                    ->schema([
+                                                        CheckboxList::make('selected_labels_qc_f')
+                                                            ->label('Available Labels')
+                                                            ->options(function (callable $get) {
+                                                                $labels = self::getAvailableLabels($get('model_id'));
+                                                                $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                                return array_diff_key($labels, array_flip($passedLabels));
+                                                            })
+                                                            ->columns(4)
+                                                            ->searchable()
+                                                            ->live()
+                                                            ->reactive()
+                                                            ->required()
+                                                            ->default([])
+                                                            ->dehydrated()
+                                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                $set('selected_labels_qc_f', is_array($state) ? $state : []);
+                                                            })
+                                                            ->bulkToggleable(false)
+                                                    ])
+                                            ]),
+
+                                        Section::make('Summary')
+                                            ->schema([
+                                                Placeholder::make('passed_items_count')
+                                                    ->label('Number of Passed Items')
+                                                    ->content(function (callable $get) {
+                                                        $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                        return count($passedLabels) . ' item(s)';
+                                                    })
+                                                    ->reactive(),
+
+                                                Placeholder::make('failed_items_count')
+                                                    ->label('Number of Failed Items')
+                                                    ->content(function (callable $get) {
+                                                        $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                        return count($failedLabels) . ' item(s)';
+                                                    })
+                                                    ->reactive(),
+
+                                                Fieldset::make('Action for Failed Items')
+                                                    ->columns(2)
+                                                    ->schema([
+                                                    Select::make('failed_item_action')
+                                                            ->label('Action for Failed Items')
+                                                            ->options([
+                                                                'cutting_section' => 'Cutting Section',
+                                                                'sawing_section' => 'Sawing Section',
+                                                            ])
+                                                            ->visible(fn (callable $get) => count($get('selected_labels_qc_f') ?? []) >= 1)
+                                                            ->required(fn (callable $get) => count($get('selected_labels_qc_f') ?? []) >= 1)
+                                                            ->reactive() 
+                                                            ->afterStateUpdated(function (callable $set) {
+                                                                $set('cutting_station_id', null);
+                                                                $set('sawing_operation_id', null);
+                                                            }),
+
+                                                        Select::make('cutting_station_id')
+                                                            ->label('Cutting Station')
+                                                            ->searchable()
+                                                            ->options(function () {
+                                                                return \App\Models\CuttingStation::all()
+                                                                    ->pluck('name', 'id')
+                                                                    ->toArray();
+                                                            })
+                                                            ->visible(fn (callable $get) => $get('failed_item_action') === 'cutting_section')
+                                                            ->required(fn (callable $get) => $get('failed_item_action') === 'cutting_section') 
+                                                            ->reactive(),
+
+                                                    Select::make('sawing_operation_id')
+                                                        ->label('Sawing Operation')
+                                                        ->searchable() 
+                                                        ->options(function () {
+                                                            return \App\Models\AssignDailyOperationLine::where('status', 'completed')
+                                                                ->with('assignDailyOperation') 
+                                                                ->get()
+                                                                ->mapWithKeys(function ($line) {
+                                                                    $operation = $line->assignDailyOperation;
+                                                                    if ($operation) {
+                                                                        $label = sprintf(
+                                                                            '%s - Order ID: %s - Operated Date: %s - Operated Line ID: %s',
+                                                                            $operation->order_type ?? 'Unknown Type',
+                                                                            $operation->order_id ?? 'Unknown ID',
+                                                                            $operation->operation_date ?? 'Unknown Date',
+                                                                            $line->id
+                                                                        );
+                                                                        return [$line->id => $label];
+                                                                    }
+                                                                    return [];
+                                                                })
+                                                                ->toArray();
+                                                        })
+                                                        ->placeholder('Search by Order ID') 
+                                                        ->helperText('You can search by Order ID to find the operation.') 
+                                                        ->visible(fn (callable $get) => $get('failed_item_action') === 'sawing_section')
+                                                        ->required(fn (callable $get) => $get('failed_item_action') === 'sawing_section')
+                                                        ->reactive(),
+                                                        ]),
+                                            ]),
+                                    ]),
+                        ]), 
+                    ]),                 
             ]);
     }
 

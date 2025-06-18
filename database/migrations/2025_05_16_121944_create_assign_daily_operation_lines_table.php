@@ -20,6 +20,7 @@ return new class extends Migration {
             $table->integer('target_e')->nullable();
             $table->integer('target_m')->nullable();
             $table->string('measurement_unit')->nullable();
+            $table->string('status')->default('on going'); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

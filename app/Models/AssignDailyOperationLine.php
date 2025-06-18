@@ -21,6 +21,7 @@ class AssignDailyOperationLine extends Model
         'target_e',
         'target_m',
         'measurement_unit',
+        'status',
         'created_by',
         'updated_by',
     ];

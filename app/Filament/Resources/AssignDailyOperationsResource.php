@@ -59,8 +59,9 @@ class AssignDailyOperationsResource extends Resource
                                     ->label('Operation Date')
                                     ->required()
                                     ->default(today())
-                                    ->minDate(today()) 
+                                    ->minDate(fn (string $context): ?Carbon => $context === 'create' ? today() : null)
                                     ->columnSpan(1)
+                                    ->disabled(fn (string $context): bool => $context === 'edit') 
                                     ->afterStateUpdated(function ($state, $set) {
                                         $set('order_type', null);
                                         $set('order_id', null);
@@ -325,7 +326,7 @@ class AssignDailyOperationsResource extends Resource
                                                             ->searchable()
                                                             ->columnSpanFull(),
 
-                                                        Select::make('target_durattion')->label('Target Duration')->options(['hourly' => 'Hourly', 'daily' => 'Daily']),
+                                                        Select::make('target_duration')->label('Target Duration')->options(['hourly' => 'Hourly', 'daily' => 'Daily']),
                                                         TextInput::make('target_e')->label('Target per Employee')->numeric(),
                                                         TextInput::make('target_m')->label('Target per Machine')->numeric(),
                                                         Select::make('measurement_unit')
