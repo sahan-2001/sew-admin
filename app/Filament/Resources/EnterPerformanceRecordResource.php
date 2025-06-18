@@ -169,34 +169,32 @@ class EnterPerformanceRecordResource extends Resource
                                                     if (!$employees->isEmpty()) {
                                                         $employeeDetails = $employees->map(function ($employee) {
                                                             return [
-                                                                'user_id' => $employee->user_id,
+                                                                'employee_id' => $employee->user_id ?? null,
                                                                 'name' => $employee->user->name ?? 'N/A',
                                                             ];
                                                         })->toArray();
 
                                                         $set('employee_details', $employeeDetails);
-                                                        $set('employee_ids', $employees->pluck('user_id')->implode(', '));
                                                     } else {
                                                         $set('employee_details', []);
-                                                        $set('employee_ids', null); 
                                                     }
 
                                                     // Fetch production machine data 
                                                     $machines = \App\Models\AssignedProductionMachine::with('productionMachine')
-                                                            ->where('assign_daily_operation_line_id', $state)
-                                                            ->get();
-                                                    
+                                                        ->where('assign_daily_operation_line_id', $state)
+                                                        ->get();
+
                                                     if (!$machines->isEmpty()) {
                                                         $machineDetails = $machines->map(function ($machine) {
                                                             return [
-                                                                'id' => $machine->productionMachine->id ?? null,
+                                                                'machine_id' => $machine->productionMachine->id ?? null,
                                                                 'name' => $machine->productionMachine->name ?? 'Unnamed',
                                                             ];
                                                         })->toArray();
-                                                        
+
                                                         $set('machines', $machineDetails);
                                                     } else {
-                                                        $set('machines', []); 
+                                                        $set('machines', []);
                                                     }
 
                                                     // Fetch supervisor data 
@@ -262,6 +260,7 @@ class EnterPerformanceRecordResource extends Resource
                                         TextInput::make('model_id')
                                             ->label('model id')
                                             ->disabled()
+                                            ->dehydrated()
                                             ->columns(1),
                                             
                                         TextInput::make('order_type')
@@ -464,7 +463,7 @@ class EnterPerformanceRecordResource extends Resource
                                     ->columns(1)
                             ]),
 
-                        Tabs\Tab::make('Employees')
+                    Tabs\Tab::make('Employees')
                         ->lazy()
                         ->visible(fn (callable $get) => $get('operation_id') && !empty($get('employee_details')))
                         ->schema([
@@ -476,8 +475,9 @@ class EnterPerformanceRecordResource extends Resource
                                         ->disableItemCreation()
                                         ->disableItemDeletion()
                                         ->schema([
-                                            TextInput::make('user_id')
+                                            TextInput::make('employee_id')
                                                 ->label('User ID')
+                                                ->dehydrated()
                                                 ->columns(1)
                                                 ->disabled(),
 
@@ -675,7 +675,7 @@ class EnterPerformanceRecordResource extends Resource
                                             ->disableItemCreation()
                                             ->disableItemDeletion()
                                             ->schema([
-                                                TextInput::make('id')->label('Machine ID')->columns(1)->disabled(),
+                                                TextInput::make('machine_id')->label('Machine ID')->columns(1)->dehydrated()->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
 
                                                 Section::make('Select Labels_m')
