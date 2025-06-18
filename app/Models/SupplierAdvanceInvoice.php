@@ -28,6 +28,11 @@ class SupplierAdvanceInvoice extends Model
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
+    
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
     protected static function booted()
     {

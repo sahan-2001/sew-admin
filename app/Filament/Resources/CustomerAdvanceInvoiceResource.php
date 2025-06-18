@@ -22,6 +22,7 @@ use Filament\Notifications\Notification;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Facades\Auth;
 
 class CustomerAdvanceInvoiceResource extends Resource
@@ -308,11 +309,11 @@ class CustomerAdvanceInvoiceResource extends Resource
                                         }),
                                 ]),
 
-                            Section::make('Make the Payment')
+                            Section::make('Record the Payment')
                                 ->columns(3)
                                 ->schema([
                                     Select::make('payment_type')
-                                        ->label('Payment Type')
+                                        ->label('Paid Payment Type')
                                         ->dehydrated()
                                         ->options([
                                             'fixed' => 'Fixed Amount',
@@ -328,7 +329,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 
                                     // Amount input for fixed payment
                                     TextInput::make('fix_payment_amount')
-                                        ->label('Enter Amount')
+                                        ->label('Enter Paid Amount')
                                         ->dehydrated()
                                         ->suffix('Rs.')
                                         ->live()
@@ -365,7 +366,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 
                                     // Percentage input for percentage-based payment
                                     TextInput::make('payment_percentage')
-                                        ->label('Enter Percentage')
+                                        ->label('Enter Paid Percentage')
                                         ->dehydrated()
                                         ->suffix('%')
                                         ->required(fn ($get) => $get('payment_type') === 'percentage')
@@ -403,7 +404,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 
                                     // Common display field for calculated amount
                                     TextInput::make('percent_calculated_payment')
-                                        ->label('Calculated Payment')
+                                        ->label('Calculated Paid Payment')
                                         ->suffix('Rs.')
                                         ->disabled()
                                         ->live()
@@ -431,6 +432,22 @@ class CustomerAdvanceInvoiceResource extends Resource
                                         }),
 
 
+                                ]),
+
+                             Section::make('Customer Advance Invoice Details')
+                                ->schema([
+                                    TextInput::make('cus_invoice_number')
+                                        ->label('Customer Advance Invoice Number')
+                                        ->required()
+                                        ->dehydrated()
+                                        ->numeric(),
+                                    FileUpload::make('invoice_image')
+                                        ->label('Upload Image')
+                                        ->image()
+                                        ->directory(null) 
+                                        ->preserveFilenames()
+                                        ->getUploadedFileNameForStorageUsing(fn ($file) => $file->getClientOriginalName())
+                                        ->storeFiles(),
                                 ]),
                     ]),
                 ])

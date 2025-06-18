@@ -24,6 +24,8 @@ class CustomerAdvanceInvoice extends Model
         'remaining_amount',
         'paid_date',
         'paid_via',
+        'cus_invoice_number',
+        'invoice_image',
     ];
 
     public function purchaseOrder()

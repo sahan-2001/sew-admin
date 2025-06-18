@@ -16,8 +16,10 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Set;
@@ -77,6 +79,36 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $r->id => "ID - {$r->id} | Location - {$locationName} | Received Date - {$r->received_date}"
                                                 ];
                                             })->toArray());
+                                           
+                                            // Fetch ALL Supplier Advance Invoices (not just latest)
+                                            $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
+                                                ->where('status', 'paid')
+                                                ->with(['purchaseOrder', 'supplier']) 
+                                                ->get();
+                                            
+                                            $set('supplier_advance_invoices', $advanceInvoices->isNotEmpty()
+                                                ? $advanceInvoices->map(function ($invoice) {
+                                                    return [
+                                                        'id' => $invoice->id,
+                                                        'status' => $invoice->status,
+                                                        'payment_type' => $invoice->payment_type,
+                                                        'fix_payment_amount' => $invoice->fix_payment_amount,
+                                                        'payment_percentage' => $invoice->payment_percentage,
+                                                        'percent_calculated_payment' => $invoice->percent_calculated_payment,
+                                                        'paid_amount' => $invoice->paid_amount,
+                                                        'remaining_amount' => $invoice->remaining_amount,
+                                                        'paid_date' => $invoice->paid_date,
+                                                        'paid_via' => $invoice->paid_via,
+                                                    ];
+                                                })->toArray()
+                                                : [[
+                                                    'fix_payment_amount' => null,
+                                                    'payment_percentage' => null,
+                                                    'percent_calculated_payment' => null,
+                                                    'paid_date' => null,
+                                                    'paid_via' => null,
+                                                ]]
+                                            );
                                         }),
 
                                     Select::make('register_arrival_id')
@@ -92,6 +124,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                             $set('items', $items->map(function ($item) {
                                                 $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
                                                 return [
+                                                    'id' => $item->id,
                                                     'item_id' => $item->item_id,
                                                     'item_code' => $inventoryItem?->item_code,
                                                     'name' => $inventoryItem?->name,
@@ -241,6 +274,75 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->disabled()
                                         ->dehydrated(),
                                 ]),
+                        ]),
+
+                    Tab::make('Supplier Advance Invoices')
+                        ->schema([
+                            Section::make('Supplier Advance Invoices')
+                                ->schema([
+                                    Repeater::make('supplier_advance_invoices')
+                                        ->label('')
+                                        ->schema([
+                                            TextInput::make('status')
+                                                ->label('Status')
+                                                ->disabled(),
+                                            TextInput::make('payment_type')
+                                                ->label('Payment Type')
+                                                ->disabled(),
+                                            TextInput::make('fix_payment_amount')
+                                                ->label('Fixed Amount')
+                                                ->disabled()
+                                                ->numeric()
+                                                ->visible(fn (Get $get): bool => $get('payment_type') === 'fixed'),
+                                            TextInput::make('payment_percentage')
+                                                ->label('Percentage')
+                                                ->disabled()
+                                                ->numeric()
+                                                ->visible(fn (Get $get): bool => $get('payment_type') === 'percentage'),
+                                            TextInput::make('percent_calculated_payment')
+                                                ->label('Calculated Amount')
+                                                ->disabled()
+                                                ->visible(fn (Get $get): bool => $get('payment_type') === 'percentage'),
+                                            TextInput::make('paid_amount')
+                                                ->label('Paid Amount')
+                                                ->disabled()
+                                                ->numeric(),
+                                            TextInput::make('remaining_amount')
+                                                ->label('Remaining Amount')
+                                                ->disabled()
+                                                ->numeric(),
+                                            DatePicker::make('paid_date')
+                                                ->label('Paid Date')
+                                                ->disabled(),
+                                            TextInput::make('paid_via')
+                                                ->label('Paid Via')
+                                                ->disabled(),
+                                        ])
+                                        ->columns(5)
+                                        ->columnSpanFull()
+                                        ->disableItemCreation()
+                                        ->dehydrated(false),
+
+                                    Placeholder::make('total_paid_amount')
+                                        ->label('Total Paid Amount')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('supplier_advance_invoices') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+
+                                    Placeholder::make('total_remaining_amount')
+                                        ->label('Total Remaining Amount')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('supplier_advance_invoices') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['remaining_amount'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+                                ])
                         ]),
                 ])
                 ->columnspanFull(),
