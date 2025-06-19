@@ -100,8 +100,9 @@ class EnterPerformanceRecordResource extends Resource
                                             ->required()
                                             ->reactive()
                                             ->default(now())
-                                            ->maxDate(now())
+                                            ->maxDate(fn (string $context): ?Carbon => $context === 'create' ? today() : null)
                                             ->columns(1)
+                                            ->disabled(fn (string $context): bool => $context === 'edit') 
                                             ->afterStateUpdated(function (callable $get, callable $set) {
                                                 $set('operation_id', null);
                                                 $set('order_type', null);
@@ -161,16 +162,17 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('target', $model->target ?? null);
                                                     $set('measurement_unit', $model->measurement_unit ?? null);
 
-                                                    // Fetch employee data and set employee IDs
                                                     $employees = \App\Models\AssignedEmployee::with('user')
                                                         ->where('assign_daily_operation_line_id', $state)
                                                         ->get();
 
-                                                    if (!$employees->isEmpty()) {
+                                                    if ($employees->isNotEmpty()) {
                                                         $employeeDetails = $employees->map(function ($employee) {
                                                             return [
-                                                                'employee_id' => $employee->user_id ?? null,
+                                                                'employee_id' => $employee->user_id,
                                                                 'name' => $employee->user->name ?? 'N/A',
+                                                                'emp_production' => 0,
+                                                                'emp_downtime' => 0,
                                                             ];
                                                         })->toArray();
 
@@ -179,16 +181,19 @@ class EnterPerformanceRecordResource extends Resource
                                                         $set('employee_details', []);
                                                     }
 
-                                                    // Fetch production machine data 
+                                                    // Fetch production machine data
                                                     $machines = \App\Models\AssignedProductionMachine::with('productionMachine')
                                                         ->where('assign_daily_operation_line_id', $state)
                                                         ->get();
 
-                                                    if (!$machines->isEmpty()) {
+                                                    if ($machines->isNotEmpty()) {
                                                         $machineDetails = $machines->map(function ($machine) {
                                                             return [
-                                                                'machine_id' => $machine->productionMachine->id ?? null,
+                                                                'machine_id' => $machine->production_machine_id,
                                                                 'name' => $machine->productionMachine->name ?? 'Unnamed',
+                                                                'machine_downtime' => 0,
+                                                                'machine_notes' => '',
+                                                                'selected_labels_m' => [],
                                                             ];
                                                         })->toArray();
 
@@ -198,36 +203,39 @@ class EnterPerformanceRecordResource extends Resource
                                                     }
 
                                                     // Fetch supervisor data 
-                                                    $supervisors =  \App\Models\AssignedSupervisor::with('user')
-                                                            ->where('assign_daily_operation_line_id', $state)
-                                                            ->get();
-                                                    
-                                                    if (!$supervisors->isEmpty()) {
+                                                    $supervisors = \App\Models\AssignedSupervisor::with('user')
+                                                        ->where('assign_daily_operation_line_id', $state)
+                                                        ->get();
+
+                                                    if ($supervisors->isNotEmpty()) { // Corrected condition
                                                         $supervisorDetails = $supervisors->map(function ($supervisor) {
                                                             return [
-                                                                'user_id' => $supervisor->user_id,
+                                                                'supervisor_id' => $supervisor->user_id,
                                                                 'name' => $supervisor->user->name ?? 'N/A',
+                                                                'acc_quantity' => 0,
+                                                                'rej_quantity' => 0,
+                                                                'sup_quantity' => 0,
+                                                                'sup_downtime' => 0,
+                                                                'sup_notes' => '',
                                                             ];
                                                         })->toArray();
 
                                                         $set('supervisor_details', $supervisorDetails);
-                                                        $set('supervisor_ids', $supervisors->pluck('user_id')->implode(', '));
                                                     } else {
-                                                        $set('supervisor_details', []);
                                                         $set('supervisor_details', []); 
                                                     }
 
                                                     // Fetch third party service data and their processes
-                                                    $services =  \App\Models\AssignedThirdPartyService::with('thirdPartyService.processes')
-                                                            ->where('assign_daily_operation_line_id', $state)
-                                                            ->get();
+                                                    $services = \App\Models\AssignedThirdPartyService::with('thirdPartyService.processes')
+                                                        ->where('assign_daily_operation_line_id', $state)
+                                                        ->get();
 
-                                                    if (!$services->isEmpty()) {
+                                                    if ($services->isNotEmpty()) { // Corrected condition
                                                         $serviceDetails = $services->map(function ($service) {
                                                             $processes = $service->thirdPartyService->processes->map(function ($process) {
                                                                 // Get supplier name (assuming there's a relationship)
                                                                 $supplierName = $process->supplier->name ?? 'Unknown Supplier';
-                                                                
+
                                                                 return [
                                                                     'process_id' => $process->id,
                                                                     'description' => $process->description,
@@ -236,8 +244,8 @@ class EnterPerformanceRecordResource extends Resource
                                                                     'unit_of_measurement' => $process->unit_of_measurement,
                                                                     'amount' => $process->amount,
                                                                     'unit_rate' => $process->unit_rate,
-                                                                    'used_amount' => 0, 
-                                                                    'total' => 0, 
+                                                                    'used_amount' => 0,
+                                                                    'total' => 0,
                                                                 ];
                                                             })->toArray();
 
@@ -252,7 +260,7 @@ class EnterPerformanceRecordResource extends Resource
 
                                                         $set('services', $serviceDetails);
                                                     } else {
-                                                        $set('services', []); 
+                                                        $set('services', []);
                                                     }
                                                 }
                                             }),
@@ -464,7 +472,6 @@ class EnterPerformanceRecordResource extends Resource
                             ]),
 
                     Tabs\Tab::make('Employees')
-                        ->lazy()
                         ->visible(fn (callable $get) => $get('operation_id') && !empty($get('employee_details')))
                         ->schema([
                             Section::make('Assigned Employees Details')
@@ -472,6 +479,7 @@ class EnterPerformanceRecordResource extends Resource
                                 ->schema([
                                     Repeater::make('employee_details')
                                         ->columns(4)
+                                        ->dehydrated()
                                         ->disableItemCreation()
                                         ->disableItemDeletion()
                                         ->schema([
@@ -490,7 +498,8 @@ class EnterPerformanceRecordResource extends Resource
                                                 ->label('Emp: Downtime (min)')
                                                 ->reactive()
                                                 ->live()
-                                                ->columns(1),
+                                                ->columns(1)
+                                                ->default(0),
 
                                             Section::make('Select Labels_e')
                                                 ->label('Produced Labels - Employee')
@@ -660,6 +669,21 @@ class EnterPerformanceRecordResource extends Resource
                                                                 ->bulkToggleable(false)
                                                         ])
                                                 ]),
+                                            TextInput::make('emp_production')
+                                                ->label('Total Selected Labels')
+                                                ->disabled() 
+                                                ->reactive()
+                                                ->afterStateHydrated(function (callable $set, callable $get) {
+                                                    $employeeDetails = $get('employee_details') ?? [];
+                                                    $totalLabels = 0;
+
+                                                    foreach ($employeeDetails as $employee) {
+                                                        $selectedLabels = $employee['selected_labels_e'] ?? [];
+                                                        $totalLabels += is_array($selectedLabels) ? count($selectedLabels) : 0;
+                                                    }
+
+                                                    $set('total_selected_labels', $totalLabels);
+                                                }),
                                         ]),
                                 ]),
                             ]),
@@ -672,10 +696,11 @@ class EnterPerformanceRecordResource extends Resource
                                     ->schema([
                                         Repeater::make('machines')
                                             ->columns(4)
+                                            ->dehydrated()
                                             ->disableItemCreation()
                                             ->disableItemDeletion()
                                             ->schema([
-                                                TextInput::make('machine_id')->label('Machine ID')->columns(1)->dehydrated()->disabled(),
+                                                TextInput::make('machine_id')->label('Machine ID')->columns(1)->dehydrated(true)->disabled(),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
 
                                                 Section::make('Select Labels_m')
@@ -847,7 +872,7 @@ class EnterPerformanceRecordResource extends Resource
                                                             ])
                                                     ]),
                                                 
-                                                TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1),
+                                                TextInput::make('machine_downtime')->label('Downtime (min)')->numeric()->reactive()->live()->columns(1)->default(0),
                                                 TextArea::make('machine_notes')->label('Notes (Machines)')->columns(4),
                                             ])
                                             ->columnSpanFull(),
@@ -878,17 +903,19 @@ class EnterPerformanceRecordResource extends Resource
                                     ->schema([
                                         Repeater::make('supervisor_details')
                                             ->columns(4)
+                                            ->dehydrated(true)
                                             ->disableItemCreation()
                                             ->disableItemDeletion()
                                             ->schema([
-                                                TextInput::make('user_id')->label('User ID')->columns(1)->disabled(),
+                                                TextInput::make('supervisor_id')->label('Supervisor ID')->columns(1)->disabled()->dehydrated(true),
                                                 TextInput::make('name')->label('Name')->columns(1)->disabled(),
                                                 
                                                 TextInput::make('acc_quantity')
                                                     ->label('Accepted Quantity')
                                                     ->numeric()
                                                     ->required()
-                                                    ->reactive()
+                                                    ->live()
+                                                    ->default(0)
                                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                                         $rejected = (int) $get('rej_quantity');
                                                         $set('sup_quantity', $state + $rejected);
@@ -899,7 +926,8 @@ class EnterPerformanceRecordResource extends Resource
                                                     ->label('Rejected Quantity')
                                                     ->numeric()
                                                     ->required()
-                                                    ->reactive()
+                                                    ->live()
+                                                    ->default(0)
                                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                                         $accepted = (int) $get('acc_quantity');
                                                         $set('sup_quantity', $state + $accepted);
@@ -913,7 +941,7 @@ class EnterPerformanceRecordResource extends Resource
                                                     ->dehydrated()
                                                     ->columns(1),
 
-                                                TextInput::make('sup_downtime')->label('Supervisor : Downtime (min)')->numeric()->reactive()->live()->columns(1),
+                                                TextInput::make('sup_downtime')->label('Supervisor : Downtime (min)')->numeric()->reactive()->live()->columns(1)->default(0),
                                                 TextArea::make('sup_notes')->label('Special Notes')->columns(4),
                                             ])
                                             ->columnSpanFull(),
@@ -989,8 +1017,8 @@ class EnterPerformanceRecordResource extends Resource
                                                         TextInput::make('used_amount')
                                                             ->label('Used Amount')
                                                             ->numeric()
-                                                            ->reactive()
                                                             ->required()
+                                                            ->default(0)
                                                             ->live()
                                                             ->afterStateUpdated(function ($state, $set, $get) {
                                                                 $available = (float) ($get('amount') ?? 0);
@@ -1603,6 +1631,20 @@ class EnterPerformanceRecordResource extends Resource
                                                         return count($failedLabels) . ' item(s)';
                                                     })
                                                     ->reactive(),
+
+                                                Hidden::make('passed_items_count')
+                                                    ->default(function (callable $get) {
+                                                        $passedLabels = $get('selected_labels_qc_p') ?? [];
+                                                        return count($passedLabels);
+                                                    })
+                                                    ->live(),
+
+                                                Hidden::make('failed_items_count')
+                                                    ->default(function (callable $get) {
+                                                        $failedLabels = $get('selected_labels_qc_f') ?? [];
+                                                        return count($failedLabels);
+                                                    })
+                                                    ->live(),
 
                                                 Fieldset::make('Action for Failed Items')
                                                     ->columns(2)

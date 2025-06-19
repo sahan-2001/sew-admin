@@ -20,7 +20,12 @@ class EnterEmployeePerformance extends Model
 
     public function performanceRecord()
     {
-        return $this->belongsTo(EnterPerformanceRecord::class);
+        return $this->belongsTo(EnterPerformanceRecord::class, 'enter_performance_record_id');
+    }
+
+    public function employeeLabelPerformance()
+    {
+        return $this->hasMany(EnterEmployeeLabelPerformance::class, 'enter_employee_performance_id');
     }
 
     public function employee()
