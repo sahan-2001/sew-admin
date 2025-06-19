@@ -1680,29 +1680,30 @@ class EnterPerformanceRecordResource extends Resource
                                                             ->required(fn (callable $get) => $get('failed_item_action') === 'cutting_section') 
                                                             ->reactive(),
 
-                                                    Select::make('sawing_operation_id')
-                                                        ->label('Sawing Operation')
-                                                        ->searchable() 
-                                                        ->options(function () {
-                                                            return \App\Models\AssignDailyOperationLine::where('status', 'completed')
-                                                                ->with('assignDailyOperation') 
-                                                                ->get()
-                                                                ->mapWithKeys(function ($line) {
-                                                                    $operation = $line->assignDailyOperation;
-                                                                    if ($operation) {
-                                                                        $label = sprintf(
-                                                                            '%s - Order ID: %s - Operated Date: %s - Operated Line ID: %s',
-                                                                            $operation->order_type ?? 'Unknown Type',
-                                                                            $operation->order_id ?? 'Unknown ID',
-                                                                            $operation->operation_date ?? 'Unknown Date',
-                                                                            $line->id
-                                                                        );
-                                                                        return [$line->id => $label];
-                                                                    }
-                                                                    return [];
-                                                                })
-                                                                ->toArray();
-                                                        })
+                                                    
+                                                        Select::make('sawing_operation_id')
+                                                            ->label('Sawing Operation')
+                                                            ->searchable()
+                                                            ->options(function () {
+                                                                return \App\Models\AssignDailyOperationLine::with('assignDailyOperation')
+                                                                    ->get()
+                                                                    ->mapWithKeys(function ($line) {
+                                                                        $operation = $line->assignDailyOperation;
+                                                                        if ($operation) {
+                                                                            $label = sprintf(
+                                                                                '%s - Order ID: %s - Operated Date: %s - Operated Line ID: %s',
+                                                                                $operation->order_type ?? 'Unknown Type',
+                                                                                $operation->order_id ?? 'Unknown ID',
+                                                                                $operation->operation_date ?? 'Unknown Date',
+                                                                                $line->id
+                                                                            );
+                                                                            return [$line->id => $label];
+                                                                        }
+                                                                        return [];
+                                                                    })
+                                                                    ->toArray();
+                                                            })
+
                                                         ->placeholder('Search by Order ID') 
                                                         ->helperText('You can search by Order ID to find the operation.') 
                                                         ->visible(fn (callable $get) => $get('failed_item_action') === 'sawing_section')
@@ -1759,7 +1760,8 @@ class EnterPerformanceRecordResource extends Resource
                     ->url(fn ($record) => route('performance-records.print', ['enter_performance_record' => $record->id]))
                     ->openUrlInNewTab(),
                 
-                Tables\Actions\DeleteAction::make(), 
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn ($record) => $record->status !== 'completed'),
             ]);
     }
 

@@ -19,6 +19,7 @@ class EnterPerformanceRecord extends Model
         'actual_machine_run_time',
         'actual_employee_setup_time',
         'actual_employee_run_time',
+        'status',
         'created_by',
         'updated_by',
     ];

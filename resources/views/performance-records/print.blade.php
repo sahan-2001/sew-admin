@@ -85,7 +85,8 @@
 
     <h2>Performance Record Details</h2>
     <table>
-        <tr><th>Performance Record ID</th><td>{{ $record->id }}</td></tr>
+        <tr><th>Performance Record ID</th><td>{{ str_pad($record->id, 5, '0', STR_PAD_LEFT) }}</td></tr>
+        <tr><th>Status</th><td>{{ $record->status }}</td></tr>
         <tr><th>Assigned Operation ID</th><td>{{ $record->assign_daily_operation_id }}</td></tr>
         <tr><th>Assigned Operation Line ID</th><td>{{ $record->assign_daily_operation_line_id }}</td></tr>
         <tr><th>Operation Date</th><td>{{ $record->operation_date }}</td></tr>

@@ -18,6 +18,7 @@ class CreateEnterPerformanceRecordsTable extends Migration
             $table->decimal('actual_machine_run_time', 10, 2);
             $table->decimal('actual_employee_setup_time', 10, 2);
             $table->decimal('actual_employee_run_time', 10, 2);
+            $table->string('status')->default('pending');
             
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
