@@ -17,10 +17,16 @@ class EnterEmployeeLabelPerformance extends Model
         'updated_by',
     ];
 
+    public function label()
+    {
+        return $this->belongsTo(CuttingLabel::class, 'cutting_label_id');
+    }
+
     public function performanceRecord()
     {
         return $this->belongsTo(EnterPerformanceRecord::class);
     }
+    
     protected static function booted()
     {
         static::creating(function ($model) {

@@ -61,7 +61,12 @@ class AssignDailyOperationsResource extends Resource
                                     ->default(today())
                                     ->minDate(fn (string $context): ?Carbon => $context === 'create' ? today() : null)
                                     ->columnSpan(1)
-                                    ->disabled(fn (string $context): bool => $context === 'edit') 
+                                    ->disabled(function (string $context) {
+                                        if (auth()->user()?->can('select_next_operation_dates')) {
+                                            return false;
+                                        }
+                                        return $context !== 'create'; 
+                                        })
                                     ->afterStateUpdated(function ($state, $set) {
                                         $set('order_type', null);
                                         $set('order_id', null);

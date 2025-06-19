@@ -23,6 +23,11 @@ class EnterPerformanceRecord extends Model
         'updated_by',
     ];
 
+    public function assignDailyOperation()
+    {
+        return $this->belongsTo(AssignDailyOperation::class, 'assign_daily_operation_id');
+    }
+
     public function employeePerformances()
     {
         return $this->hasMany(EnterEmployeePerformance::class);

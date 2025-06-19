@@ -20,6 +20,11 @@ class EnterServicePerformance extends Model
         'updated_by',
     ];
 
+    public function processes()
+    {
+        return $this->hasMany(ThirdPartyServiceProcess::class, 'third_party_service_id',);
+    }
+
     public function performanceRecord()
     {
         return $this->belongsTo(EnterPerformanceRecord::class);

@@ -102,7 +102,12 @@ class EnterPerformanceRecordResource extends Resource
                                             ->default(now())
                                             ->maxDate(fn (string $context): ?Carbon => $context === 'create' ? today() : null)
                                             ->columns(1)
-                                            ->disabled(fn (string $context): bool => $context === 'edit') 
+                                            ->disabled(function (string $context) {
+                                                if (auth()->user()?->can('select_previous_performance_dates')) {
+                                                    return false;
+                                                }
+                                                return $context !== 'create'; 
+                                            })
                                             ->afterStateUpdated(function (callable $get, callable $set) {
                                                 $set('operation_id', null);
                                                 $set('order_type', null);
@@ -1716,16 +1721,21 @@ class EnterPerformanceRecordResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order_type')->label('Order Type')
+                Tables\Columns\TextColumn::make('id')->label('Record ID')->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                Tables\Columns\TextColumn::make('assignDailyOperation.order_type')
+                    ->label('Order Type')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'customer_order' => 'Customer Order',
-                        'sample_order' => 'Sample Order',
+                        'customer_order' => 'CO',
+                        'sample_order' => 'SO',
                         default => $state,
                     }),
-                Tables\Columns\TextColumn::make('order_id')->label('Order ID'),
-                Tables\Columns\TextColumn::make('performances.*.operation')->label('Operation'),
-                Tables\Columns\TextColumn::make('performances.*.actual_quantity')->label('Quantity'),
-                Tables\Columns\TextColumn::make('performances.*.actual_time')->label('Time (min)'),
+                Tables\Columns\TextColumn::make('assignDailyOperation.order_id')
+                    ->label('Order ID')
+                    ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                Tables\Columns\TextColumn::make('assign_daily_operation_line_id')->label('Operation Line ID'),
+                Tables\Columns\TextColumn::make('operation_date')->label('Operated Date')->date(),
+                Tables\Columns\TextColumn::make('operated_time_from')->label('Time From'),
+                Tables\Columns\TextColumn::make('operated_time_to')->label('Time To'),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -1738,7 +1748,18 @@ class EnterPerformanceRecordResource extends Resource
                     ),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('view')
+                ->label('View')
+                ->icon('heroicon-o-eye')
+                ->url(fn ($record) => static::getUrl('view', ['record' => $record])), 
+
+                Tables\Actions\Action::make('Performance Report')
+                    ->label('Report')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn ($record) => route('performance-records.print', ['enter_performance_record' => $record->id]))
+                    ->openUrlInNewTab(),
+                
+                Tables\Actions\DeleteAction::make(), 
             ]);
     }
 
@@ -1748,6 +1769,7 @@ class EnterPerformanceRecordResource extends Resource
             'index' => Pages\ListEnterPerformanceRecords::route('/'),
             'create' => Pages\CreateEnterPerformanceRecord::route('/create'),
             'edit' => Pages\EditEnterPerformanceRecord::route('/{record}/edit'),
+            'view' => Pages\ViewEnterPerformanceRecord::route('/{record}/view'), 
         ];
     }
 }

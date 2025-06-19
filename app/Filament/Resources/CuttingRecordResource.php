@@ -135,7 +135,12 @@ class CuttingRecordResource extends Resource
                                             ->required()
                                             ->default(now())
                                             ->maxDate(now())
-                                            ->disabled(fn (string $context) => $context === 'edit'),
+                                            ->disabled(function (string $context) {
+                                                if (auth()->user()?->can('select_previous_performance_dates')) {
+                                                    return false;
+                                                }
+                                                return $context !== 'create'; 
+                                            }),
                                     ]),
                                             
                                 Section::make('Order Details')

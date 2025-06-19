@@ -17,6 +17,11 @@ class EnterQcLabelPerformance extends Model
         'updated_by',
     ];
 
+    public function label()
+    {
+        return $this->belongsTo(CuttingLabel::class, 'cutting_label_id');
+    }
+
     public function performanceRecord()
     {
         return $this->belongsTo(EnterPerformanceRecord::class);
