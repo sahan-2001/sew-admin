@@ -20,8 +20,25 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             $grandTotal = collect($data['invoice_items'] ?? [])
                 ->sum(fn ($item) => floatval($item['total'] ?? 0));
             
-            $totalPaidAmount = collect($data['supplier_advance_invoices'] ?? [])
+            $totalPaidAmount = collect($data['advance_invoices'] ?? [])
                 ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0));
+
+            $totalAdditionalCost = collect($data['additional_costs'] ?? [])
+                ->sum(fn ($item) => floatval($item['total_c'] ?? 0));
+
+            $totalDiscountsDeductions = collect($data['discounts_deductions'] ?? [])
+                ->sum(fn ($item) => floatval($item['total_d'] ?? 0));
+
+            $paymentDue = 
+                collect($data['invoice_items'] ?? [])
+                    ->sum(fn ($item) => floatval($item['total'] ?? 0))
+                + collect($data['additional_costs'] ?? [])
+                    ->sum(fn ($item) => floatval($item['total_c'] ?? 0))
+                - collect($data['advance_invoices'] ?? [])
+                    ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0))
+                - collect($data['discounts_deductions'] ?? [])
+                    ->sum(fn ($item) => floatval($item['total_d'] ?? 0));
+
 
             $invoice = PurchaseOrderInvoice::create([
                 'purchase_order_id' => $data['purchase_order_id'],
@@ -31,7 +48,10 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 'provider_name' => $data['provider_name'] ?? null,
                 'wanted_date' => $data['wanted_date'] ?? null,
                 'grand_total' => $grandTotal, 
-                'total_paid_amount' => $totalPaidAmount, 
+                'adv_paid' => $totalPaidAmount, 
+                'additional_cost' => $totalAdditionalCost,
+                'discount' => $totalDiscountsDeductions,
+                'due_payment' => $paymentDue,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -62,13 +82,17 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 ]);
             }
             
-            // Create supplier advance invoice deductions
-            foreach ($data['supplier_advance_invoices'] ?? [] as $advInvoice) {
+            // Create supplier advance invoice deductions and update their status
+            foreach ($data['advance_invoices'] ?? [] as $advInvoice) {
                 \App\Models\PoAdvInvDeduct::create([
                     'purchase_order_invoice_id' => $invoice->id,
                     'advance_invoice_id' => $advInvoice['id'],
                     'deduction_amount' => $advInvoice['paid_amount'],
                 ]);
+                
+                // Update the SupplierAdvanceInvoice status to 'deducted'
+                \App\Models\SupplierAdvanceInvoice::where('id', $advInvoice['id'])
+                    ->update(['status' => 'deducted']);
             }
 
             // Create additional costs

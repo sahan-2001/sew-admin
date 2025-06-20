@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('due_payment', 15, 2)->default(0.00);
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
+            $table->string('random_code')->nullable(); 
 
             $table->softDeletes();
             $table->timestamps();

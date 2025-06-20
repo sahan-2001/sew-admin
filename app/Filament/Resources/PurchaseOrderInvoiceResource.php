@@ -81,36 +81,13 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ];
                                             })->toArray());
                                            
-                                            // Fetch ALL Supplier Advance Invoices (not just latest)
+                                            // Get advance invoices
                                             $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
-                                                ->whereIn('status', ['paid', 'partially paid'])
-                                                ->with(['purchaseOrder', 'supplier']) 
+                                                ->whereIn('status', ['paid', 'partially_paid'])
                                                 ->get();
-                                            
-                                            $set('supplier_advance_invoices', $advanceInvoices->isNotEmpty()
-                                                ? $advanceInvoices->map(function ($invoice) {
-                                                    return [
-                                                        'id' => $invoice->id,
-                                                        'status' => $invoice->status,
-                                                        'payment_type' => $invoice->payment_type,
-                                                        'fix_payment_amount' => $invoice->fix_payment_amount,
-                                                        'payment_percentage' => $invoice->payment_percentage,
-                                                        'percent_calculated_payment' => $invoice->percent_calculated_payment,
-                                                        'paid_amount' => $invoice->paid_amount,
-                                                        'remaining_amount' => $invoice->remaining_amount,
-                                                        'paid_date' => $invoice->paid_date,
-                                                        'paid_via' => $invoice->paid_via,
-                                                    ];
-                                                })->toArray()
-                                                : [[
-                                                    'fix_payment_amount' => null,
-                                                    'payment_percentage' => null,
-                                                    'percent_calculated_payment' => null,
-                                                    'paid_date' => null,
-                                                    'paid_via' => null,
-                                                ]]
-                                            );
-                                        }),
+
+                                            $set('advance_invoices', $advanceInvoices->toArray());
+                                            }),
 
                                     Select::make('register_arrival_id')
                                         ->label('Register Arrival ID')
@@ -172,23 +149,26 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->get();
 
                                             foreach ($passedItems as $item) {
-                                            $invItem = \App\Models\InventoryItem::find($item->item_id);
+                                                $invItem = \App\Models\InventoryItem::find($item->item_id);
 
-                                            // Get the related RegisterArrival to access location_id
-                                            $registerArrival = \App\Models\RegisterArrival::find($item->register_arrival_id);
-                                            $location = \App\Models\InventoryLocation::find($registerArrival?->location_id);
+                                                // Get the related RegisterArrival to access location_id
+                                                $registerArrival = \App\Models\RegisterArrival::find($item->register_arrival_id);
+                                                $location = \App\Models\InventoryLocation::find($registerArrival?->location_id);
 
-                                            $invoiceItems->push([
-                                                'item_id_i' => $item->item_id,
-                                                'item_code_i' => $invItem?->item_code,
-                                                'item_name_i' => $invItem?->name,
-                                                'stored_quantity_i' => $item->quantity,
-                                                'location_id_i' => $registerArrival?->location_id,
-                                                'location_name_i' => $location?->name,
-                                                'price_i' => $item->price,
-                                                'total' => $item->quantity * $item->price, 
-                                            ]);
-                                        }
+                                                $qty = (float) $item->quantity;
+                                                $price = (float) $item->price;
+
+                                                $invoiceItems->push([
+                                                    'item_id_i' => $item->item_id,
+                                                    'item_code_i' => $invItem?->item_code,
+                                                    'item_name_i' => $invItem?->name,
+                                                    'stored_quantity_i' => $qty,
+                                                    'location_id_i' => $registerArrival?->location_id,
+                                                    'location_name_i' => $location?->name,
+                                                    'price_i' => $price,
+                                                    'total' => round($qty * $price, 2),
+                                                ]);
+                                            }
 
                                             $materialQCs = \App\Models\MaterialQC::where('register_arrival_id', $state)
                                                 ->where('purchase_order_id', $purchaseOrderId)
@@ -199,19 +179,24 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $invItem = \App\Models\InventoryItem::find($qc->item_id);
                                                     $location = \App\Models\InventoryLocation::find($qc->store_location_id);
 
+                                                    $qty = (float) $qc->available_to_store;
+                                                    $price = (float) $qc->cost_of_item;
+
                                                     $invoiceItems->push([
                                                         'item_id_i' => $qc->item_id,
                                                         'item_code_i' => $invItem?->item_code,
                                                         'item_name_i' => $invItem?->name,
-                                                        'stored_quantity_i' => $qc->available_to_store,
+                                                        'stored_quantity_i' => $qty,
                                                         'location_id_i' => $qc->store_location_id,
                                                         'location_name_i' => $location?->name,
-                                                        'price_i' => $qc->cost_of_item, 
-                                                        'total' => $item->quantity * $item->price, 
+                                                        'price_i' => $price,
+                                                        'total' => round($qty * $price, 2),
                                                     ]);
                                                 }
                                             }
+
                                             $set('invoice_items', $invoiceItems->toArray());
+
 
                                         }),
 
@@ -280,26 +265,15 @@ class PurchaseOrderInvoiceResource extends Resource
                                             TextInput::make('item_id_i')->label('Item ID')->disabled()->dehydrated(),
                                             TextInput::make('item_code_i')->label('Item Code')->disabled(),
                                             TextInput::make('item_name_i')->label('Item Name')->disabled(),
-                                            TextInput::make('stored_quantity_i')->label('Stored Quantity')->disabled()->dehydrated(),
+                                            TextInput::make('stored_quantity_i')->label('Stored Quantity')->disabled()->dehydrated()->reactive(),
                                             TextInput::make('location_id_i')->label('Location ID')->disabled()->dehydrated(),
                                             TextInput::make('location_name_i')->label('Location Name')->disabled(),
-                                            TextInput::make('price_i')->label('Unit Price')->disabled()->dehydrated(),
+                                            TextInput::make('price_i')->label('Unit Price')->disabled()->dehydrated()->reactive(),
                                             TextInput::make('total')
                                                 ->label('Line Total')
-                                                ->disabled()
+                                                ->reactive()
                                                 ->dehydrated()
-                                                ->numeric()
-                                                ->afterStateUpdated(function ($state, $set) {
-                                                    $set('total', number_format($state, 2));
-                                                })
-                                                ->default(function ($get) {
-                                                    $quantity = $get('stored_quantity_i') ?? 0;
-                                                    $price = $get('price_i') ?? 0;
-                                                    return $quantity * $price;
-                                                })
-                                                ->formatStateUsing(function ($state) {
-                                                    return number_format($state, 2);
-                                                })
+                                                ->numeric(),
                                         ])
                                         ->columns(4)
                                         ->disabled()
@@ -321,10 +295,11 @@ class PurchaseOrderInvoiceResource extends Resource
                         ->schema([
                             Section::make('Supplier Advance Invoices')
                                 ->schema([
-                                    Repeater::make('supplier_advance_invoices')
+                                    Repeater::make('advance_invoices')
                                         ->label('')
                                         ->schema([
-                                            Hidden::make('id'),
+                                            Hidden::make('id')->label('ID')->dehydrated(true),
+
                                             TextInput::make('payment_type')
                                                 ->label('Payment Type')
                                                 ->disabled(),
@@ -360,6 +335,8 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ])
                                         ->columns(5)
                                         ->columnSpanFull()
+                                        ->disabled()
+                                        ->minItems(0)
                                         ->disableItemCreation()
                                         ->dehydrated(true),
 
@@ -367,7 +344,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->label('Total Paid Amount')
                                         ->content(fn (Get $get): string => 
                                             'Rs. ' . number_format(
-                                                collect($get('supplier_advance_invoices') ?? [])
+                                                collect($get('advance_invoices') ?? [])
                                                     ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)),
                                                 2
                                             )
@@ -377,13 +354,15 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->label('Total Remaining Amount')
                                         ->content(fn (Get $get): string => 
                                             'Rs. ' . number_format(
-                                                collect($get('supplier_advance_invoices') ?? [])
+                                                collect($get('advance_invoices') ?? [])
                                                     ->sum(fn ($item) => floatval($item['remaining_amount'] ?? 0)),
                                                 2
                                             )
                                         ),
                                 ])
                         ]),
+
+
                     Tab::make('Payment Details')
                         ->schema([
                             Section::make('Summary')
@@ -602,6 +581,16 @@ class PurchaseOrderInvoiceResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('id')->label('Invoice ID')->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('purchase_order_id')->label('PO ID')->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('register_arrival_id')->label('Register Arrival ID')->sortable(),
+                TextColumn::make('status')->label('Status')->sortable(),
+                TextColumn::make('adv_paid')->label('Advance Paid')->sortable()->toggleable(),
+                TextColumn::make('additional_cost')->label('Additional Cost')->sortable()->toggleable(),
+                TextColumn::make('discount')->label('Discounts/Deductions')->sortable()->toggleable(),
+                TextColumn::make('due_payment')->label('Payment Due')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -617,6 +606,15 @@ class PurchaseOrderInvoiceResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('pdf')
+                    ->label('View PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('success')
+                    ->url(fn (PurchaseOrderInvoice $record): string => route('purchase-order-invoice.pdf', $record))
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\DeleteAction::make()
+                    ->hidden(fn ($record) => $record->status !== 'pending')
             ]);
     }
 

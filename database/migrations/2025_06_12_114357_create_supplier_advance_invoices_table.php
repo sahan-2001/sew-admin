@@ -24,6 +24,8 @@ class CreateSupplierAdvanceInvoicesTable extends Migration
 
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
+
+            $table->string('random_code')->nullable(); 
             
             
             $table->softDeletes();

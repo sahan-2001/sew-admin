@@ -20,6 +20,7 @@ use App\Http\Controllers\RegisterArrivalPrintController;
 use App\Http\Controllers\CuttingLabelPrintController;
 use App\Http\Controllers\PerformanceRecordPrintController;
 use App\Http\Controllers\PerformanceRecordViewController;
+use App\Http\Controllers\SupplierAdvanceInvoiceController;
 
 
 
@@ -54,6 +55,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::get('/admin/enter-performance-record/{id}/view', [PerformanceRecordViewController::class, 'show'])
     ->name('filament.resources.enter-performance-record.view');
+
+// Supplier Advance Invoice PDF Route
+Route::get('/supplier-advance-invoices/{supplier_advance_invoice}/pdf', 
+    [SupplierAdvanceInvoiceController::class, 'show'])
+    ->name('supplier-advance-invoices.pdf');
+
+// PO final Invoice PDF Route
+Route::get('/purchase-order-invoice/{purchase_order_invoice}/pdf', 
+    [\App\Http\Controllers\PurchaseOrderFinalPdfController::class, 'show'])
+    ->name('purchase-order-invoice.pdf');
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])

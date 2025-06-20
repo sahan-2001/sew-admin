@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ class SupplierAdvanceInvoice extends Model
         'remaining_amount',
         'paid_date',
         'paid_via',
+        'random_code', 
     ];
 
     public function purchaseOrder()
@@ -41,25 +43,29 @@ class SupplierAdvanceInvoice extends Model
 
     protected static function booted()
     {
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
-        });
-
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
-        });
-
-        parent::boot();
-
         static::creating(function ($invoice) {
+            // Set created_by and updated_by
+            $invoice->created_by = auth()->id();
+            $invoice->updated_by = auth()->id();
+
+            // Set random 16-digit code
+            $invoice->random_code = '';
+            for ($i = 0; $i < 16; $i++) {
+                $invoice->random_code .= mt_rand(0, 9);
+            }
+
+            // Calculate remaining amount
             if ($invoice->fix_payment_amount) {
                 $invoice->remaining_amount = $invoice->fix_payment_amount;
             } elseif ($invoice->percent_calculated_payment) {
                 $invoice->remaining_amount = $invoice->percent_calculated_payment;
             } else {
-                $invoice->remaining_amount = 0; 
+                $invoice->remaining_amount = 0;
             }
+        });
+
+        static::updating(function ($invoice) {
+            $invoice->updated_by = auth()->id();
         });
     }
 }

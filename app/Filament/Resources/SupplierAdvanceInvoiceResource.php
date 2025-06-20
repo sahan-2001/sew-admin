@@ -263,6 +263,13 @@ class SupplierAdvanceInvoiceResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('viewPdf')
+                ->label('View PDF')
+                ->color('success')
+                ->icon('heroicon-o-eye')
+                ->url(fn (SupplierAdvanceInvoice $record): string => route('supplier-advance-invoices.pdf', $record))
+                ->openUrlInNewTab(),
+                
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
             ]);

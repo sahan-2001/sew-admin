@@ -24,6 +24,7 @@ class PurchaseOrderInvoice extends Model
         'due_payment',
         'created_by',
         'updated_by',
+        'random_code'
     ];
 
     public function invoiceItems()
@@ -33,7 +34,8 @@ class PurchaseOrderInvoice extends Model
 
     public function supplierAdvanceInvoices()
     {
-        return $this->hasMany(SupplierAdvanceInvoice::class);
+        return $this->hasMany(SupplierAdvanceInvoice::class, 'purchase_order_id', 'purchase_order_id')
+            ->whereIn('status', ['paid', 'partially_paid']);
     }
 
     public function purchaseOrder()
@@ -46,11 +48,36 @@ class PurchaseOrderInvoice extends Model
         return $this->belongsTo(RegisterArrival::class);
     }
 
+    public function items()
+    {
+        return $this->hasMany(PurchaseOrderInvoiceItem::class);
+    }
+
+    public function additionalCosts()
+    {
+        return $this->hasMany(PoAddCost::class);
+    }
+
+    public function discounts()
+    {
+        return $this->hasMany(PurchaseOrderDiscount::class);
+    }
+
+    public function advanceInvoiceDeductions()
+    {
+        return $this->hasMany(PoAdvInvDeduct::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
+
+            $model->random_code = '';
+            for ($i = 0; $i < 16; $i++) {
+                $model->random_code .= mt_rand(0, 9);
+            }
         });
 
         static::updating(function ($model) {

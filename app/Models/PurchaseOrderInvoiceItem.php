@@ -36,6 +36,11 @@ class PurchaseOrderInvoiceItem extends Model
         return $this->belongsTo(InventoryLocation::class);
     }
 
+    public function inventoryItem()
+    {
+        return $this->belongsTo(InventoryItem::class, 'item_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

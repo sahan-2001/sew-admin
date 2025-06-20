@@ -30,6 +30,16 @@ class PoAdvInvDeduct extends Model
         return $this->hasMany(SupplierAdvanceInvoice::class);
     }
 
+    public function advanceInvoice()
+    {
+        return $this->belongsTo(SupplierAdvanceInvoice::class, 'advance_invoice_id');
+    }
+
+    public function purchaseOrderInvoice()
+    {
+        return $this->belongsTo(PurchaseOrderInvoice::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
