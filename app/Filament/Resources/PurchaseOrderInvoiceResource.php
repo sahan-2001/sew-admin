@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -82,7 +83,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                            
                                             // Fetch ALL Supplier Advance Invoices (not just latest)
                                             $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
-                                                ->where('status', 'paid')
+                                                ->whereIn('status', ['paid', 'partially paid'])
                                                 ->with(['purchaseOrder', 'supplier']) 
                                                 ->get();
                                             
@@ -131,6 +132,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     'quantity' => $item->quantity,
                                                     'price' => $item->price,
                                                     'status' => $item->status,
+                                                    'total' => $item->total,
                                                 ];
                                             })->toArray());
 
@@ -184,6 +186,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 'location_id_i' => $registerArrival?->location_id,
                                                 'location_name_i' => $location?->name,
                                                 'price_i' => $item->price,
+                                                'total' => $item->quantity * $item->price, 
                                             ]);
                                         }
 
@@ -204,6 +207,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                         'location_id_i' => $qc->store_location_id,
                                                         'location_name_i' => $location?->name,
                                                         'price_i' => $qc->cost_of_item, 
+                                                        'total' => $item->quantity * $item->price, 
                                                     ]);
                                                 }
                                             }
@@ -225,11 +229,22 @@ class PurchaseOrderInvoiceResource extends Resource
                                         TextInput::make('quantity')->label('Received Quantity')->disabled(),
                                         TextInput::make('price')->label('Unit Price')->disabled(),
                                         TextInput::make('status')->label('QC Status')->disabled(),
+                                        TextInput::make('total')->label('Line Total')->disabled(),
                                     ])
                                     ->columnSpan('full')
                                     ->disabled()
                                     ->dehydrated(false)
-                                    ->columns(5),
+                                    ->columns(6),
+
+                                Placeholder::make('grand_total_of_arrivals')
+                                    ->label('Grand Total of Arrived Items')
+                                    ->content(fn (Get $get): string =>
+                                        'Rs. ' . number_format(
+                                            collect($get('items') ?? [])
+                                                ->sum(fn ($item) => floatval($item['total'] ?? 0)),
+                                            2
+                                        )
+                                    ),
                             ]),
                         ]),
 
@@ -256,9 +271,9 @@ class PurchaseOrderInvoiceResource extends Resource
                                 ]),
                         ]),
                         
-                    Tab::make('Invoice Item Details')
+                    Tab::make('Invoicing Item Details')
                         ->schema([
-                            Section::make('Final Invoice Items')
+                            Section::make('Invoicing/ Stored Item Details')
                                 ->schema([
                                     Repeater::make('invoice_items')
                                         ->schema([
@@ -269,23 +284,47 @@ class PurchaseOrderInvoiceResource extends Resource
                                             TextInput::make('location_id_i')->label('Location ID')->disabled()->dehydrated(),
                                             TextInput::make('location_name_i')->label('Location Name')->disabled(),
                                             TextInput::make('price_i')->label('Unit Price')->disabled()->dehydrated(),
+                                            TextInput::make('total')
+                                                ->label('Line Total')
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->numeric()
+                                                ->afterStateUpdated(function ($state, $set) {
+                                                    $set('total', number_format($state, 2));
+                                                })
+                                                ->default(function ($get) {
+                                                    $quantity = $get('stored_quantity_i') ?? 0;
+                                                    $price = $get('price_i') ?? 0;
+                                                    return $quantity * $price;
+                                                })
+                                                ->formatStateUsing(function ($state) {
+                                                    return number_format($state, 2);
+                                                })
                                         ])
                                         ->columns(4)
                                         ->disabled()
-                                        ->dehydrated(),
+                                        ->dehydrated(true),
+
+                                    Placeholder::make('grand_total')
+                                    ->label('Grand Total of Invoicing Items')
+                                    ->content(fn (Get $get): string =>
+                                        'Rs. ' . number_format(
+                                            collect($get('invoice_items') ?? [])
+                                                ->sum(fn ($item) => floatval($item['total'] ?? 0)),
+                                            2
+                                        )
+                                    ),
                                 ]),
                         ]),
 
-                    Tab::make('Supplier Advance Invoices')
+                    Tab::make('Paid Advance Invoices')
                         ->schema([
                             Section::make('Supplier Advance Invoices')
                                 ->schema([
                                     Repeater::make('supplier_advance_invoices')
                                         ->label('')
                                         ->schema([
-                                            TextInput::make('status')
-                                                ->label('Status')
-                                                ->disabled(),
+                                            Hidden::make('id'),
                                             TextInput::make('payment_type')
                                                 ->label('Payment Type')
                                                 ->disabled(),
@@ -306,7 +345,8 @@ class PurchaseOrderInvoiceResource extends Resource
                                             TextInput::make('paid_amount')
                                                 ->label('Paid Amount')
                                                 ->disabled()
-                                                ->numeric(),
+                                                ->numeric()
+                                                ->dehydrated(),
                                             TextInput::make('remaining_amount')
                                                 ->label('Remaining Amount')
                                                 ->disabled()
@@ -321,7 +361,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->columns(5)
                                         ->columnSpanFull()
                                         ->disableItemCreation()
-                                        ->dehydrated(false),
+                                        ->dehydrated(true),
 
                                     Placeholder::make('total_paid_amount')
                                         ->label('Total Paid Amount')
@@ -344,6 +384,198 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ),
                                 ])
                         ]),
+                    Tab::make('Payment Details')
+                        ->schema([
+                            Section::make('Summary')
+                                ->columns(2)
+                                ->schema([
+                                    Placeholder::make('grand_total')
+                                    ->label('Grand Total of Invoicing Items')
+                                    ->content(fn (Get $get): string =>
+                                        'Rs. ' . number_format(
+                                            collect($get('invoice_items') ?? [])
+                                                ->sum(fn ($item) => floatval($item['total'] ?? 0)),
+                                            2
+                                        )
+                                    ),
+                                    
+                                    Placeholder::make('total_paid_amount')
+                                        ->label('Total Paid Amount')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('supplier_advance_invoices') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+                                    ]),
+
+                            Section::make('Additional Costs')
+                                ->columns(1)
+                                ->schema([
+                                    Repeater::make('additional_costs')
+                                        ->label('Additional Cost Items')
+                                        ->schema([
+                                            TextInput::make('description_c')
+                                                ->label('Description')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('unit_rate_c')
+                                                ->label('Unit Rate')
+                                                ->numeric()
+                                                ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $qty = (float) $get('quantity_c');
+                                                    $set('total_c', $qty * $state);
+                                                })
+                                                ->columnSpan(1),
+
+                                            TextInput::make('quantity_c')
+                                                ->label('Quantity')
+                                                ->numeric()
+                                                ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $rate = (float) $get('unit_rate_c');
+                                                    $set('total_c', $rate * $state);
+                                                })
+                                                ->columnSpan(1),
+
+                                            TextInput::make('uom_c')
+                                                ->label('UOM')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('total_c')
+                                                ->label('Total')
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->numeric()
+                                                ->columnSpan(1),
+
+                                            DatePicker::make('date_c')
+                                                ->label('Date')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('remarks_c')
+                                                ->label('Remarks')
+                                                ->nullable()
+                                                ->columnSpanFull(), 
+                                        ])
+                                        ->columns(6)
+                                        ->createItemButtonLabel('Add Cost Item')
+                                        ->defaultItems(0)
+                                        ->minItems(0)
+                                        ->dehydrated(),
+
+                                    Placeholder::make('total_additional_cost')
+                                        ->label('Total Additional Cost')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('additional_costs') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['total_c'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+                                
+                                ]),
+
+                            Section::make('Discounts / Deductions')
+                                ->columns(1)
+                                ->schema([
+                                    Repeater::make('discounts_deductions')
+                                        ->label('Discounts / Deductions')
+                                        ->schema([
+                                            TextInput::make('description_d')
+                                                ->label('Description')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('unit_rate_d')
+                                                ->label('Unit Rate')
+                                                ->numeric()
+                                                ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $qty = (float) $get('quantity_d');
+                                                    $set('total_d', $qty * $state);
+                                                })
+                                                ->columnSpan(1),
+
+                                            TextInput::make('quantity_d')
+                                                ->label('Quantity')
+                                                ->numeric()
+                                                ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $rate = (float) $get('unit_rate_d');
+                                                    $set('total_d', $rate * $state);
+                                                })
+                                                ->columnSpan(1),
+
+                                            TextInput::make('uom_d')
+                                                ->label('UOM')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('total_d')
+                                                ->label('Total')
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->numeric()
+                                                ->columnSpan(1),
+
+                                            DatePicker::make('date_d')
+                                                ->label('Date')
+                                                ->required()
+                                                ->columnSpan(1),
+
+                                            TextInput::make('remarks_d')
+                                                ->label('Remarks')
+                                                ->nullable()
+                                                ->columnSpanFull(), 
+                                        ])
+                                        ->columns(6)
+                                        ->createItemButtonLabel('Add Discount/Deduction Item')
+                                        ->defaultItems(0)
+                                        ->minItems(0)
+                                        ->dehydrated(),
+
+                                    Placeholder::make('total_discounts_deductions')
+                                        ->label('Total Discounts / Deductions')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('discounts_deductions') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['total_d'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+                                ]),
+                                    
+                            Section::make('Payment Details')
+                                ->columns(2)
+                                ->schema([
+                                    Placeholder::make('payment_due')
+                                        ->label('Payment Due')
+                                        ->content(fn (Get $get): string =>
+                                            'Rs. ' . number_format(
+                                                // Sum of item totals
+                                                (collect($get('items') ?? [])->sum(fn ($item) => floatval($item['total'] ?? 0)))
+                                                +
+                                                (collect($get('additional_costs') ?? [])->sum(fn ($item) => floatval($item['total_c'] ?? 0)))
+                                                -
+                                                (collect($get('supplier_advance_invoices') ?? [])->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)))
+                                                -
+                                                (collect($get('discounts / deductions') ?? [])->sum(fn ($item) => floatval($item['total_d'] ?? 0))),
+                                                2
+                                            )
+                                        ),
+                                ])
+                        ]),
+
                 ])
                 ->columnspanFull(),
         ]);

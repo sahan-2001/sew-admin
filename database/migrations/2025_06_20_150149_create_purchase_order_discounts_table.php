@@ -11,12 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('end_of_day_reports', function (Blueprint $table) {
+        Schema::create('purchase_order_discounts', function (Blueprint $table) {
             $table->id();
-            $table->date('report_date')->unique();
-            $table->text('summary')->nullable();
-            $table->integer('total_output')->default(0);
-            $table->integer('total_waste')->default(0);
+            $table->foreignId('purchase_order_invoice_id')->constrained()->cascadeOnDelete();
+            $table->string('description');
+            $table->decimal('unit_rate', 12, 2);
+            $table->decimal('quantity', 12, 2);
+            $table->string('uom');
+            $table->decimal('total', 12, 2);
+            $table->date('date');
+            $table->text('remarks')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
@@ -24,12 +28,11 @@ return new class extends Migration
         });
     }
 
-
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('end_of_day_reports');
+        Schema::dropIfExists('purchase_order_discounts');
     }
 };

@@ -34,6 +34,11 @@ class SupplierAdvanceInvoice extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function purchaseOrderAdvInvDeduction()
+    {
+        return $this->belongsTo(PurchaseOrderAdvInvDeduction::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

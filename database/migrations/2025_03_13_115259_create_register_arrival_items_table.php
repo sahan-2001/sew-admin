@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->foreignId('item_id')->constrained('inventory_items')->cascadeOnDelete();
             $table->integer('quantity');
             $table->decimal('price', 10, 2);
+            $table->decimal('total', 10, 2)->storedAs('quantity * price');
             $table->string('status')->default('to be inspected');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

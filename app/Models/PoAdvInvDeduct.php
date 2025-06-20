@@ -2,48 +2,32 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-
-class PurchaseOrderInvoice extends Model
+class PoAdvInvDeduct extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'po_adv_inv_deduct';
+    
     protected $fillable = [
-        'purchase_order_id',
-        'register_arrival_id',
-        'provider_type',
-        'provider_id',
-        'status',
-        'grand_total',
-        'adv_paid',
-        'additional_cost',
-        'discount',
-        'due_payment',
+        'purchase_order_invoice_id',
+        'advance_invoice_id',
+        'deduction_amount',
         'created_by',
         'updated_by',
     ];
 
-    public function invoiceItems()
+    public function invoice()
     {
-        return $this->hasMany(PurchaseOrderInvoiceItem::class);
+        return $this->belongsTo(PurchaseOrderInvoice::class, 'purchase_order_invoice_id');
     }
 
     public function supplierAdvanceInvoices()
     {
         return $this->hasMany(SupplierAdvanceInvoice::class);
-    }
-
-    public function purchaseOrder()
-    {
-        return $this->belongsTo(PurchaseOrder::class);
-    }
-
-    public function registerArrival()
-    {
-        return $this->belongsTo(RegisterArrival::class);
     }
 
     protected static function booted()

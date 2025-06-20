@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('end_of_day_reports', function (Blueprint $table) {
+        Schema::create('po_adv_inv_deduct', function (Blueprint $table) {
             $table->id();
-            $table->date('report_date')->unique();
-            $table->text('summary')->nullable();
-            $table->integer('total_output')->default(0);
-            $table->integer('total_waste')->default(0);
+            $table->foreignId('purchase_order_invoice_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('advance_invoice_id')->constrained('supplier_advance_invoices')->cascadeOnDelete();
+            $table->decimal('deduction_amount', 12, 2);
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
@@ -24,12 +23,11 @@ return new class extends Migration
         });
     }
 
-
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('end_of_day_reports');
+        Schema::dropIfExists('po_adv_inv_deduct');
     }
 };

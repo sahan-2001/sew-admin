@@ -18,7 +18,11 @@ return new class extends Migration
             $table->string('provider_type');
             $table->unsignedBigInteger('provider_id');
             $table->string('status')->default('pending');
-
+            $table->decimal('grand_total', 15, 2)->default(0.00);
+            $table->decimal('adv_paid', 15, 2)->default(0.00);
+            $table->decimal('additional_cost', 15, 2)->default(0.00);
+            $table->decimal('discount', 15, 2)->default(0.00);
+            $table->decimal('due_payment', 15, 2)->default(0.00);
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
 
