@@ -84,6 +84,11 @@ class EnterPerformanceRecord extends Model
         return $this->hasMany(EnterQcLabelPerformance::class);
     }
 
+    public function endOfDayReports()
+    {
+        return $this->hasMany(EndOfDayReport::class, 'enter_performance_record_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

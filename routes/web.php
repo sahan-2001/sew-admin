@@ -19,6 +19,8 @@ use App\Http\Controllers\CuttingRecordPrintController;
 use App\Http\Controllers\RegisterArrivalPrintController;
 use App\Http\Controllers\CuttingLabelPrintController;
 use App\Http\Controllers\PerformanceRecordPrintController;
+use App\Http\Controllers\PerformanceRecordViewController;
+
 
 
 /*
@@ -50,6 +52,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ActivityLogResource::routes(Filament::getCurrentPanel());
 });
 
+Route::get('/admin/enter-performance-record/{id}/view', [PerformanceRecordViewController::class, 'show'])
+    ->name('filament.resources.enter-performance-record.view');
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])

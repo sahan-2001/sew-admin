@@ -120,6 +120,8 @@ class EnterPerformanceRecordResource extends Resource
                                                 $set('target_duration', null);
                                                 $set('target', null);
                                                 $set('measurement_unit', null);
+                                                $set('production_line_id', null);
+                                                $set('workstation_id', null);
                                                 $set('model_id', null);
                                                 $set('employee_ids', null);
                                             }),
@@ -155,6 +157,8 @@ class EnterPerformanceRecordResource extends Resource
                                                 $model = \App\Models\AssignDailyOperationLine::with(['assignDailyOperation'])->find($state);
 
                                                 if ($model) {
+                                                    $set('production_line_id', $model->production_line_id);
+                                                    $set('workstation_id', $model->workstation_id);
                                                     $set('model_id', $model->assignDailyOperation->id);
                                                     $set('order_type', $model->assignDailyOperation->order_type);
                                                     $set('order_id', $model->assignDailyOperation->order_id);
@@ -166,6 +170,68 @@ class EnterPerformanceRecordResource extends Resource
                                                     $set('target_duration', $model->target_duration ?? null);
                                                     $set('target', $model->target ?? null);
                                                     $set('measurement_unit', $model->measurement_unit ?? null);
+
+
+                                                    if ($model) {
+                                                    // Check if production line is active
+                                                    $productionLine = \App\Models\ProductionLine::find($model->production_line_id);
+
+                                                    if (!$productionLine || $productionLine->status !== 'active') {
+                                                        Notification::make()
+                                                            ->title('Invalid Production Line')
+                                                            ->body('The selected production line is inactive. Please contact the administrator.')
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+
+                                                        // Clear all related fields
+                                                        $set('production_line_id', null);
+                                                        $set('workstation_id', null);
+                                                        $set('operation_id', null);
+                                                        $set('order_type', null);
+                                                        $set('order_id', null);
+                                                        $set('operation_date', null);
+                                                        $set('machine_setup_time', null);
+                                                        $set('machine_run_time', null);
+                                                        $set('labor_setup_time', null);
+                                                        $set('labor_run_time', null);
+                                                        $set('target_duration', null);
+                                                        $set('target', null);
+                                                        $set('measurement_unit', null);
+                                                        $set('model_id', null);
+                                                        $set('employee_ids', null);
+                                                        return;
+                                                    }
+
+                                                    // Optional: Check if workstation exists
+                                                    $workstationExists = \App\Models\Workstation::where('id', $model->workstation_id)->exists();
+                                                    if (!$workstationExists) {
+                                                        Notification::make()
+                                                            ->title('Invalid Workstation')
+                                                            ->body('The selected workstation does not exist. Please contact the administrator.')
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+
+                                                        $set('production_line_id', null);
+                                                        $set('workstation_id', null);
+                                                        $set('operation_id', null);
+                                                        $set('order_type', null);
+                                                        $set('order_id', null);
+                                                        $set('operation_date', null);
+                                                        $set('machine_setup_time', null);
+                                                        $set('machine_run_time', null);
+                                                        $set('labor_setup_time', null);
+                                                        $set('labor_run_time', null);
+                                                        $set('target_duration', null);
+                                                        $set('target', null);
+                                                        $set('measurement_unit', null);
+                                                        $set('model_id', null);
+                                                        $set('employee_ids', null);
+                                                    }
+
+                                                }
+
 
                                                     $employees = \App\Models\AssignedEmployee::with('user')
                                                         ->where('assign_daily_operation_line_id', $state)
@@ -1749,10 +1815,9 @@ class EnterPerformanceRecordResource extends Resource
                     ),
             ])
             ->actions([
-                Tables\Actions\Action::make('view')
-                ->label('View')
-                ->icon('heroicon-o-eye')
-                ->url(fn ($record) => static::getUrl('view', ['record' => $record])), 
+                Tables\Actions\Action::make('View')
+                    ->url(fn ($record) => route('filament.resources.enter-performance-record.view', $record->id))
+                    ->openUrlInNewTab(),
 
                 Tables\Actions\Action::make('Performance Report')
                     ->label('Report')
@@ -1771,7 +1836,6 @@ class EnterPerformanceRecordResource extends Resource
             'index' => Pages\ListEnterPerformanceRecords::route('/'),
             'create' => Pages\CreateEnterPerformanceRecord::route('/create'),
             'edit' => Pages\EditEnterPerformanceRecord::route('/{record}/edit'),
-            'view' => Pages\ViewEnterPerformanceRecord::route('/{record}/view'), 
         ];
     }
 }

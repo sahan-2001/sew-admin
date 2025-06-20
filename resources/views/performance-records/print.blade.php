@@ -80,7 +80,7 @@
             {{ $companyDetails['address'] ?? '' }}<br>
             Phone: {{ $companyDetails['phone'] ?? '' }} | Email: {{ $companyDetails['email'] ?? '' }}
         </div>
-        <strong>Performance Record Report</strong>
+        <strong>Performance Record Report - Internal Document</strong>
     </div>
 
     <h2>Performance Record Details</h2>
