@@ -24,7 +24,8 @@ use App\Http\Controllers\SupplierAdvanceInvoiceController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
-
+use App\Models\PurchaseOrderInvoice;
+use App\Models\PoInvoicePayment;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,6 +69,7 @@ Route::get('/purchase-order-invoice/{purchase_order_invoice}/pdf',
     [\App\Http\Controllers\PurchaseOrderFinalPdfController::class, 'show'])
     ->name('purchase-order-invoice.pdf');
 
+
 // Advance payment data
 Route::get('/supplier-advance-invoices/{invoice}/payment-receipt', function (
     SupplierAdvanceInvoice $invoice,
@@ -89,6 +91,29 @@ Route::get('/supplier-advance-invoices/{invoice}/payment-receipt', function (
 
     return $pdf->stream('Payment-Receipt-' . str_pad($invoice->id, 5, '0', STR_PAD_LEFT) . '.pdf');
 })->name('supplier-advance.payment-receipt');
+
+
+// Final Invoice payment
+Route::get('/purchase-order-invoices/{invoice}/payment-receipt', function (
+    PurchaseOrderInvoice $invoice,
+    Request $request
+) {
+    if ($request->has('payment')) {
+        $payment = PoInvoicePayment::findOrFail($request->payment);
+    } else {
+        $invoice->load('payments');
+        $payment = null;
+    }
+
+    $pdf = Pdf::loadView('pdf.purchase-order-invoice-payment', [
+        'invoice' => $invoice,
+        'payment' => $payment,
+    ]);
+
+    return $pdf->stream('POI-Payment-Receipt-' . str_pad($invoice->id, 5, '0', STR_PAD_LEFT) . '.pdf');
+})->name('purchase-order-invoice.payment-receipt');
+
+
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])

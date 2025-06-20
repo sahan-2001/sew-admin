@@ -6,6 +6,7 @@ use App\Filament\Resources\PurchaseOrderInvoiceResource\Pages;
 use App\Filament\Resources\PurchaseOrderInvoiceResource\RelationManagers;
 use App\Models\PurchaseOrderInvoice;
 use App\Models\PurchaseOrderInvoiceItem;
+use App\Models\PoInvoicePayment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TextArea;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
@@ -26,8 +28,10 @@ use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Set;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
+use Filament\Notifications\Actions\Action; 
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+
 
 class PurchaseOrderInvoiceResource extends Resource
 {
@@ -613,6 +617,115 @@ class PurchaseOrderInvoiceResource extends Resource
                     ->url(fn (PurchaseOrderInvoice $record): string => route('purchase-order-invoice.pdf', $record))
                     ->openUrlInNewTab(),
 
+                Tables\Actions\Action::make('pay')
+                    ->label('Pay Due Amount')
+                    ->color('primary')
+                    ->icon('heroicon-o-banknotes')
+                    ->visible(fn (PurchaseOrderInvoice $record): bool =>
+                        in_array($record->status, ['pending', 'partially_paid']) &&
+                        $record->due_payment > 0
+                    )
+                    ->form([
+                        Section::make('Payment Information')
+                            ->columns(2)
+                            ->schema([
+                                Placeholder::make('current_due_payment')
+                                    ->label('Due Payment Amount')
+                                    ->content(fn (PurchaseOrderInvoice $record): string =>
+                                        'Rs. ' . number_format((float) $record->due_payment, 2)
+                                    ),
+
+                                Placeholder::make('already_advanced_paid')
+                                    ->label('Already Advanced Paid')
+                                    ->content(fn (PurchaseOrderInvoice $record): string =>
+                                        'Rs. ' . number_format((float) $record->adv_paid, 2)
+                                    ),
+
+                                TextInput::make('payment_amount')
+                                    ->label('Enter Payment Amount')
+                                    ->required()
+                                    ->numeric()
+                                    ->suffix('Rs.')
+                                    ->live()
+                                    ->rules([
+                                        fn (PurchaseOrderInvoice $record) => function ($attribute, $value, $fail) use ($record) {
+                                            if ($value > $record->due_payment) {
+                                                $fail('Payment amount cannot exceed the due payment amount of Rs. ' . number_format($record->due_payment, 2));
+                                            }
+                                            if ($value <= 0) {
+                                                $fail('Payment amount must be greater than zero.');
+                                            }
+                                        },
+                                    ]),
+
+                                Select::make('payment_method')
+                                    ->label('Payment Method')
+                                    ->options([
+                                        'cash' => 'Cash',
+                                        'bank_transfer' => 'Bank Transfer',
+                                        'cheque' => 'Cheque',
+                                        'online' => 'Online Payment',
+                                        'card' => 'Card Payment',
+                                    ])
+                                    ->default('cash')
+                                    ->required(),
+
+                                TextInput::make('payment_reference')
+                                    ->label('Payment Reference/Transaction ID')
+                                    ->placeholder('Enter reference number if applicable'),
+
+                                Textarea::make('notes')
+                                    ->label('Payment Notes')
+                                    ->placeholder('Any additional notes about this payment')
+                                    ->columnSpanFull(),
+
+                                Placeholder::make('logged_user')
+                                    ->label('Payment recorded by')
+                                    ->content(fn () => Auth::user()->name . ' (ID: ' . Auth::id() . ')')
+                                    ->columnSpanFull(),
+                            ]),
+                    ])
+                    ->action(function (PurchaseOrderInvoice $record, array $data) {
+                        $paymentAmount = (float) $data['payment_amount'];
+                        $remainingBefore = $record->due_payment;
+                        $remainingAfter = $remainingBefore - $paymentAmount;
+
+                        // Create payment record
+                        $payment = PoInvoicePayment::create([
+                            'purchase_order_invoice_id' => $record->id,
+                            'payment_amount' => $paymentAmount,
+                            'remaining_amount_before' => $remainingBefore,
+                            'remaining_amount_after' => $remainingAfter,
+                            'payment_method' => $data['payment_method'],
+                            'payment_reference' => $data['payment_reference'] ?? null,
+                            'notes' => $data['notes'] ?? null,
+                        ]);
+
+                        // Update the PurchaseOrderInvoice record
+                        $record->update([
+                            'adv_paid' => $record->adv_paid + $paymentAmount,
+                            'due_payment' => $remainingAfter,
+                            'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
+                            'paid_date' => now(),
+                            'paid_via' => $data['payment_method'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Payment Recorded Successfully')
+                            ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
+                            ->success()
+                            ->actions([
+                                Action::make('viewReceipt')
+                                    ->label('View Receipt PDF')
+                                    ->url(route('purchase-order-invoice.payment-receipt', [
+                                        'invoice' => $record->id,
+                                        'payment' => $payment->id,
+                                    ]))
+                                    ->openUrlInNewTab(),
+                            ])
+                            ->send();
+                    }),
+    
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
             ]);
