@@ -21,7 +21,9 @@ use App\Http\Controllers\CuttingLabelPrintController;
 use App\Http\Controllers\PerformanceRecordPrintController;
 use App\Http\Controllers\PerformanceRecordViewController;
 use App\Http\Controllers\SupplierAdvanceInvoiceController;
-
+use App\Models\SupplierAdvanceInvoice;
+use Illuminate\Http\Request;  
+use App\Models\SuppAdvInvoicePayment;
 
 
 /*
@@ -65,6 +67,28 @@ Route::get('/supplier-advance-invoices/{supplier_advance_invoice}/pdf',
 Route::get('/purchase-order-invoice/{purchase_order_invoice}/pdf', 
     [\App\Http\Controllers\PurchaseOrderFinalPdfController::class, 'show'])
     ->name('purchase-order-invoice.pdf');
+
+// Advance payment data
+Route::get('/supplier-advance-invoices/{invoice}/payment-receipt', function (
+    SupplierAdvanceInvoice $invoice,
+    Request $request
+) {
+    // Load the specific payment if payment ID is provided
+    if ($request->has('payment')) {
+        $payment = SuppAdvInvoicePayment::findOrFail($request->payment);
+    } else {
+        // Fallback to loading all payments
+        $invoice->load('payments');
+        $payment = null;
+    }
+
+    $pdf = Pdf::loadView('pdf.supplier-advance-payment', [
+        'invoice' => $invoice,
+        'payment' => $payment
+    ]);
+
+    return $pdf->stream('Payment-Receipt-' . str_pad($invoice->id, 5, '0', STR_PAD_LEFT) . '.pdf');
+})->name('supplier-advance.payment-receipt');
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])

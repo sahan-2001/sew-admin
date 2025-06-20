@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SupplierAdvanceInvoiceResource\Pages;
 use App\Models\SupplierAdvanceInvoice;
 use App\Models\PurchaseOrder;
+use App\Models\SuppAdvInvoicePayment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TextArea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +23,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
+use Filament\Notifications\Actions\Action; 
+use Filament\Support\Enums\Js;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -270,6 +274,113 @@ class SupplierAdvanceInvoiceResource extends Resource
                 ->url(fn (SupplierAdvanceInvoice $record): string => route('supplier-advance-invoices.pdf', $record))
                 ->openUrlInNewTab(),
                 
+                Tables\Actions\Action::make('pay')
+                    ->label('Pay')
+                    ->color('primary')
+                    ->icon('heroicon-o-banknotes')
+                    ->visible(fn (SupplierAdvanceInvoice $record): bool => 
+                        in_array($record->status, ['pending', 'partially_paid']) && $record->remaining_amount > 0
+                    )
+                    ->form([
+                        Section::make('Payment Information')
+                            ->columns(2)
+                            ->schema([
+                                Placeholder::make('current_remaining_amount')
+                                    ->label('Remaining Amount')
+                                    ->content(fn (SupplierAdvanceInvoice $record): string => 
+                                        'Rs. ' . number_format((float) $record->remaining_amount, 2)
+                                    ),
+                                
+                                Placeholder::make('current_paid_amount')
+                                    ->label('Already Paid Amount')
+                                    ->content(fn (SupplierAdvanceInvoice $record): string => 
+                                        'Rs. ' . number_format((float) $record->paid_amount, 2)
+                                    ),
+                                
+                                TextInput::make('payment_amount')
+                                    ->label('Enter Payment Amount')
+                                    ->required()
+                                    ->numeric()
+                                    ->suffix('Rs.')
+                                    ->live()
+                                    ->rules([
+                                        fn (SupplierAdvanceInvoice $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                            if ($value > $record->remaining_amount) {
+                                                $fail('Payment amount cannot exceed the remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
+                                            }
+                                            if ($value <= 0) {
+                                                $fail('Payment amount must be greater than zero.');
+                                            }
+                                        },
+                                    ]),
+                                
+                                Select::make('payment_method')
+                                    ->label('Payment Method')
+                                    ->options([
+                                        'cash' => 'Cash',
+                                        'bank_transfer' => 'Bank Transfer',
+                                        'cheque' => 'Cheque',
+                                        'online' => 'Online Payment',
+                                        'card' => 'Card Payment',
+                                    ])
+                                    ->default('cash')
+                                    ->required(),
+                                
+                                TextInput::make('payment_reference')
+                                    ->label('Payment Reference/Transaction ID')
+                                    ->placeholder('Enter reference number if applicable'),
+                                
+                                Textarea::make('notes')
+                                    ->label('Payment Notes')
+                                    ->placeholder('Any additional notes about this payment')
+                                    ->columnSpanFull(),
+                                
+                                Placeholder::make('logged_user')
+                                    ->label('Payment will be recorded by')
+                                    ->content(fn (): string => Auth::user()->name . ' (ID: ' . Auth::id() . ')')
+                                    ->columnSpanFull(),
+                            ]),
+                    ])
+                    ->action(function (SupplierAdvanceInvoice $record, array $data) {
+                        $paymentAmount = (float) $data['payment_amount'];
+                        $remainingBefore = $record->remaining_amount;
+                        $remainingAfter = $remainingBefore - $paymentAmount;
+
+                        $payment = SuppAdvInvoicePayment::create([
+                            'supplier_advance_invoice_id' => $record->id,
+                            'payment_amount' => $paymentAmount,
+                            'remaining_amount_before' => $remainingBefore,
+                            'remaining_amount_after' => $remainingAfter,
+                            'payment_method' => $data['payment_method'],
+                            'payment_reference' => $data['payment_reference'] ?? null,
+                            'notes' => $data['notes'] ?? null,
+                        ]);
+
+                        $record->update([
+                            'paid_amount' => $record->paid_amount + $paymentAmount,
+                            'remaining_amount' => $remainingAfter,
+                            'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
+                            'paid_date' => today(),
+                            'paid_via' => $data['payment_method'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Payment Recorded Successfully')
+                            ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
+                            ->success()
+                            ->actions([
+                                Action::make('viewReceipt')
+                                    ->label('View Receipt PDF')
+                                    ->url(route('supplier-advance.payment-receipt', [
+                                        'invoice' => $record->id,
+                                        'payment' => $payment->id,
+                                    ]))
+                                    ->openUrlInNewTab(),
+                            ])
+                            ->send();
+                    }),
+
+
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
             ]);

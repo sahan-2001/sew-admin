@@ -26,6 +26,15 @@ class SupplierAdvanceInvoice extends Model
         'random_code', 
     ];
 
+    protected $casts = [
+        'paid_amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'fix_payment_amount' => 'decimal:2',
+        'percent_calculated_payment' => 'decimal:2',
+        'paid_date' => 'date',
+    ];
+
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
@@ -41,6 +50,21 @@ class SupplierAdvanceInvoice extends Model
         return $this->belongsTo(PurchaseOrderAdvInvDeduction::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(SuppAdvInvoicePayment::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'updated_by');
+    }
+
     protected static function booted()
     {
         static::creating(function ($invoice) {
@@ -53,6 +77,10 @@ class SupplierAdvanceInvoice extends Model
             for ($i = 0; $i < 16; $i++) {
                 $invoice->random_code .= mt_rand(0, 9);
             }
+
+            // Set initial status
+            $invoice->status = 'pending';
+            $invoice->paid_amount = 0;
 
             // Calculate remaining amount
             if ($invoice->fix_payment_amount) {
