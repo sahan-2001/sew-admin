@@ -319,6 +319,42 @@
         </table>
     </div>
 
+    @if(count($invoicePayments) > 0)
+    <div class="section-title">Payment Records</div>
+    <div class="items">
+        <table>
+            <thead>
+                <tr>
+                    <th>Amount</th>
+                    <th>Remaining Before</th>
+                    <th>Remaining After</th>
+                    <th>Method</th>
+                    <th>Reference</th>
+                    <th>Notes</th>
+                    <th>Paid By</th>
+                    <th>Paid At</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoicePayments as $payment)
+                    <tr>
+                        <td>{{ number_format($payment['amount'], 2) }}</td>
+                        <td>{{ number_format($payment['remaining_before'], 2) }}</td>
+                        <td>{{ number_format($payment['remaining_after'], 2) }}</td>
+                        <td>{{ $payment['method'] }}</td>
+                        <td>{{ $payment['reference'] }}</td>
+                        <td>{{ $payment['notes'] }}</td>
+                        <td>{{ $payment['paid_by'] }}</td>
+                        <td>{{ $payment['paid_at'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
+
+
+    
     <div class="signature">
         <div style="flex: 1; text-align: left;">
             <p>Company Representative</p>

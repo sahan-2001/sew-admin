@@ -22,6 +22,7 @@ class PurchaseOrderInvoice extends Model
         'additional_cost',
         'discount',
         'due_payment',
+        'due_payment_for_now',
         'created_by',
         'updated_by',
         'random_code'
@@ -68,20 +69,33 @@ class PurchaseOrderInvoice extends Model
         return $this->hasMany(PoAdvInvDeduct::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(PoInvoicePayment::class);
+    }
+
     protected static function booted()
     {
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+        static::creating(function ($invoice) {
+            // Set created_by and updated_by
+            $invoice->created_by = auth()->id();
+            $invoice->updated_by = auth()->id();
 
-            $model->random_code = '';
+            // Generate 16-digit random code
+            $invoice->random_code = '';
             for ($i = 0; $i < 16; $i++) {
-                $model->random_code .= mt_rand(0, 9);
+                $invoice->random_code .= mt_rand(0, 9);
+            }
+
+            // Set due_payment_for_now equal to due_payment if not set
+            if (is_null($invoice->due_payment_for_now)) {
+                $invoice->due_payment_for_now = $invoice->due_payment ?? 0;
             }
         });
 
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+        static::updating(function ($invoice) {
+            // Update updated_by
+            $invoice->updated_by = auth()->id();
         });
     }
 }

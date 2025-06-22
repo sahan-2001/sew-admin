@@ -339,7 +339,6 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ])
                                         ->columns(5)
                                         ->columnSpanFull()
-                                        ->disabled()
                                         ->minItems(0)
                                         ->disableItemCreation()
                                         ->dehydrated(true),
@@ -623,7 +622,7 @@ class PurchaseOrderInvoiceResource extends Resource
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (PurchaseOrderInvoice $record): bool =>
                         in_array($record->status, ['pending', 'partially_paid']) &&
-                        $record->due_payment > 0
+                        $record->due_payment_for_now > 0
                     )
                     ->form([
                         Section::make('Payment Information')
@@ -632,7 +631,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                 Placeholder::make('current_due_payment')
                                     ->label('Due Payment Amount')
                                     ->content(fn (PurchaseOrderInvoice $record): string =>
-                                        'Rs. ' . number_format((float) $record->due_payment, 2)
+                                        'Rs. ' . number_format((float) $record->due_payment_for_now, 2)
                                     ),
 
                                 Placeholder::make('already_advanced_paid')
@@ -649,8 +648,8 @@ class PurchaseOrderInvoiceResource extends Resource
                                     ->live()
                                     ->rules([
                                         fn (PurchaseOrderInvoice $record) => function ($attribute, $value, $fail) use ($record) {
-                                            if ($value > $record->due_payment) {
-                                                $fail('Payment amount cannot exceed the due payment amount of Rs. ' . number_format($record->due_payment, 2));
+                                            if ($value > $record->due_payment_for_now) {
+                                                $fail('Payment amount cannot exceed the due payment amount of Rs. ' . number_format($record->due_payment_for_now, 2));
                                             }
                                             if ($value <= 0) {
                                                 $fail('Payment amount must be greater than zero.');
@@ -687,7 +686,7 @@ class PurchaseOrderInvoiceResource extends Resource
                     ])
                     ->action(function (PurchaseOrderInvoice $record, array $data) {
                         $paymentAmount = (float) $data['payment_amount'];
-                        $remainingBefore = $record->due_payment;
+                        $remainingBefore = $record->due_payment_for_now;
                         $remainingAfter = $remainingBefore - $paymentAmount;
 
                         // Create payment record
@@ -703,8 +702,7 @@ class PurchaseOrderInvoiceResource extends Resource
 
                         // Update the PurchaseOrderInvoice record
                         $record->update([
-                            'adv_paid' => $record->adv_paid + $paymentAmount,
-                            'due_payment' => $remainingAfter,
+                            'due_payment_for_now' => $remainingAfter,
                             'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
                             'paid_date' => now(),
                             'paid_via' => $data['payment_method'],

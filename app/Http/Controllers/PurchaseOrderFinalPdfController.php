@@ -16,16 +16,15 @@ class PurchaseOrderFinalPdfController extends Controller
 {
     public function show(PurchaseOrderInvoice $purchase_order_invoice)
     {
-        // Eager load all necessary relationships
         $purchase_order_invoice->load([
             'items.inventoryItem',
             'items.location',
             'additionalCosts',
             'discounts',
-            'advanceInvoiceDeductions.advanceInvoice'
+            'advanceInvoiceDeductions.advanceInvoice',
+            'payments.paidByUser'
         ]);
 
-        // Fetch company details
         $company = Company::first(); 
 
         if (!$company) {
@@ -75,7 +74,6 @@ class PurchaseOrderFinalPdfController extends Controller
             ];
         })->toArray() : [];
 
-        // Get additional costs - with null check
         $additionalCosts = $purchase_order_invoice->additionalCosts ? $purchase_order_invoice->additionalCosts->map(function ($cost) {
             return [
                 'description' => $cost->description,
@@ -88,7 +86,6 @@ class PurchaseOrderFinalPdfController extends Controller
             ];
         })->toArray() : [];
 
-        // Get discounts/deductions - with null check
         $discountsDeductions = $purchase_order_invoice->discounts ? $purchase_order_invoice->discounts->map(function ($discount) {
             return [
                 'description' => $discount->description,
@@ -101,7 +98,6 @@ class PurchaseOrderFinalPdfController extends Controller
             ];
         })->toArray() : [];
 
-        // Get advance invoices - with null check
         $advanceInvoices = $purchase_order_invoice->advanceInvoiceDeductions ? $purchase_order_invoice->advanceInvoiceDeductions->map(function ($deduction) {
             return [
                 'advance_invoice_id' => $deduction->advance_invoice_id,
@@ -110,6 +106,20 @@ class PurchaseOrderFinalPdfController extends Controller
                 'paid_date' => $deduction->advanceInvoice->paid_date,
             ];
         })->toArray() : [];
+
+        $invoicePayments = $purchase_order_invoice->payments ? $purchase_order_invoice->payments->map(function ($payment) {
+            return [
+                'amount' => $payment->payment_amount,
+                'remaining_before' => $payment->remaining_amount_before,
+                'remaining_after' => $payment->remaining_amount_after,
+                'method' => $payment->payment_method,
+                'reference' => $payment->payment_reference,
+                'notes' => $payment->notes,
+                'paid_by' => $payment->paidByUser?->name ?? 'System',
+                'paid_at' => $payment->paid_at?->format('Y-m-d H:i:s'),
+            ];
+        })->toArray() : [];
+
 
         // Generate QR Code URL
         $qrCodeData = url('/purchase-order-invoice/' . $purchase_order_invoice->id);
@@ -135,6 +145,7 @@ class PurchaseOrderFinalPdfController extends Controller
             'additionalCosts' => $additionalCosts,
             'discountsDeductions' => $discountsDeductions,
             'advanceInvoices' => $advanceInvoices,
+            'invoicePayments' => $invoicePayments,
             'qrCodePath' => storage_path('app/public/qrcodes/' . $qrCodeFilename),
             'qrCodeData' => $qrCodeData
         ])->setPaper('a4')->stream('purchase-order-final-invoice-' . $purchase_order_invoice->id . '.pdf');
