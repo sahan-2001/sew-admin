@@ -6,31 +6,34 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class EndOfDayReport extends Model
+class EndOfDayReportOperation extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['operated_date', 'recorded_operations_count','created_by', 'updated_by'];
-
-    public function assign_daily_operation()
+    protected $fillable = [
+        'end_of_day_report_id',
+        'enter_performance_record_id',
+        'assign_daily_operation_id',
+        'operation_line_id',
+        'created_by',
+        'updated_by'
+    ];
+    
+    public function report()
     {
-        return $this->belongsTo(AssignDailyOperation::class, 'assign_daily_operation_id');
+        return $this->belongsTo(EndOfDayReport::class, 'end_of_day_report_id');
     }
 
-    public function assign_daily_operation_line()
-    {
-        return $this->belongsTo(AssignDailyOperationLine::class, 'assign_daily_operation_line_id');
-    }
-
-    public function enterPerformanceRecord()
+    public function performanceRecord()
     {
         return $this->belongsTo(EnterPerformanceRecord::class, 'enter_performance_record_id');
     }
 
-    public function operations()
+    public function assignedOperation()
     {
-        return $this->hasMany(EndOfDayReportOperation::class);
+        return $this->belongsTo(AssignDailyOperation::class, 'assign_daily_operation_id');
     }
+
 
     protected static function booted()
     {

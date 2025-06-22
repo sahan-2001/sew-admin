@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('end_of_day_reports', function (Blueprint $table) {
             $table->id();
-            $table->date('report_date')->unique();
-            $table->text('summary')->nullable();
-            $table->integer('total_output')->default(0);
-            $table->integer('total_waste')->default(0);
+            $table->date('operated_date');
+            $table->unsignedInteger('recorded_operations_count')->default(0);
+
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
+            
             $table->timestamps();
             $table->softDeletes();
         });

@@ -21,6 +21,7 @@ use App\Http\Controllers\CuttingLabelPrintController;
 use App\Http\Controllers\PerformanceRecordPrintController;
 use App\Http\Controllers\PerformanceRecordViewController;
 use App\Http\Controllers\SupplierAdvanceInvoiceController;
+use App\Http\Controllers\EndOfDayReportPdfController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -113,7 +114,9 @@ Route::get('/purchase-order-invoices/{invoice}/payment-receipt', function (
     return $pdf->stream('POI-Payment-Receipt-' . str_pad($invoice->id, 5, '0', STR_PAD_LEFT) . '.pdf');
 })->name('purchase-order-invoice.payment-receipt');
 
-
+// End of day reporting route
+Route::get('/end-of-day-report/{endOfDayReport}/pdf', [EndOfDayReportPdfController::class, 'show'])
+    ->name('end-of-day-reports.pdf');
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])
