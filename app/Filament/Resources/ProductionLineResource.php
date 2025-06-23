@@ -36,15 +36,6 @@ class ProductionLineResource extends Resource
             
             Forms\Components\Textarea::make('description')
                 ->nullable(),
-
-            Forms\Components\Select::make('status')
-                ->options([
-                    'active' => 'Active',
-                    'inactive' => 'Inactive',
-                ])
-                ->default('active')
-                ->required(),
-
             
         ]);
 }
@@ -73,6 +64,23 @@ public static function table(Table $table): Table
             Tables\Filters\Filter::make('Inactive')->query(fn (Builder $query) => $query->where('status', 'inactive')),
         ])
         ->actions([
+                Tables\Actions\Action::make('toggleStatus')
+                    ->label(fn ($record) => $record->status === 'active' ? 'Deactivate' : 'Activate')
+                    ->icon(fn ($record) => $record->status === 'active' ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
+                    ->color(fn ($record) => $record->status === 'active' ? 'danger' : 'success')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record) => auth()->user()->can('edit production lines'))
+                    ->action(function ($record) {
+                        $record->status = $record->status === 'active' ? 'inactive' : 'active';
+                        $record->save();
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Status Updated')
+                            ->body("Production Line has been set to '{$record->status}'.")
+                            ->success()
+                            ->send();
+                    }),
+        
                 EditAction::make()
                     ->visible(fn ($record) => 
                         auth()->user()->can('edit production lines') 

@@ -137,36 +137,80 @@ class AssignDailyOperationsResource extends Resource
                                                 ->required()
                                                 ->disabled(fn ($get, $record) => $record !== null)
                                                 ->dehydrated()
+                                                ->searchable()
+                                                ->helperText('You can select only orders with "cut" or "started" status.')
                                                 ->options(function ($get) {
                                                     $orderType = $get('order_type');
+
                                                     if ($orderType === 'customer_order') {
-                                                        return \App\Models\CustomerOrder::pluck('name', 'order_id');
+                                                        return \App\Models\CustomerOrder::with('customer') 
+                                                            ->get()
+                                                            ->mapWithKeys(function ($order) {
+                                                                $customerName = $order->customer->name ?? 'Unknown Customer';
+                                                                $label = "Order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}";
+                                                                return [$order->order_id => $label];
+                                                            });
                                                     } elseif ($orderType === 'sample_order') {
-                                                        return \App\Models\SampleOrder::pluck('name', 'order_id');
+                                                        return \App\Models\SampleOrder::with('customer')
+                                                            ->get()
+                                                            ->mapWithKeys(function ($order) {
+                                                                $customerName = $order->customer->name ?? 'Unknown Customer';
+                                                                $label = "Order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}";
+                                                                return [$order->order_id => $label]; 
+                                                            });
                                                     }
+
                                                     return [];
+
                                                 })
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, $set, $get) {
-                                                    // Clear dependent fields when order_id changes
                                                     $set('customer_id', null);
                                                     $set('wanted_date', null);
 
                                                     $orderType = $get('order_type');
                                                     if ($orderType && $state) {
+                                                        $order = null;
+
                                                         if ($orderType === 'customer_order') {
                                                             $order = \App\Models\CustomerOrder::find($state);
                                                         } elseif ($orderType === 'sample_order') {
                                                             $order = \App\Models\SampleOrder::find($state);
                                                         }
 
-                                                        if ($order) {
-                                                            $set('customer_id', $order->customer_id ?? 'N/A');
-                                                            $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
-                                                        } else {
-                                                            $set('customer_id', 'N/A');
-                                                            $set('wanted_date', 'N/A');
+                                                        if (!$order || !in_array($order->status, ['cut', 'started'])) {
+                                                            \Filament\Notifications\Notification::make()
+                                                                ->title('Invalid Order Status')
+                                                                ->body('Only orders with "Cut" or "Started" status can be selected.')
+                                                                ->danger()
+                                                                ->duration(8000)
+                                                                ->send();
+
+                                                            // Clear form-related fields
+                                                            $set('order_id', null);
+                                                            $set('customer_id', null);
+                                                            $set('wanted_date', null);
+                                                            $set('workstation_id', null);
+                                                            $set('operation_id', null);
+                                                            $set('machine_setup_time', 0);
+                                                            $set('labor_setup_time', 0);
+                                                            $set('machine_run_time', 0);
+                                                            $set('labor_run_time', 0);
+                                                            $set('employee_ids', []);
+                                                            $set('supervisor_ids', []);
+                                                            $set('machine_ids', []);
+                                                            $set('third_party_service_ids', []);
+                                                            $set('target_durattion', null);
+                                                            $set('target_e', null);
+                                                            $set('target_m', null);
+                                                            $set('measurement_unit', null);
+                                                            $set('start_time', null);
+                                                            $set('end_time', null);
+                                                            return;
                                                         }
+
+                                                        $set('customer_id', $order->customer_id ?? 'N/A');
+                                                        $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
 
                                                         $cuttingRecordExists = \App\Models\CuttingRecord::where('order_type', $orderType)
                                                             ->where('order_id', $state)
@@ -180,11 +224,9 @@ class AssignDailyOperationsResource extends Resource
                                                                 ->persistent()
                                                                 ->send();
 
-                                                            // Clear form-related fields
                                                             $set('order_id', null);
                                                             $set('customer_id', null);
                                                             $set('wanted_date', null);
-
                                                             $set('workstation_id', null);
                                                             $set('operation_id', null);
                                                             $set('machine_setup_time', 0);
@@ -310,8 +352,7 @@ class AssignDailyOperationsResource extends Resource
                                                             ->label('Employees')
                                                             ->options(\App\Models\User::role('employee')->pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->columnSpanFull()
-                                                            ->required(),
+                                                            ->columnSpanFull(),
 
                                                         Forms\Components\MultiSelect::make('supervisor_ids')
                                                             ->label('Supervisors')
@@ -501,7 +542,8 @@ class AssignDailyOperationsResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('order_type'),
-                Tables\Columns\TextColumn::make('order_id')->sortable(),
+                Tables\Columns\TextColumn::make('order_id')->sortable()
+                    ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('operation_date')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')

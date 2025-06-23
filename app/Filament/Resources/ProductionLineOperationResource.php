@@ -67,6 +67,7 @@ class ProductionLineOperationResource extends Resource
                                         
                                     Forms\Components\Select::make('status')
                                         ->label('Status')
+                                        ->hidden()
                                         ->options([
                                             'active' => 'Active',
                                             'inactive' => 'Inactive',
@@ -75,26 +76,26 @@ class ProductionLineOperationResource extends Resource
                                         ->columnSpan(2),
 
                                     Forms\Components\Select::make('employee_id')
-                                        ->label('Employee')
+                                        ->label('Default Employee')
                                         ->options(function () {
                                             return User::role('employee')->pluck('name', 'id'); 
                                         })
                                         ->columnSpan(2),
 
                                     Forms\Components\Select::make('supervisor_id')
-                                        ->label('Supervisor')
+                                        ->label('Default Supervisor')
                                         ->options(function () {
                                             return User::role('supervisor')->pluck('name', 'id');
                                         })
                                         ->columnSpan(2),
 
                                     Forms\Components\Select::make('third_party_service_id')
-                                        ->label('Third Party Service')
+                                        ->label('Default Third Party Service')
                                         ->options(ThirdPartyService::all()->pluck('id', 'id'))
                                         ->columnSpan(2),
 
                                     Forms\Components\Select::make('machine_id')
-                                        ->label('Machine')
+                                        ->label('Default Production Machine')
                                         ->options(ProductionMachine::all()->pluck('name', 'id'))
                                         ->columnSpan(3),
 
@@ -142,10 +143,10 @@ class ProductionLineOperationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('name')->sortable(),
-                TextColumn::make('status')->sortable(),
-                TextColumn::make('production_line_id')->sortable(),
+                TextColumn::make('id')->label('Workstation ID')->sortable(),
+                TextColumn::make('name')->label('Workstation Name')->sortable(),
+                TextColumn::make('status')->label('Status')->sortable(),
+                TextColumn::make('production_line_id')->label('Production Line ID')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -158,6 +159,23 @@ class ProductionLineOperationResource extends Resource
                     ),
             ])
             ->actions([
+                Tables\Actions\Action::make('toggleStatus')
+                    ->label(fn ($record) => $record->status === 'active' ? 'Deactivate' : 'Activate')
+                    ->icon(fn ($record) => $record->status === 'active' ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
+                    ->color(fn ($record) => $record->status === 'active' ? 'danger' : 'success')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record) => auth()->user()->can('edit workstations'))
+                    ->action(function ($record) {
+                        $record->status = $record->status === 'active' ? 'inactive' : 'active';
+                        $record->save();
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Workstation Status Updated')
+                            ->body("Workstation has been marked as '{$record->status}'.")
+                            ->success()
+                            ->send();
+                    }),
+        
                 EditAction::make()
                     ->visible(fn ($record) => 
                         auth()->user()->can('edit workstations') 

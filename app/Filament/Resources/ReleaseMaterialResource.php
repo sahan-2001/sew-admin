@@ -50,8 +50,10 @@ class ReleaseMaterialResource extends Resource
 
                             Select::make('order_id')
                                 ->label('Order')
+                                ->helperText('You can select only orders with released status.')
                                 ->required()
-                                ->options(function ($get, $livewire) {
+                                ->searchable()
+                                ->options(function ($get) {
                                     $orderType = $get('order_type');
                                     $options = [];
 
@@ -60,13 +62,20 @@ class ReleaseMaterialResource extends Resource
                                             ->whereNotIn('status', ['planned', 'paused'])
                                             ->get();
 
-                                        $options = $orders->pluck('name', 'order_id')->toArray();
+                                        $options = $orders->mapWithKeys(function ($order) {
+                                            $label = "Order ID - {$order->order_id} | Order Name - {$order->name} | Customer - " . ($order->customer->name ?? 'Unknown Customer');
+                                            return [$order->order_id => $label];
+                                        })->toArray();
+
                                     } elseif ($orderType === 'sample_order') {
                                         $orders = \App\Models\SampleOrder::with('customer')
                                             ->whereNotIn('status', ['planned', 'paused'])
                                             ->get();
 
-                                        $options = $orders->pluck('name', 'order_id')->toArray();
+                                        $options = $orders->mapWithKeys(function ($order) {
+                                            $label = "Order ID - {$order->order_id} | Order Name - {$order->name} | Customer - " . ($order->customer->name ?? 'Unknown Customer');
+                                            return [$order->order_id => $label];
+                                        })->toArray();
                                     }
 
                                     return $options;
@@ -80,7 +89,7 @@ class ReleaseMaterialResource extends Resource
                                         $set('wanted_date', null);
                                         return;
                                     }
-                                    
+
                                     if ($orderType === 'customer_order') {
                                         $order = \App\Models\CustomerOrder::with('customer')->find($state);
                                         if ($order) {
@@ -114,7 +123,7 @@ class ReleaseMaterialResource extends Resource
                                 ->hidden(fn ($get) => !$get('order_id')),
 
                             Textarea::make('notes')
-                                ->label('Notes')
+                                ->label('Notes For Release Materials')
                                 ->columnSpan(2)
                                 ->nullable(),
                         ]),
@@ -125,7 +134,13 @@ class ReleaseMaterialResource extends Resource
                 ->schema([
                     Select::make('cutting_station_id')
                         ->label('Cutting Station')
-                        ->options(fn () => \App\Models\CuttingStation::pluck('name', 'id'))
+                        ->options(function () {
+                            return \App\Models\CuttingStation::all()
+                                ->mapWithKeys(fn ($station) => [
+                                    $station->id => "ID - {$station->id} | Name - {$station->name}"
+                                ])
+                                ->toArray();
+                        })
                         ->searchable()
                         ->reactive()
                         ->afterStateUpdated(function ($state, callable $set) {
@@ -139,7 +154,8 @@ class ReleaseMaterialResource extends Resource
                         ->disabled()
                         ->dehydrated(false)
                         ->visible(fn ($get) => filled($get('cutting_station_id'))),
-                    ]),
+                ]),
+
 
             // Section 3: Items
             Forms\Components\Section::make('Items')
@@ -276,7 +292,7 @@ class ReleaseMaterialResource extends Resource
                 TextColumn::make('id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('order_type')->sortable(),
                 TextColumn::make('order_id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('status'),
+                TextColumn::make('status')->label('Material Status'),
                 TextColumn::make('created_at')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
@@ -385,7 +401,6 @@ class ReleaseMaterialResource extends Resource
         return [
             'index' => Pages\ListReleaseMaterials::route('/'),
             'create' => Pages\CreateReleaseMaterial::route('/create'),
-            'edit' => Pages\EditReleaseMaterial::route('/{record}/edit'),
         ];
     }
 }

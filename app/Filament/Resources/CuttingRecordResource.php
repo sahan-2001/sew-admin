@@ -169,22 +169,37 @@ class CuttingRecordResource extends Resource
                                             ->disabled(fn (string $context) => $context === 'edit'),
 
                                         Select::make('order_id')
-                                            ->label('Order')
+                                            ->label('Order ID')
                                             ->required()
                                             ->searchable()
+                                            ->helperText('You can not select orders with "planned", "Paused", "completed" status')
                                             ->reactive()
                                             ->disabled(fn (string $context) => $context === 'edit')
                                             ->options(function (callable $get) {
                                                 $orderType = $get('order_type');
 
                                                 if ($orderType === 'customer_order') {
-                                                    return \App\Models\CustomerOrder::pluck('name', 'order_id');
+                                                    return \App\Models\CustomerOrder::with('customer')
+                                                        ->whereNotIn('status', ['planned', 'paused', 'completed'])
+                                                        ->get()
+                                                        ->mapWithKeys(function ($order) {
+                                                            $customerName = $order->customer->name ?? 'Unknown Customer';
+                                                            return [$order->order_id => "order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}"];
+                                                        });
                                                 } elseif ($orderType === 'sample_order') {
-                                                    return \App\Models\SampleOrder::pluck('name', 'order_id');
+                                                    return \App\Models\SampleOrder::with('customer')
+                                                        ->whereNotIn('status', ['planned', 'paused', 'completed'])
+                                                        ->get()
+                                                        ->mapWithKeys(function ($order) {
+                                                            $customerName = $order->customer->name ?? 'Unknown Customer';
+                                                            return [$order->order_id => "Order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}"];
+                                                        });
                                                 }
 
                                                 return [];
                                             })
+
+
                                             ->afterStateUpdated(function (callable $get, callable $set, $state) {
                                                 // Clear all first
                                                 $set('customer_id', null);
@@ -309,7 +324,7 @@ class CuttingRecordResource extends Resource
                                             }),
 
                                         Select::make('release_material_id')
-                                        ->label('Select Released Material')
+                                        ->label('Select Released Material Record')
                                         ->options(function (callable $get) {
                                             return $get('available_release_materials') ?? [];
                                         })
@@ -401,16 +416,6 @@ class CuttingRecordResource extends Resource
                                                 $to = $get('operated_time_to');
                                                 $now = now()->format('H:i');
 
-                                                if ($from && $from > $now) {
-                                                    Notification::make()
-                                                        ->title('Invalid time')
-                                                        ->body('You cannot select a future time.')
-                                                        ->danger()
-                                                        ->send();
-                                                    $set('operated_time_from', null);
-                                                    return;
-                                                }
-
                                                 if ($from && $to) {
                                                     $fromTime = \Carbon\Carbon::createFromFormat('H:i', $from);
                                                     $toTime = \Carbon\Carbon::createFromFormat('H:i', $to);
@@ -488,7 +493,7 @@ class CuttingRecordResource extends Resource
                                             ->default([]) 
                                             ->schema([
                                                 // Main Item
-                                                Grid::make(4)->schema([
+                                                Grid::make(3)->schema([
                                                     Hidden::make('item_type')
                                                         ->default(fn (callable $get) => $get('../../../../order_type') === 'customer_order' ? 'CO' : 'SO')
                                                         ->dehydrated(),
@@ -506,6 +511,7 @@ class CuttingRecordResource extends Resource
                                                         ->label('Number of Pieces')
                                                         ->numeric()
                                                         ->required()
+                                                        ->helperText('Be careful, your value may not have been entered correctly.')
                                                         ->visible(fn (callable $get) => empty($get('variations')))
                                                         ->live()
                                                         ->afterStateUpdated(function ($state, callable $get, callable $set) {
@@ -708,9 +714,17 @@ class CuttingRecordResource extends Resource
                                                         if ($totalCut > $grandTotal && $grandTotal > 0) {
                                                             \Filament\Notifications\Notification::make()
                                                                 ->title('Too many pieces assigned')
-                                                                ->body("Total pieces cut ($totalCut) exceed the grand total ($grandTotal).")
+                                                                ->body("Total pieces cut ($totalCut) exceed the grand total ($grandTotal). All values will be reset.")
                                                                 ->danger()
                                                                 ->send();
+
+                                                            $resetEmployees = collect($employees)->map(function ($emp) {
+                                                                $emp['pieces_cut'] = 0;
+                                                                return $emp;
+                                                            })->toArray();
+
+                                                            $set('employees', $resetEmployees);
+                                                            return 0;
                                                         }
 
                                                         return $totalCut;
