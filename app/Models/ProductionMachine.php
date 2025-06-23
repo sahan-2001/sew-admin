@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class ProductionMachine extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name',
         'description',
@@ -31,24 +35,16 @@ class ProductionMachine extends Model
         static::creating(function ($machine) {
             $machine->total_initial_cost = $machine->purchased_cost + ($machine->additional_cost ?? 0);
             $machine->net_present_value = $machine->total_initial_cost - ($machine->cumulative_depreciation ?? 0);
+            $machine->created_by = auth()->id();
+            $machine->updated_by = auth()->id();
         });
 
         static::updating(function ($machine) {
             $machine->total_initial_cost = $machine->purchased_cost + ($machine->additional_cost ?? 0);
             $machine->net_present_value = $machine->total_initial_cost - ($machine->cumulative_depreciation ?? 0);
-        });
-
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
-        });
-
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+            $machine->updated_by = auth()->id();
         });
     }
-
-    
 
     public function calculateDepreciation()
     {
@@ -61,5 +57,19 @@ class ProductionMachine extends Model
         $this->cumulative_depreciation += $this->depreciation_last;
         $this->net_present_value = $this->total_initial_cost - $this->cumulative_depreciation;
         $this->save();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('production_machine')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "ProductionMachine #{$this->id} has been {$eventName}{$userInfo}";
+            });
     }
 }

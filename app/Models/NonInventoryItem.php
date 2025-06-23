@@ -37,10 +37,21 @@ class NonInventoryItem extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly($this->fillable)
+            ->logOnly([
+                'item_id',
+                'name',
+                'non_inventory_category_id',
+                'price',
+                'remarks',
+                'created_by',
+                'updated_by',
+            ])
             ->useLogName('non_inventory_item')
-            ->setDescriptionForEvent(fn(string $eventName) => "NonInventoryItem has been {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                return "NonInventoryItem #{$this->id} has been {$eventName}";
+            });
     }
+
 
     public function category()
     {

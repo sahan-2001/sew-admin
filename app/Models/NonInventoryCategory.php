@@ -29,8 +29,9 @@ class NonInventoryCategory extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'created_by'])
             ->useLogName('non_inventory_category')
-            ->setDescriptionForEvent(fn(string $eventName) => "NonInventoryCategory has been {$eventName}");
-
+            ->setDescriptionForEvent(fn(string $eventName) => 
+                "NonInventoryCategory #{$this->id} has been {$eventName}"
+            );
     }
 
     public function createdBy()

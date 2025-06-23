@@ -63,10 +63,10 @@ class InventoryItem extends Model
                 'special_note',
                 'uom',
                 'available_quantity',
-                'created_by', // Log the created_by field
+                'created_by', 
             ])
             ->useLogName('inventory_item')
-            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName} by User " . ($this->createdBy ? $this->createdBy->email : 'Unknown'));
+            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName}");
     }
 
     protected static function booted()

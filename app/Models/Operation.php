@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Operation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'workstation_id',
@@ -22,6 +24,8 @@ class Operation extends Model
         'machine_run_time',
         'labor_setup_time',
         'labor_run_time',
+        'created_by',
+        'updated_by',
     ];
 
     public function workstation()
@@ -59,5 +63,35 @@ class Operation extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'workstation_id',
+                'description',
+                'status',
+                'employee_id',
+                'supervisor_id',
+                'third_party_service_id',
+                'machine_id',
+                'machine_setup_time',
+                'machine_run_time',
+                'labor_setup_time',
+                'labor_run_time',
+                'created_by',
+                'updated_by',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('operation')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $workstationId = $this->workstation_id ?? 'N/A';
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+
+                return "Operation #{$this->id} (Workstation ID: {$workstationId}) has been {$eventName}{$userInfo}";
+            });
     }
 }

@@ -1,13 +1,16 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class EnterPerformanceRecord extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'assign_daily_operation_id',
@@ -23,6 +26,11 @@ class EnterPerformanceRecord extends Model
         'created_by',
         'updated_by',
     ];
+
+    protected static $logFillable = true;
+    protected static $logOnlyDirty = true;
+    protected static $submitEmptyLogs = false;
+    protected static $logName = 'enter_performance_record';
 
     public function assignDailyOperation()
     {
@@ -99,5 +107,25 @@ class EnterPerformanceRecord extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('enter_performance_record')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $changes = $this->getDirty();
+                $description = "Enter Performance Record #{$this->id} was {$eventName}";
+
+                $user = auth()->user();
+                if ($user) {
+                    $description .= " by {$user->name} (ID: {$user->id})";
+                }
+
+                return $description;
+            });
     }
 }

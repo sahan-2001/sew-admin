@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class CuttingRecord extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'order_type',
@@ -23,6 +25,11 @@ class CuttingRecord extends Model
         'created_by',
         'updated_by',
     ];
+
+    protected static $logFillable = true;
+    protected static $logOnlyDirty = true;
+    protected static $submitEmptyLogs = false;
+    protected static $logName = 'cutting_record';
 
     public function cuttingStation(): BelongsTo
     {
@@ -44,37 +51,37 @@ class CuttingRecord extends Model
         return $this->hasMany(CuttingQualityControl::class);
     }
 
-    public function wasteRecords()
+    public function wasteRecords(): HasMany
     {
         return $this->hasMany(CuttingInventoryWaste::class);
     }
 
-    public function nonInventoryWaste()
+    public function nonInventoryWaste(): HasMany
     {
         return $this->hasMany(CuttingNonInventoryWaste::class);
     }
 
-    public function byProductRecords()
+    public function byProductRecords(): HasMany
     {
         return $this->hasMany(CuttingByProduct::class);
     }
 
-    public function cutPieceLabels()
+    public function cutPieceLabels(): HasMany
     {
         return $this->hasMany(CuttingLabel::class);
     }
 
-    public function orderItems()
+    public function orderItems(): HasMany
     {
         return $this->hasMany(CuttingOrderItem::class);
     }
 
-    public function orderVariations()
+    public function orderVariations(): HasMany
     {
         return $this->hasMany(CuttingOrderVariation::class);
     }
 
-    public function cutMaterials()
+    public function cutMaterials(): HasMany
     {
         return $this->hasMany(ReleaseMaterial::class);
     }
@@ -89,5 +96,29 @@ class CuttingRecord extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('cutting_record')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $changes = $this->getDirty();
+                $description = "Cutting Record #{$this->id} was {$eventName}";
+
+                if ($eventName === 'updated' && !empty($changes)) {
+                    $description .= ". Changes: " . json_encode($changes);
+                }
+
+                $user = auth()->user();
+                if ($user) {
+                    $description .= " by {$user->name}";
+                }
+
+                return $description;
+            });
     }
 }

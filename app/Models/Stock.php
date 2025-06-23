@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Stock extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'item_id',
@@ -18,7 +20,6 @@ class Stock extends Model
         'created_by',
         'updated_by',
     ];
-
 
     public function item()
     {
@@ -71,4 +72,17 @@ class Stock extends Model
         });
     }
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('stock')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "Stock #{$this->id} has been {$eventName}{$userInfo}";
+            });
+    }
 }

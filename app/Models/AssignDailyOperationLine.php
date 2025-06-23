@@ -3,10 +3,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class AssignDailyOperationLine extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'assign_daily_operation_id',
@@ -25,6 +27,32 @@ class AssignDailyOperationLine extends Model
         'created_by',
         'updated_by',
     ];
+
+    protected static $logAttributes = [
+        'assign_daily_operation_id',
+        'production_line_id',
+        'workstation_id',
+        'operation_id',
+        'machine_setup_time',
+        'machine_run_time',
+        'labor_setup_time',
+        'labor_run_time',
+        'target_duration',
+        'target_e',
+        'target_m',
+        'measurement_unit',
+        'status',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected static $logName = 'assign_daily_operation_line';
+
+    // Log only changed attributes
+    protected static $logOnlyDirty = true;
+
+    // Don't log if no attributes changed
+    protected static $submitEmptyLogs = false;
 
     public function assignDailyOperation()
     {
@@ -68,12 +96,14 @@ class AssignDailyOperationLine extends Model
 
     public function employees()
     {
-        return $this->belongsToMany(User::class, 'assign_daily_operation_line_employees', 'operation_line_id', 'employee_id');
+        return $this->belongsToMany(User::class, 'assign_daily_operation_line_employees', 'operation_line_id', 'employee_id')
+            ->withTimestamps();
     }
 
     public function supervisors()
     {
-        return $this->belongsToMany(User::class, 'assign_daily_operation_line_supervisors', 'operation_line_id', 'supervisor_id');
+        return $this->belongsToMany(User::class, 'assign_daily_operation_line_supervisors', 'operation_line_id', 'supervisor_id')
+            ->withTimestamps();
     }
 
     protected static function booted()
@@ -86,5 +116,30 @@ class AssignDailyOperationLine extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(static::$logAttributes)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName(static::$logName)
+            ->setDescriptionForEvent(function(string $eventName) {
+                $user = auth()->user();
+                $userName = $user ? $user->name : 'system';
+                
+                $description = "Daily Operation Line #{$this->id} (Operation: {$this->operation_id}) was {$eventName}";
+                
+                // Add more context if it's an update
+                if ($eventName === 'updated') {
+                    $changes = $this->getDirty();
+                    if (isset($changes['status'])) {
+                        $description .= ". Status changed to: {$changes['status']}";
+                    }
+                }
+                
+                return $description;
+            });
     }
 }

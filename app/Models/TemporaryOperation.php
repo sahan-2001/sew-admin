@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class TemporaryOperation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'order_type',
@@ -57,7 +59,6 @@ class TemporaryOperation extends Model
         return $this->hasMany(TemporaryOperationSupervisor::class, 'temporary_operation_id');
     }
 
-
     public function productionMachines()
     {
         return $this->belongsToMany(ProductionMachine::class, 'temporary_operation_production_machines');
@@ -78,5 +79,19 @@ class TemporaryOperation extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('temporary_operation')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "TemporaryOperation #{$this->id} was {$eventName}{$userInfo}";
+            });
     }
 }

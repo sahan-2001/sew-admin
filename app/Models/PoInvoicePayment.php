@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class PoInvoicePayment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'purchase_order_invoice_id',
@@ -45,5 +47,29 @@ class PoInvoicePayment extends Model
             $payment->paid_by = auth()->id();
             $payment->paid_at = now();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'purchase_order_invoice_id',
+                'payment_amount',
+                'remaining_amount_before',
+                'remaining_amount_after',
+                'payment_method',
+                'payment_reference',
+                'notes',
+                'paid_by',
+                'paid_at',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('po_invoice_payment')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "PoInvoicePayment #{$this->id} has been {$eventName}{$userInfo}";
+            });
     }
 }

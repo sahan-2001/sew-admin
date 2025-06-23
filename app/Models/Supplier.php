@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -59,17 +58,15 @@ class Supplier extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly([
-                'name',
-                'shop_name',
-                'address',
-                'email',
-                'phone_1',
-                'phone_2',
-                'outstanding_balance',
-                'approved_by',
-            ])
-            ->useLogName('supplier');
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('supplier')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "Supplier #{$this->supplier_id} was {$eventName}{$userInfo}";
+            });
     }
 
     protected static function booted()

@@ -59,6 +59,6 @@ class InventoryLocation extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'warehouse_id', 'location_type', 'capacity', 'measurement_unit'])
             ->useLogName('inventory_location')
-            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Location {$this->id} has been {$eventName} by User {$this->created_by}");
+            ->setDescriptionForEvent(fn(string $eventName) => "Inventory Location {$this->id} has been {$eventName} ");
     }
 }

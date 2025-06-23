@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class SuppAdvInvoicePayment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'supplier_advance_invoice_id',
@@ -45,5 +46,19 @@ class SuppAdvInvoicePayment extends Model
             $payment->paid_by = auth()->id();
             $payment->paid_at = now();
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('supp_adv_invoice_payment')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+                return "SuppAdvInvoicePayment #{$this->id} for SupplierAdvanceInvoice ID {$this->supplier_advance_invoice_id} has been {$eventName}{$userInfo}";
+            });
     }
 }

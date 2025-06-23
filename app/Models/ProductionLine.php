@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class ProductionLine extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'name',
@@ -34,4 +36,37 @@ class ProductionLine extends Model
             $model->updated_by = auth()->id();
         });
     }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'name',
+                'description',
+                'status',
+                'created_by',
+                'updated_by',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('production_line')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = auth()->user();
+                $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
+
+                $changes = $this->getChanges();
+
+                $description = "ProductionLine #{$this->id} has been {$eventName}";
+
+                // Highlight if status was changed
+                if ($eventName === 'updated' && isset($changes['status'])) {
+                    $description .= ". Status changed to '{$changes['status']}'";
+                }
+
+                $description .= $userInfo;
+
+                return $description;
+            });
+    }
+
 }

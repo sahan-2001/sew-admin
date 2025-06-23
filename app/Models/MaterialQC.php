@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class MaterialQC extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $table = 'material_qcs';
 
@@ -33,11 +35,18 @@ class MaterialQC extends Model
         'updated_by',
     ];
 
+    // Spatie logging configuration
+    protected static $logFillable = true;
+    protected static $logOnlyDirty = true;
+    protected static $submitEmptyLogs = false;
+    protected static $logName = 'material_qc';
+
+    // Relationships
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
-    
+
     public function inventoryItem()
     {
         return $this->belongsTo(InventoryItem::class, 'item_id'); 
@@ -58,6 +67,7 @@ class MaterialQC extends Model
         return $this->belongsTo(RegisterArrival::class, 'register_arrival_id');
     }
 
+    // Auto-fill created_by and updated_by
     protected static function booted()
     {
         static::creating(function ($model) {
@@ -68,5 +78,29 @@ class MaterialQC extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    // Configure logging behavior
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('material_qc')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $changes = $this->getDirty();
+                $description = "Material QC record #{$this->id} was {$eventName}";
+
+                if ($eventName === 'updated' && !empty($changes)) {
+                    $description .= ". Changes: " . json_encode($changes);
+                }
+
+                if ($user = auth()->user()) {
+                    $description .= " by {$user->name} (ID: {$user->id})";
+                }
+
+                return $description;
+            });
     }
 }

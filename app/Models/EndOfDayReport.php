@@ -5,12 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class EndOfDayReport extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['operated_date', 'recorded_operations_count','created_by', 'updated_by'];
+    protected $fillable = [
+        'operated_date',
+        'recorded_operations_count',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected static $logFillable = true;
+    protected static $logOnlyDirty = true;
+    protected static $submitEmptyLogs = false;
+    protected static $logName = 'end_of_day_report';
 
     public function assign_daily_operation()
     {
@@ -44,4 +56,27 @@ class EndOfDayReport extends Model
         });
     }
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('end_of_day_report')
+            ->setDescriptionForEvent(function (string $eventName) {
+                $changes = $this->getDirty();
+                $description = "End of Day Report #{$this->id} was {$eventName}";
+
+                if ($eventName === 'updated' && !empty($changes)) {
+                    $description .= ". Changes: " . json_encode($changes);
+                }
+
+                $user = auth()->user();
+                if ($user) {
+                    $description .= " by {$user->name} (ID: {$user->id})";
+                }
+
+                return $description;
+            });
+    }
 }
