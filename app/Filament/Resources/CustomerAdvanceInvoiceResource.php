@@ -329,7 +329,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 
                                     // Amount input for fixed payment
                                     TextInput::make('fix_payment_amount')
-                                        ->label('Enter Paid Amount')
+                                        ->label('Enter Received Amount')
                                         ->dehydrated()
                                         ->suffix('Rs.')
                                         ->live()
@@ -366,7 +366,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 
                                     // Percentage input for percentage-based payment
                                     TextInput::make('payment_percentage')
-                                        ->label('Enter Paid Percentage')
+                                        ->label('Enter Received Percentage')
                                         ->dehydrated()
                                         ->suffix('%')
                                         ->required(fn ($get) => $get('payment_type') === 'percentage')
@@ -464,11 +464,8 @@ class CustomerAdvanceInvoiceResource extends Resource
                 TextColumn::make('order_type')->label('Order Type')->sortable(),
                 TextColumn::make('order_id')->label('Order ID')->sortable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('paid_amount')->label('Paid Amount')->sortable()
+                TextColumn::make('received_amount')->label('Received Amount')->sortable()
                     ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
-                TextColumn::make('remaining_amount')->label('Remaining Amount')->sortable()
-                    ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
-                TextColumn::make('status')->label('Status')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [

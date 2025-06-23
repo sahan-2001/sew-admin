@@ -207,7 +207,8 @@ class CustomerOrderResource extends Resource
                         'green' => fn ($state): bool => $state === 'completed',
                     ])
                     ->getStateUsing(fn ($record) => $record->status),
-                TextColumn::make('created_at')->label('Created Date')->dateTime(),
+                TextColumn::make('grand_total')->label('Order Total')
+                    ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -226,11 +227,6 @@ class CustomerOrderResource extends Resource
                     ->visible(fn ($record) => auth()->user()->can('edit customer orders')),
                 DeleteAction::make()
                     ->visible(fn ($record) => auth()->user()->can('delete customer orders')),
-  #              Action::make('view_pdf')
-  #                  ->label('View PDF')
-   #                 ->icon('heroicon-o-document-text')
-    #                ->url(fn ($record) => route('customer-orders.pdf', $record))
-   #                 ->openUrlInNewTab(),
             ])
             ->recordUrl(null);
     }

@@ -30,7 +30,7 @@ class SampleOrderItem extends Model
 
     public function sampleOrder()
     {
-        return $this->belongsTo(SampleOrder::class);
+        return $this->belongsTo(SampleOrder::class, 'sample_order_id', 'order_id');
     }
 
     public function variations()
@@ -56,11 +56,12 @@ class SampleOrderItem extends Model
         ]);
     }
 
-    // Automatically calculate the total before saving
     protected static function booted()
     {
         static::saving(function ($model) {
-            if (!$model->is_variation) {
+            if ($model->is_variation) {
+                $model->total = $model->variations()->sum('total');
+            } else {
                 $model->total = $model->quantity * $model->price;
             }
         });
@@ -72,6 +73,18 @@ class SampleOrderItem extends Model
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
+        });
+
+        static::created(function ($model) {
+            $model->sampleOrder?->recalculateGrandTotal();
+        });
+
+        static::updated(function ($model) {
+            $model->sampleOrder?->recalculateGrandTotal();
+        });
+
+        static::deleted(function ($model) {
+            $model->sampleOrder?->recalculateGrandTotal();
         });
     }
 }

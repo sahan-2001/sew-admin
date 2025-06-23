@@ -42,13 +42,27 @@ class CustomerOrderDescription extends Model
         ]);
     }
 
-    // Automatically calculate the total before saving
     protected static function booted()
     {
         static::saving(function ($model) {
-            if (!$model->is_variation) {
+            if ($model->is_variation) {
+                // Sum totals from variation items (must be loaded or already saved)
+                $model->total = $model->variationItems()->sum('total');
+            } else {
                 $model->total = $model->quantity * $model->price;
             }
+        });
+
+        static::created(function ($model) {
+            $model->customerOrder?->recalculateGrandTotal();
+        });
+
+        static::updated(function ($model) {
+            $model->customerOrder?->recalculateGrandTotal();
+        });
+
+        static::deleted(function ($model) {
+            $model->customerOrder?->recalculateGrandTotal();
         });
 
         static::creating(function ($model) {
@@ -60,4 +74,6 @@ class CustomerOrderDescription extends Model
             $model->updated_by = auth()->id();
         });
     }
+
+
 }

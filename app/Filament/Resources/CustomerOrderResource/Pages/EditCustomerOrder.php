@@ -4,6 +4,9 @@ namespace App\Filament\Resources\CustomerOrderResource\Pages;
 
 use App\Filament\Resources\CustomerOrderResource;
 use App\Models\Customer;
+use App\Models\CustomerOrder;
+use App\Models\CustomerOrderDescription;
+use App\Models\VariationItem;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Forms\Components\TextInput;
@@ -67,58 +70,93 @@ class EditCustomerOrder extends EditRecord
                         Repeater::make('order_items')
                             ->relationship('orderItems')
                             ->schema([
-                                Grid::make(2)
+                                Grid::make(2)->schema([
+                                    TextInput::make('item_name')
+                                        ->label('Item Name')
+                                        ->required(),
+
+                                    Toggle::make('is_variation')
+                                        ->label('Is Variation')
+                                        ->default(false)
+                                        ->reactive()
+                                        ->afterStateUpdated(function (callable $set, $state) {
+                                            if ($state) {
+                                                $set('quantity', 0);
+                                                $set('price', 0);
+                                                $set('total', 0);
+                                            }
+                                        }),
+                                ]),
+
+                                Grid::make(3)->schema([
+                                    TextInput::make('quantity')
+                                        ->label('Quantity')
+                                        ->numeric()
+                                        ->required()
+                                        ->reactive()
+                                        ->afterStateUpdated(function (callable $set, $state, $get) {
+                                            $set('total', $state * $get('price'));
+                                        })
+                                        ->visible(fn ($get) => !$get('is_variation')),
+
+                                    TextInput::make('price')
+                                        ->label('Price')
+                                        ->numeric()
+                                        ->required()
+                                        ->reactive()
+                                        ->afterStateUpdated(function (callable $set, $state, $get) {
+                                            $set('total', $state * $get('quantity'));
+                                        })
+                                        ->visible(fn ($get) => !$get('is_variation')),
+
+                                    TextInput::make('total')
+                                        ->label('Total')
+                                        ->numeric()
+                                        ->disabled()
+                                        ->default(fn ($get) => $get('quantity') * $get('price'))
+                                        ->visible(fn ($get) => !$get('is_variation')),
+                                ]),
+
+                                Repeater::make('variation_items')
+                                    ->label('Variation Items')
+                                    ->relationship('variationItems')
+                                    ->visible(fn ($get) => $get('is_variation'))
                                     ->schema([
-                                        TextInput::make('item_name')
-                                            ->label('Item Name')
-                                            ->required(),
+                                        Grid::make(4)->schema([
+                                            TextInput::make('variation_name')
+                                                ->label('Variation Name')
+                                                ->required(),
 
-                                        Toggle::make('is_variation')
-                                            ->label('Is Variation')
-                                            ->default(false)
-                                            ->reactive()
-                                            ->afterStateUpdated(function (callable $set, $state) {
-                                                if ($state) {
-                                                    $set('quantity', 0);
-                                                    $set('price', 0);
-                                                    $set('total', 0);
-                                                }
-                                            }),
-                                    ]),
+                                            TextInput::make('quantity')
+                                                ->label('Quantity')
+                                                ->numeric()
+                                                ->required()
+                                                ->reactive()
+                                                ->afterStateUpdated(fn (callable $set, $state, $get) =>
+                                                    $set('total', $state * $get('price'))
+                                                ),
 
-                                Grid::make(3)
-                                    ->schema([
-                                        TextInput::make('quantity')
-                                            ->label('Quantity')
-                                            ->numeric()
-                                            ->required()
-                                            ->reactive()
-                                            ->afterStateUpdated(function (callable $set, $state, $get) {
-                                                $set('total', $state * $get('price'));
-                                            })
-                                            ->visible(fn ($get) => !$get('is_variation')),
-
-                                        TextInput::make('price')
-                                            ->label('Price')
-                                            ->numeric()
-                                            ->required()
-                                            ->reactive()
-                                            ->afterStateUpdated(function (callable $set, $state, $get) {
-                                                $set('total', $state * $get('quantity'));
-                                            })
-                                            ->visible(fn ($get) => !$get('is_variation')),
+                                            TextInput::make('price')
+                                                ->label('Price')
+                                                ->numeric()
+                                                ->required()
+                                                ->reactive()
+                                                ->afterStateUpdated(fn (callable $set, $state, $get) =>
+                                                    $set('total', $state * $get('quantity'))
+                                                ),
 
                                         TextInput::make('total')
                                             ->label('Total')
                                             ->numeric()
                                             ->disabled()
-                                            ->default(fn ($get) => $get('quantity') * $get('price'))
-                                            ->visible(fn ($get) => !$get('is_variation')),
-                                    ]),
-
+                                            ->default(fn ($get) => $get('quantity') * $get('price')),
+                                        ]),
+                                    ])
+                                    ->columns(1)
+                                    ->createItemButtonLabel('Add Variation'),
                             ])
                             ->columns(1)
-                            ->createItemButtonLabel('Add Order Item'),
+                            ->createItemButtonLabel('Add Order Item')
                     ]),
             ]);
     }

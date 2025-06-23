@@ -20,6 +20,7 @@ class CustomerOrder extends Model
         'customer_id',
         'special_notes',
         'status',
+        'grand_total',
         'random_code',
         'created_by',
         'updated_by',
@@ -42,6 +43,17 @@ class CustomerOrder extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::saved(function ($model) {
+            $model->recalculateGrandTotal();
+        });
+    }
+
+    // Method to recalculate grand total
+    public function recalculateGrandTotal()
+    {
+        $this->grand_total = $this->orderItems()->sum('total');
+        $this->saveQuietly(); 
     }
     
     public function orderItems()

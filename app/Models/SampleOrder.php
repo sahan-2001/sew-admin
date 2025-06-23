@@ -28,6 +28,7 @@ class SampleOrder extends Model
         'status',
         'added_by', 
         'accepted_by',
+        'grand_total',
         'confirmation_message',
         'rejected_by',
         'rejection_message',
@@ -62,7 +63,7 @@ class SampleOrder extends Model
     
     public function items()
     {
-        return $this->hasMany(SampleOrderItem::class, 'sample_order_id');
+        return $this->hasMany(SampleOrderItem::class, 'sample_order_id', 'order_id');
     }
 
     public function variations()
@@ -91,7 +92,6 @@ class SampleOrder extends Model
             ->setDescriptionForEvent(function (string $eventName) {
                 $description = "Sample order with ID {$this->order_id} has been {$eventName}";
 
-                // Add updated status to the description if status is changed
                 if ($this->isDirty('status')) {
                     $description .= ". New status: {$this->status}";
                 }
@@ -100,4 +100,10 @@ class SampleOrder extends Model
             });
     }
 
+    public function recalculateGrandTotal()
+    {
+        $this->load('items');
+        $this->grand_total = $this->items->sum('total');
+        $this->saveQuietly();
+    }
 }

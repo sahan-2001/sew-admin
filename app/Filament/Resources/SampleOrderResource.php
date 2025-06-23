@@ -204,7 +204,8 @@ class SampleOrderResource extends Resource
                         'green' => fn ($state): bool => $state === 'completed',
                     ])
                     ->getStateUsing(fn ($record) => $record->status),
-                TextColumn::make('created_at')->label('Created Date')->dateTime(),
+                TextColumn::make('grand_total')->label('Total Sale')
+                    ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [

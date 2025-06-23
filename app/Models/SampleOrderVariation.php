@@ -28,11 +28,22 @@ class SampleOrderVariation extends Model
         return $this->belongsTo(SampleOrderItem::class);
     }
 
-    // Automatically calculate the total before saving
     protected static function booted()
     {
         static::saving(function ($model) {
             $model->total = $model->quantity * $model->price;
+        });
+
+        static::created(function ($model) {
+            $model->sampleOrderItem?->save(); 
+        });
+
+        static::updated(function ($model) {
+            $model->sampleOrderItem?->save(); 
+        });
+
+        static::deleted(function ($model) {
+            $model->sampleOrderItem?->save(); 
         });
 
         static::creating(function ($model) {

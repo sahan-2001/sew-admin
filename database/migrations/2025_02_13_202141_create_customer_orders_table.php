@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id');
             $table->text('special_notes')->nullable();
             $table->string('status')->default('planned');
+            $table->decimal('grand_total', 12, 2)->default(0);
             $table->string('random_code')->nullable(); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

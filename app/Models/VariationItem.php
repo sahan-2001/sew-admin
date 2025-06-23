@@ -25,13 +25,24 @@ class VariationItem extends Model
         return $this->belongsTo(CustomerOrderDescription::class, 'customer_order_description_id');
     }
 
-    // Automatically calculate the total before saving
     protected static function booted()
     {
         static::saving(function ($model) {
             $model->total = $model->quantity * $model->price;
         });
-  
+
+        static::created(function ($model) {
+            $model->customerOrderDescription?->save(); 
+        });
+
+        static::updated(function ($model) {
+            $model->customerOrderDescription?->save(); 
+        });
+
+        static::deleted(function ($model) {
+            $model->customerOrderDescription?->save(); 
+        });
+
         static::creating(function ($model) {
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
@@ -41,4 +52,5 @@ class VariationItem extends Model
             $model->updated_by = auth()->id();
         });
     }
+
 }
