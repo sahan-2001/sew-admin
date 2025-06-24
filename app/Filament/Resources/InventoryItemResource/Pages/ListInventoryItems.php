@@ -17,12 +17,17 @@ class ListInventoryItems extends ListRecords
     {
         return [
             ExcelImportAction::make()
+                ->validateUsing([
+                        'name' => ['required'],
+                        'uom' => ['required'],
+                    ])
+                ->label('Import Inv Items')
+                ->modalHeading('Upload Excel File')
+                ->visible(fn () => auth()->user()?->can('inventory.import'))
+                ->modalDescription('Required fields: name, uom'),
 
-            ->validateUsing([
-                    'name' => ['required'],
-                    'uom' => ['required'],
-                ]),
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->visible(fn () => auth()->user()?->can('create inventory items')),
         ];
     }
 }
@@ -31,9 +36,13 @@ class CustomInventoryImport extends EnhancedDefaultImport
 {
     protected function beforeCollection(Collection $collection): void
     {
-        // Validate required headers
-        $requiredHeaders = ['name', 'uom'];
-        $this->validateHeaders($requiredHeaders, $collection);
+        $firstRow = $collection->first(); 
+        if ($firstRow) {
+            $headers = array_keys($firstRow->toArray());
+            \Log::info('Uploaded Excel Headers:', $headers);
+            $requiredHeaders = ['name', 'uom'];
+            $this->validateHeaders($requiredHeaders, $collection);
+        }
     }
 
     protected function beforeCreateRecord(array $data, $row): void

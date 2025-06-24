@@ -82,11 +82,27 @@ class InventoryItemResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->visible(fn (InventoryItem $record) => auth()->user()->can('edit inventory items')),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (InventoryItem $record) => auth()->user()->can('delete inventory items')),
+                ->visible(fn (InventoryItem $record) =>
+                    auth()->user()->can('delete inventory items') &&
+                    $record->available_quantity < 1
+                ),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
-                    ->visible(fn () => auth()->user()->can('delete inventory items')),
+                    ->visible(fn () => auth()->user()->can('delete inventory items'))
+                    ->before(function (Collection $records) {
+                        $blocked = $records->filter(fn ($record) => $record->available_quantity >= 1);
+
+                        if ($blocked->isNotEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot delete selected items')
+                                ->body('One or more items have available quantity and cannot be deleted.')
+                                ->danger()
+                                ->send();
+
+                            abort(403, 'Deletion blocked: Items with available quantity ≥ 1');
+                        }
+                    }),
             ])
             ->recordUrl(null);
     }

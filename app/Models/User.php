@@ -64,6 +64,8 @@ class User extends Authenticatable
             ->setDescriptionForEvent(fn(string $eventName) => "User {$this->id} ({$this->email}) has been {$eventName}");
     }
 
+    public const DEFAULT_PASSWORD = '12345678';
+
     protected static function booted()
     {
         static::creating(function ($model) {

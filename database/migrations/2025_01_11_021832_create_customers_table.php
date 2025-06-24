@@ -22,7 +22,7 @@ class CreateCustomersTable extends Migration
             $table->string('phone_1');
             $table->string('phone_2')->nullable();
             $table->decimal('remaining_balance', 8, 2)->default(0);
-            $table->unsignedBigInteger('requested_by');
+            $table->unsignedBigInteger('requested_by')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

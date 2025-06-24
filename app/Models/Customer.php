@@ -85,6 +85,6 @@ class Customer extends Model
                 'approved_by',
             ])
             ->useLogName('customer')
-            ->setDescriptionForEvent(fn(string $eventName) => "Customer {$this->customer_id} has been {$eventName} by User {$this->requested_by} ({$this->requestedBy->email})");
+            ->setDescriptionForEvent(fn(string $eventName) => "Customer {$this->customer_id} has been {$eventName}");
     }
 }

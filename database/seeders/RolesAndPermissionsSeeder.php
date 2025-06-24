@@ -23,6 +23,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit users']);
         Permission::firstOrCreate(['name' => 'delete users']);
         Permission::firstOrCreate(['name' => 'approve requests']);
+        Permission::firstOrCreate(['name' => 'users.import']);
 
         // Customer request permissions
         Permission::firstOrCreate(['name' => 'view supplier requests']);
@@ -32,17 +33,19 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'approve supplier requests']);
         Permission::firstOrCreate(['name' => 'reject supplier requests']);
 
-        // Customer permissions
+        // Supplier permissions
         Permission::firstOrCreate(['name' => 'view suppliers']);
         Permission::firstOrCreate(['name' => 'create suppliers']);
         Permission::firstOrCreate(['name' => 'edit suppliers']);
         Permission::firstOrCreate(['name' => 'delete suppliers']);
-
+        Permission::firstOrCreate(['name' => 'suppliers.import']);
+        
         // Customer permissions
         Permission::firstOrCreate(['name' => 'view customers']);
         Permission::firstOrCreate(['name' => 'create customers']);
         Permission::firstOrCreate(['name' => 'edit customers']);
         Permission::firstOrCreate(['name' => 'delete customers']);
+        Permission::firstOrCreate(['name' => 'customers.import']);
 
         // Customer request permissions
         Permission::firstOrCreate(['name' => 'view customer requests']);
@@ -58,6 +61,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit inventory items']);
         Permission::firstOrCreate(['name' => 'delete inventory items']);
         Permission::firstOrCreate(['name' => 'add new category']);
+        Permission::firstOrCreate(['name' => 'inventory.import']);
 
         // Purchase order permissions
         Permission::firstOrCreate(['name' => 'view purchase orders']);
@@ -88,6 +92,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'create inventory locations']);
         Permission::firstOrCreate(['name' => 'edit inventory locations']);
         Permission::firstOrCreate(['name' => 'delete inventory locations']);
+        Permission::firstOrCreate(['name' => 'inventory.import']);
 
         // Third Party Services permissions
         Permission::firstOrCreate(['name' => 'view third party services']);
