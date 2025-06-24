@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Str;
 
 class InventoryItem extends Model
 {
@@ -28,12 +29,55 @@ class InventoryItem extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $lastItem = self::latest()->first();
-            $nextId = $lastItem ? $lastItem->id + 1 : 1;
-            $categoryCode = strtoupper(substr($model->category, 0, 3)); // First 3 letters of the category
-            $model->item_code = $categoryCode . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-            $model->created_by = auth()->id(); // Set the created_by field to the current user's ID
+            // Generate a unique item code
+            $model->item_code = self::generateUniqueItemCode($model->category);
+            $model->created_by = auth()->id();
         });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
+
+    /**
+     * Generate a unique item code based on category
+     */
+    protected static function generateUniqueItemCode(string $category): string
+    {
+        $categoryCode = strtoupper(substr($category, 0, 3));
+        $maxAttempts = 10;
+        $attempt = 0;
+
+        do {
+            $attempt++;
+            $lastItem = self::where('item_code', 'like', $categoryCode.'%')
+                ->orderBy('item_code', 'desc')
+                ->first();
+
+            if ($lastItem) {
+                // Extract the numeric part and increment
+                $numericPart = (int) substr($lastItem->item_code, 3);
+                $nextNumber = $numericPart + 1;
+            } else {
+                $nextNumber = 1;
+            }
+
+            $newCode = $categoryCode . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+            // Check if code already exists (unlikely but possible in race conditions)
+            $exists = self::where('item_code', $newCode)->exists();
+
+            if (!$exists) {
+                return $newCode;
+            }
+
+            // If we're here, the code exists - try again with a higher number
+            $nextNumber++;
+
+        } while ($attempt < $maxAttempts);
+
+        // If all attempts fail (extremely unlikely), fall back to UUID
+        return $categoryCode . substr(Str::uuid()->toString(), 0, 4);
     }
 
     protected static $logAttributes = [
@@ -43,16 +87,11 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
-        'created_by', // Log the created_by field
+        'created_by',
     ];
 
     protected static $logName = 'inventory_item';
 
-    /**
-     * Get the options for activity logging.
-     *
-     * @return \Spatie\Activitylog\LogOptions
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -69,6 +108,11 @@ class InventoryItem extends Model
             ->setDescriptionForEvent(fn(string $eventName) => "Inventory Item {$this->id} has been {$eventName}");
     }
 
+    public function registerArrivalItems()
+    {
+        return $this->hasMany(RegisterArrivalItem::class, 'item_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
@@ -79,10 +123,5 @@ class InventoryItem extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
-    }
-
-    public function registerArrivalItems()
-    {
-        return $this->hasMany(RegisterArrivalItem::class, 'item_id');
     }
 }

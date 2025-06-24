@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Actions;
 
 
 class InventoryItemResource extends Resource
@@ -19,7 +20,7 @@ class InventoryItemResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
     protected static ?string $navigationGroup = 'Inventory Management'; 
 
-    public static function form(Forms\Form $form): Forms\Form
+     static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
