@@ -347,6 +347,14 @@ class ReleaseMaterialResource extends Resource
                         ->disableItemMovement()
                         ->columnSpan('full'),
                 ]),
+
+                Tables\Actions\Action::make('Print Release')
+                    ->label('Release Report')
+                    ->icon('heroicon-o-printer')
+                    ->color('primary')
+                    ->url(fn ($record) => route('release-materials.print', $record))
+                    ->openUrlInNewTab()
+                    ->tooltip('Print Release Document'),
                 
                 Tables\Actions\Action::make('re-correction')
                     ->label('Re-correct')

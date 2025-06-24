@@ -22,6 +22,7 @@ use App\Http\Controllers\PerformanceRecordPrintController;
 use App\Http\Controllers\PerformanceRecordViewController;
 use App\Http\Controllers\SupplierAdvanceInvoiceController;
 use App\Http\Controllers\EndOfDayReportPdfController;
+use App\Http\Controllers\ReleaseMaterialPrintController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -117,6 +118,11 @@ Route::get('/purchase-order-invoices/{invoice}/payment-receipt', function (
 // End of day reporting route
 Route::get('/end-of-day-report/{endOfDayReport}/pdf', [EndOfDayReportPdfController::class, 'show'])
     ->name('end-of-day-reports.pdf');
+
+
+// Release material report route 
+Route::get('/release-materials/{releaseMaterial}/print', [ReleaseMaterialPrintController::class, 'print'])
+    ->name('release-materials.print');
 
 // Frontend route
 Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, 'showPurchaseOrder'])

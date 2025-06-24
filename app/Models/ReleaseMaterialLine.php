@@ -36,6 +36,11 @@ class ReleaseMaterialLine extends Model
         return $this->belongsTo(\App\Models\InventoryLocation::class, 'location_id');
     }
 
+    public function stock()
+    {
+        return $this->belongsTo(\App\Models\Stock::class, 'stock_id');
+    }
+
 
     protected static function booted()
     {
