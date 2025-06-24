@@ -12,9 +12,6 @@ class CreatePurchaseOrdersTable extends Migration
             $table->id();
             $table->string('provider_type');
             $table->unsignedBigInteger('provider_id');
-            $table->string('provider_name');
-            $table->string('provider_email');
-            $table->string('provider_phone');
             $table->date('wanted_date');
             $table->text('special_note')->nullable();
             $table->string('status')->default('planned'); 

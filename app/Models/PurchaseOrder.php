@@ -19,9 +19,6 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'provider_type',
         'provider_id',
-        'provider_name',
-        'provider_email',
-        'provider_phone',
         'wanted_date',
         'special_note',
         'status', 
@@ -70,9 +67,6 @@ class PurchaseOrder extends Model
             ->logOnly([
                 'provider_type',
                 'provider_id',
-                'provider_name',
-                'provider_email',
-                'provider_phone',
                 'wanted_date',
                 'special_note',
                 'status', 

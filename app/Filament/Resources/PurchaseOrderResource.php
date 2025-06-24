@@ -52,7 +52,8 @@ class PurchaseOrderResource extends Resource
                                                 'customer' => 'Customer',
                                             ])
                                             ->reactive()
-                                            ->required(),
+                                            ->required()
+                                            ->disabled(fn (string $operation): bool => $operation === 'edit'),
 
                                         Select::make('provider_id')
                                             ->label('Provider')
@@ -73,6 +74,7 @@ class PurchaseOrderResource extends Resource
                                                 return [];
                                             })
                                             ->searchable()
+                                            ->disabled(fn (string $operation): bool => $operation === 'edit')
                                             ->reactive()
                                             ->afterStateUpdated(function ($state, callable $set, $get) {
                                                 if ($get('provider_type') === 'supplier') {
@@ -94,17 +96,14 @@ class PurchaseOrderResource extends Resource
 
                                         TextInput::make('provider_name')
                                             ->label('Name')
-                                            ->required()
                                             ->disabled(),
 
                                         TextInput::make('provider_email')
                                             ->label('Email')
-                                            ->required()
                                             ->disabled(),
 
                                         TextInput::make('provider_phone')
                                             ->label('Phone')
-                                            ->required()
                                             ->disabled(),
 
                                         DatePicker::make('wanted_date')
@@ -125,7 +124,7 @@ class PurchaseOrderResource extends Resource
 
                         Tabs\Tab::make('Order Items')
                             ->schema([
-                                Section::make('Purchase Order Items')
+                                Section::make('Items')
                                     ->schema([
                                         Repeater::make('items')
                                             ->relationship('items')
@@ -134,14 +133,10 @@ class PurchaseOrderResource extends Resource
                                                     ->schema([
                                                         Select::make('inventory_item_id')
                                                             ->label('Item')
-                                                            ->options(function () {
-                                                                return \App\Models\InventoryItem::all()
-                                                                    ->mapWithKeys(fn ($item) => [
-                                                                        $item->inventory_item_id => "{$item->id} | Item Code - {$item->item_code} | Name - {$item->name}",
-                                                                    ])
-                                                                    ->toArray();
-                                                            })
+                                                            ->relationship('inventoryItem', 'name')
                                                             ->searchable()
+                                                            ->preload()
+                                                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->id} | Item Code - {$record->item_code} | Name - {$record->name}")
                                                             ->required(),
 
                                                         TextInput::make('quantity')
