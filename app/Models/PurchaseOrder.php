@@ -24,8 +24,8 @@ class PurchaseOrder extends Model
         'provider_phone',
         'wanted_date',
         'special_note',
-        'user_id',
         'status', 
+        'grand_total',
         'random_code', 
         'created_by',
         'updated_by',
@@ -50,6 +50,13 @@ class PurchaseOrder extends Model
         });
     }
 
+    public function recalculateGrandTotal()
+    {
+        $this->grand_total = $this->items()->sum('total_sale');
+        $this->saveQuietly(); 
+    }
+
+
     protected static $logName = 'purchase_order';
 
     /**
@@ -69,6 +76,7 @@ class PurchaseOrder extends Model
                 'wanted_date',
                 'special_note',
                 'status', 
+                'grand_total'
             ])
             ->useLogName('purchase_order')
             ->setDescriptionForEvent(function (string $eventName) {

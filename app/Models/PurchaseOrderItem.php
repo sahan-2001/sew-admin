@@ -19,6 +19,7 @@ class PurchaseOrderItem extends Model
         'price',
         'arrived_quantity', 
         'remaining_quantity', 
+        'total_sale',
         'created_by',
         'updated_by',
     ];
@@ -39,7 +40,8 @@ class PurchaseOrderItem extends Model
         'quantity',
         'price',
         'arrived_quantity', 
-        'remaining_quantity', 
+        'remaining_quantity',
+        'total_sale',
     ];
 
     protected static $logName = 'purchase_order_item';
@@ -50,7 +52,7 @@ class PurchaseOrderItem extends Model
      * @return \Spatie\Activitylog\LogOptions
      */
 
-     protected static function booted()
+    protected static function booted()
     {
         static::creating(function ($model) {
             $model->created_by = auth()->id();
@@ -60,6 +62,16 @@ class PurchaseOrderItem extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
-    }
-    
+
+        // Trigger grand total recalculation after change
+        static::saved(function ($model) {
+            $model->purchaseOrder->recalculateGrandTotal();
+        });
+
+        static::deleted(function ($model) {
+            if ($model->purchaseOrder) {
+                $model->purchaseOrder->recalculateGrandTotal();
+            }
+        });
+    } 
 }

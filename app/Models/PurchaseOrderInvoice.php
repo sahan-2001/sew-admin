@@ -101,7 +101,6 @@ class PurchaseOrderInvoice extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'purchase_order_id',
-                'register_arrival_id',
                 'provider_type',
                 'provider_id',
                 'status',

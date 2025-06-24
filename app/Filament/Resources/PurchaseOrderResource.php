@@ -24,6 +24,8 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Tabs;
+use Illuminate\Support\Carbon;
 
 class PurchaseOrderResource extends Resource
 {
@@ -37,111 +39,143 @@ class PurchaseOrderResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('provider_type')
-                    ->label('Provider Type')
-                    ->options([
-                        'supplier' => 'Supplier',
-                        'customer' => 'Customer',
-                    ])
-                    ->reactive()
-                    ->required(),
-                Select::make('provider_id')
-                    ->label('Provider')
-                    ->options(function ($get) {
-                        if ($get('provider_type') === 'supplier') {
-                            return Supplier::all()->pluck('name', 'supplier_id');
-                        } elseif ($get('provider_type') === 'customer') {
-                            return Customer::all()->pluck('name', 'customer_id');
-                        }
-                        return [];
-                    })
-                    ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(function ($state, callable $set, $get) {
-                        if ($get('provider_type') === 'supplier') {
-                            $supplier = Supplier::find($state);
-                            if ($supplier) {
-                                $set('provider_name', $supplier->name);
-                                $set('provider_email', $supplier->email);
-                                $set('provider_phone', $supplier->phone_1);
-                            } else {
-                                $set('provider_name', null);
-                                $set('provider_email', null);
-                                $set('provider_phone', null);
-                            }
-                        } elseif ($get('provider_type') === 'customer') {
-                            $customer = Customer::find($state);
-                            if ($customer) {
-                                $set('provider_name', $customer->name);
-                                $set('provider_email', $customer->email);
-                                $set('provider_phone', $customer->phone_1);
-                            } else {
-                                $set('provider_name', null);
-                                $set('provider_email', null);
-                                $set('provider_phone', null);
-                            }
-                        }
-                    }),
-                TextInput::make('provider_name')
-                    ->label('Name')
-                    ->required()
-                    ->readonly(),
-                TextInput::make('provider_email')
-                    ->label('Email')
-                    ->required()
-                    ->readonly(),
-                TextInput::make('provider_phone')
-                    ->label('Phone')
-                    ->required()
-                    ->readonly(),
-                DatePicker::make('wanted_date')
-                    ->label('Wanted Delivery Date')
-                    ->required(),
-                Textarea::make('special_note')
-                    ->label('Special Note')
-                    ->nullable(),
-                
-                Section::make('Order Items')
-                ->schema([
-                    Repeater::make('items')
-                        ->relationship('items')
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    Select::make('inventory_item_id')
-                                        ->label('Item')
-                                        ->relationship('inventoryItem', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->required(),
+                Tabs::make('Purchase Order')
+                    ->tabs([
+                        Tabs\Tab::make('Order Details')
+                            ->schema([
+                                Section::make('Order Information')
+                                    ->schema([
+                                        Select::make('provider_type')
+                                            ->label('Provider Type')
+                                            ->options([
+                                                'supplier' => 'Supplier',
+                                                'customer' => 'Customer',
+                                            ])
+                                            ->reactive()
+                                            ->required(),
 
-                                    TextInput::make('quantity')
-                                        ->label('Quantity')
-                                        ->numeric()
-                                        ->required()
-                                        ->live() // Ensures the state is updated immediately
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            $set('remaining_quantity', $state); // Set remaining_quantity
-                                            $set('arrived_quantity', 0); // Default arrived_quantity to 0
-                                        }),
+                                        Select::make('provider_id')
+                                            ->label('Provider')
+                                            ->options(function ($get) {
+                                                if ($get('provider_type') === 'supplier') {
+                                                    return \App\Models\Supplier::all()
+                                                        ->mapWithKeys(fn ($supplier) => [
+                                                            $supplier->supplier_id => "Supplier ID - {$supplier->supplier_id} | Name - {$supplier->name}"
+                                                        ])
+                                                        ->toArray();
+                                                } elseif ($get('provider_type') === 'customer') {
+                                                    return \App\Models\Customer::all()
+                                                        ->mapWithKeys(fn ($customer) => [
+                                                            $customer->customer_id => "Customer ID - {$customer->customer_id} | Name - {$customer->name}"
+                                                        ])
+                                                        ->toArray();
+                                                }
+                                                return [];
+                                            })
+                                            ->searchable()
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $set, $get) {
+                                                if ($get('provider_type') === 'supplier') {
+                                                    $supplier = \App\Models\Supplier::find($state);
+                                                    $set('provider_name', $supplier?->name);
+                                                    $set('provider_email', $supplier?->email);
+                                                    $set('provider_phone', $supplier?->phone_1);
+                                                } elseif ($get('provider_type') === 'customer') {
+                                                    $customer = \App\Models\Customer::find($state);
+                                                    $set('provider_name', $customer?->name);
+                                                    $set('provider_email', $customer?->email);
+                                                    $set('provider_phone', $customer?->phone_1);
+                                                } else {
+                                                    $set('provider_name', null);
+                                                    $set('provider_email', null);
+                                                    $set('provider_phone', null);
+                                                }
+                                            }),
 
-                                    TextInput::make('price')
-                                        ->label('Price')
-                                        ->numeric()
-                                        ->required(),
-                                    
-                                    Hidden::make('remaining_quantity')
-                                        ->default(fn ($get) => $get('quantity')),
-                    
-                                    Hidden::make('arrived_quantity')
-                                        ->default(0),
+                                        TextInput::make('provider_name')
+                                            ->label('Name')
+                                            ->required()
+                                            ->disabled(),
+
+                                        TextInput::make('provider_email')
+                                            ->label('Email')
+                                            ->required()
+                                            ->disabled(),
+
+                                        TextInput::make('provider_phone')
+                                            ->label('Phone')
+                                            ->required()
+                                            ->disabled(),
+
+                                        DatePicker::make('wanted_date')
+                                            ->label('Wanted Delivery Date')
+                                            ->required()
+                                            ->minDate(now()),
+
+                                        Textarea::make('special_note')
+                                            ->label('Special Note')
+                                            ->nullable()
+                                            ->columnSpan(2), 
+
+                                        Hidden::make('user_id')
+                                            ->default(fn () => auth()->id()),
+                                    ])
+                                    ->columns(2)
                                 ]),
-                        ])
-                        ->columns(1)
-                        ->createItemButtonLabel('Add Order Item'),
-                ]),
-                Hidden::make('user_id')
-                    ->default(fn () => auth()->id()),
+
+                        Tabs\Tab::make('Order Items')
+                            ->schema([
+                                Section::make('Purchase Order Items')
+                                    ->schema([
+                                        Repeater::make('items')
+                                            ->relationship('items')
+                                            ->schema([
+                                                Grid::make(3)
+                                                    ->schema([
+                                                        Select::make('inventory_item_id')
+                                                            ->label('Item')
+                                                            ->options(function () {
+                                                                return \App\Models\InventoryItem::all()
+                                                                    ->mapWithKeys(fn ($item) => [
+                                                                        $item->inventory_item_id => "{$item->id} | Item Code - {$item->item_code} | Name - {$item->name}",
+                                                                    ])
+                                                                    ->toArray();
+                                                            })
+                                                            ->searchable()
+                                                            ->required(),
+
+                                                        TextInput::make('quantity')
+                                                            ->label('Quantity')
+                                                            ->numeric()
+                                                            ->required()
+                                                            ->live()
+                                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                                $set('remaining_quantity', $state);
+                                                                $set('arrived_quantity', 0);
+                                                            }),
+
+                                                        TextInput::make('price')
+                                                            ->label('Price')
+                                                            ->numeric()
+                                                            ->required(),
+
+                                                        Hidden::make('remaining_quantity')
+                                                            ->default(fn ($get) => $get('quantity')),
+
+                                                        Hidden::make('arrived_quantity')
+                                                            ->default(0),
+                                                    ]),
+                                            ])
+                                            ->columns(1)
+                                            ->minItems(1)
+                                            ->createItemButtonLabel('Add Order Item')
+                                            ->columnSpan('full'),
+                                    ])
+                                    ->columnSpan('full'),
+                            ])
+                            ->columns(1),
+                    ])
+                    ->columnSpan('full'),
             ]);
     }
 

@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
 
 
+
 class PurchaseOrderInvoiceResource extends Resource
 {
     protected static ?string $model = PurchaseOrderInvoice::class;
@@ -75,133 +76,154 @@ class PurchaseOrderInvoiceResource extends Resource
                                             $set('provider_id', $purchaseOrder->provider_id);
                                             $set('wanted_date', $purchaseOrder->wanted_date);
 
+                                            // Fetch ALL register arrivals for this purchase order
                                             $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $numericId)->get();
 
-                                            $set('register_arrival_options', $registerArrivals->mapWithKeys(function ($r) {
-                                                $location = \App\Models\InventoryLocation::find($r->location_id);
-                                                $locationName = $location ? $location->name : 'N/A';
-                                                return [
-                                                    $r->id => "ID - {$r->id} | Location - {$locationName} | Received Date - {$r->received_date}"
-                                                ];
-                                            })->toArray());
-                                           
+                                            $allItems = collect();
+                                            $hasToBeInspected = false;
+
+                                            foreach ($registerArrivals as $arrival) {
+                                                $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)->get();
+
+                                                foreach ($items as $item) {
+                                                    if ($item->status === 'to be inspected') {
+                                                        $hasToBeInspected = true;
+                                                        break 2; 
+                                                    }
+
+                                                    $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
+                                                    $location = \App\Models\InventoryLocation::find($arrival->location_id);
+
+                                                    $allItems->push([
+                                                        'register_arrival_id' => $arrival->id,
+                                                        'location_name' => $location?->name,
+                                                        'received_date' => $arrival->received_date,
+                                                        'item_id' => $item->item_id,
+                                                        'item_code' => $inventoryItem?->item_code,
+                                                        'name' => $inventoryItem?->name,
+                                                        'quantity' => $item->quantity,
+                                                        'price' => $item->price,
+                                                        'status' => $item->status,
+                                                        'total' => $item->total,
+                                                    ]);
+                                                }
+                                            }
+
+                                            if ($hasToBeInspected) {
+                                                Notification::make()
+                                                    ->title('QC Incomplete')
+                                                    ->body('There are items where Material QC is not completed.')
+                                                    ->danger()
+                                                    ->duration(8000)
+                                                    ->send();
+
+                                                self::clearForm($set); 
+                                                return;
+                                            }
+
+                                            $set('items', $allItems->toArray());
+
+
+                                            // Process ALL Material QC records for this purchase order
+                                            $allQcRecords = collect();
+                                            foreach ($registerArrivals as $arrival) {
+                                                $qcRecords = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
+                                                    ->where('purchase_order_id', $numericId)
+                                                    ->get();
+
+                                                foreach ($qcRecords as $record) {
+                                                    $item = \App\Models\InventoryItem::find($record->item_id);
+                                                    $storeLocation = \App\Models\InventoryLocation::find($record->store_location_id);
+                                                    $arrivalLocation = \App\Models\InventoryLocation::find($arrival->location_id);
+
+                                                    $allQcRecords->push([
+                                                        'register_arrival_id' => $arrival->id,
+                                                        'arrival_location' => $arrivalLocation?->name,
+                                                        'received_date' => $arrival->received_date,
+                                                        'item_code' => $item?->item_code,
+                                                        'item_name' => $item?->name,
+                                                        'inspected_quantity' => $record->inspected_quantity,
+                                                        'approved_qty' => $record->approved_qty,
+                                                        'returned_qty' => $record->returned_qty,
+                                                        'scrapped_qty' => $record->scrapped_qty,
+                                                        'add_returned' => $record->add_returned,
+                                                        'add_scrap' => $record->add_scrap,
+                                                        'available_to_store' => $record->available_to_store,
+                                                        'cost_of_item' => $record->cost_of_item,
+                                                        'store_location' => $storeLocation?->name,
+                                                        'total_returned' => (float) ($record->returned_qty ?? 0) + (float) ($record->add_returned ?? 0),
+                                                        'total_scrapped' => (float) ($record->scrapped_qty ?? 0) + (float) ($record->add_scrap ?? 0),
+                                                    ]);
+                                                }
+                                            }
+
+                                            $set('material_qc_items', $allQcRecords->toArray());
+
+                                            // Process ALL Invoice Items from all register arrivals
+                                            $invoiceItems = collect();
+
+                                            // Add passed items from all register arrivals
+                                            foreach ($registerArrivals as $arrival) {
+                                                $passedItems = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)
+                                                    ->where('status', 'QC Passed')
+                                                    ->get();
+
+                                                foreach ($passedItems as $item) {
+                                                    $invItem = \App\Models\InventoryItem::find($item->item_id);
+                                                    $location = \App\Models\InventoryLocation::find($arrival->location_id);
+
+                                                    $qty = (float) $item->quantity;
+                                                    $price = (float) $item->price;
+
+                                                    $invoiceItems->push([
+                                                        'register_arrival_id' => $arrival->id,
+                                                        'item_id_i' => $item->item_id,
+                                                        'item_code_i' => $invItem?->item_code,
+                                                        'item_name_i' => $invItem?->name,
+                                                        'stored_quantity_i' => $qty,
+                                                        'location_id_i' => $arrival->location_id,
+                                                        'location_name_i' => $location?->name,
+                                                        'price_i' => $price,
+                                                        'total' => round($qty * $price, 2),
+                                                    ]);
+                                                }
+
+                                                // Add Material QC items with available_to_store > 0
+                                                $materialQCs = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
+                                                    ->where('purchase_order_id', $numericId)
+                                                    ->get();
+
+                                                foreach ($materialQCs as $qc) {
+                                                    if ($qc->available_to_store > 0) {
+                                                        $invItem = \App\Models\InventoryItem::find($qc->item_id);
+                                                        $location = \App\Models\InventoryLocation::find($qc->store_location_id);
+
+                                                        $qty = (float) $qc->available_to_store;
+                                                        $price = (float) $qc->cost_of_item;
+
+                                                        $invoiceItems->push([
+                                                            'register_arrival_id' => $arrival->id,
+                                                            'item_id_i' => $qc->item_id,
+                                                            'item_code_i' => $invItem?->item_code,
+                                                            'item_name_i' => $invItem?->name,
+                                                            'stored_quantity_i' => $qty,
+                                                            'location_id_i' => $qc->store_location_id,
+                                                            'location_name_i' => $location?->name,
+                                                            'price_i' => $price,
+                                                            'total' => round($qty * $price, 2),
+                                                        ]);
+                                                    }
+                                                }
+                                            }
+
+                                            $set('invoice_items', $invoiceItems->toArray());
+
                                             // Get advance invoices
                                             $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
                                                 ->whereIn('status', ['paid', 'partially_paid'])
                                                 ->get();
 
                                             $set('advance_invoices', $advanceInvoices->toArray());
-                                            }),
-
-                                    Select::make('register_arrival_id')
-                                        ->label('Register Arrival ID')
-                                        ->options(fn (callable $get) => $get('register_arrival_options') ?? [])
-                                        ->disabled(fn (callable $get) => empty($get('register_arrival_options')))
-                                        ->reactive()
-                                        ->required()
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            // Fetch RegisterArrivalItems
-                                            $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $state)->get();
-
-                                            $set('items', $items->map(function ($item) {
-                                                $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
-                                                return [
-                                                    'id' => $item->id,
-                                                    'item_id' => $item->item_id,
-                                                    'item_code' => $inventoryItem?->item_code,
-                                                    'name' => $inventoryItem?->name,
-                                                    'quantity' => $item->quantity,
-                                                    'price' => $item->price,
-                                                    'status' => $item->status,
-                                                    'total' => $item->total,
-                                                ];
-                                            })->toArray());
-
-                                            $purchaseOrderId = ltrim($get('purchase_order_id'), '0');
-                                            $qcRecords = \App\Models\MaterialQC::where('register_arrival_id', $state)
-                                                ->where('purchase_order_id', $purchaseOrderId)
-                                                ->get();
-
-                                            $set('material_qc_items', $qcRecords->map(function ($record) {
-                                                $item = \App\Models\InventoryItem::find($record->item_id);
-                                                $storeLocation = \App\Models\InventoryLocation::find($record->store_location_id);
-
-                                                return [
-                                                    'item_code' => $item?->item_code,
-                                                    'inspected_quantity' => $record->inspected_quantity,
-                                                    'approved_qty' => $record->approved_qty,
-                                                    'returned_qty' => $record->returned_qty,
-                                                    'scrapped_qty' => $record->scrapped_qty,
-
-                                                    'add_returned' => $record->add_returned,
-                                                    'add_scrap' => $record->add_scrap,
-                                                    'available_to_store' => $record->available_to_store,
-
-                                                    'cost_of_item' => $record->cost_of_item,
-                                                    'store_location' => $storeLocation?->name,
-
-                                                    'total_returned' => (float) ($record->returned_qty ?? 0) + (float) ($record->add_returned ?? 0),
-                                                    'total_scrapped' => (float) ($record->scrapped_qty ?? 0) + (float) ($record->add_scrap ?? 0),
-                                                ];
-                                            })->toArray());
-
-                                            // Fetch Invoice Items
-                                            $invoiceItems = collect();
-
-                                            $passedItems = \App\Models\RegisterArrivalItem::where('register_arrival_id', $state)
-                                                ->where('status', 'QC Passed')
-                                                ->get();
-
-                                            foreach ($passedItems as $item) {
-                                                $invItem = \App\Models\InventoryItem::find($item->item_id);
-
-                                                // Get the related RegisterArrival to access location_id
-                                                $registerArrival = \App\Models\RegisterArrival::find($item->register_arrival_id);
-                                                $location = \App\Models\InventoryLocation::find($registerArrival?->location_id);
-
-                                                $qty = (float) $item->quantity;
-                                                $price = (float) $item->price;
-
-                                                $invoiceItems->push([
-                                                    'item_id_i' => $item->item_id,
-                                                    'item_code_i' => $invItem?->item_code,
-                                                    'item_name_i' => $invItem?->name,
-                                                    'stored_quantity_i' => $qty,
-                                                    'location_id_i' => $registerArrival?->location_id,
-                                                    'location_name_i' => $location?->name,
-                                                    'price_i' => $price,
-                                                    'total' => round($qty * $price, 2),
-                                                ]);
-                                            }
-
-                                            $materialQCs = \App\Models\MaterialQC::where('register_arrival_id', $state)
-                                                ->where('purchase_order_id', $purchaseOrderId)
-                                                ->get();
-
-                                            foreach ($materialQCs as $qc) {
-                                                if ($qc->available_to_store > 0) {
-                                                    $invItem = \App\Models\InventoryItem::find($qc->item_id);
-                                                    $location = \App\Models\InventoryLocation::find($qc->store_location_id);
-
-                                                    $qty = (float) $qc->available_to_store;
-                                                    $price = (float) $qc->cost_of_item;
-
-                                                    $invoiceItems->push([
-                                                        'item_id_i' => $qc->item_id,
-                                                        'item_code_i' => $invItem?->item_code,
-                                                        'item_name_i' => $invItem?->name,
-                                                        'stored_quantity_i' => $qty,
-                                                        'location_id_i' => $qc->store_location_id,
-                                                        'location_name_i' => $location?->name,
-                                                        'price_i' => $price,
-                                                        'total' => round($qty * $price, 2),
-                                                    ]);
-                                                }
-                                            }
-
-                                            $set('invoice_items', $invoiceItems->toArray());
-
-
                                         }),
 
                                     TextInput::make('provider_type')->label('Provider Type')->disabled()->dehydrated(true),
@@ -209,9 +231,13 @@ class PurchaseOrderInvoiceResource extends Resource
                                     TextInput::make('provider_name')->label('Provider Name')->disabled(),
                                     TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
                                 ]),
+                                
                                 Repeater::make('items')
-                                    ->label('Items in Register Arrival')
+                                    ->label('Items from All Register Arrivals')
                                     ->schema([
+                                        TextInput::make('register_arrival_id')->label('Register Arrival ID')->disabled(),
+                                        TextInput::make('location_name')->label('Location')->disabled(),
+                                        TextInput::make('received_date')->label('Received Date')->disabled(),
                                         TextInput::make('item_id')->label('Item ID')->disabled()->hidden(),
                                         TextInput::make('item_code')->label('Item Code')->disabled(),
                                         TextInput::make('name')->label('Item Name')->disabled(),
@@ -226,7 +252,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                     ->columns(6),
 
                                 Placeholder::make('grand_total_of_arrivals')
-                                    ->label('Grand Total of Arrived Items')
+                                    ->label('Grand Total of All Arrived Items')
                                     ->content(fn (Get $get): string =>
                                         'Rs. ' . number_format(
                                             collect($get('items') ?? [])
@@ -239,22 +265,25 @@ class PurchaseOrderInvoiceResource extends Resource
 
                     Tab::make('Material QC')
                         ->schema([
-                            Section::make('Material QC Records')
+                            Section::make('Material QC Records from All Register Arrivals')
                                 ->schema([
                                     Repeater::make('material_qc_items')
                                         ->schema([
+                                            TextInput::make('register_arrival_id')->label('Register Arrival ID')->disabled(),
+                                            TextInput::make('arrival_location')->label('Arrival Location')->disabled(),
+                                            TextInput::make('received_date')->label('Received Date')->disabled(),
                                             TextInput::make('item_code')->label('Item Code')->disabled(),
-                                            TextInput::make('inspected_quantity')->label('Inspected Qty')->disabled()->live(),
+                                            TextInput::make('item_name')->label('Item Name')->disabled(),
+                                            TextInput::make('inspected_quantity')->label('Inspected Qty')->disabled(),
                                             TextInput::make('approved_qty')->label('Approved Qty')->disabled(),
                                             TextInput::make('returned_qty')->label('Returned Qty')->disabled(),
                                             TextInput::make('scrapped_qty')->label('Scrapped Qty')->disabled(),
-
                                             TextInput::make('total_returned')->label('Total Returned Qty')->disabled(),
                                             TextInput::make('total_scrapped')->label('Total Scrapped Qty')->disabled(),
                                             TextInput::make('available_to_store')->label('Total Stored Qty')->disabled(),
                                             TextInput::make('store_location')->label('Stored Location')->disabled(),
                                         ])
-                                        ->columns(5)
+                                        ->columns(6)
                                         ->disabled()
                                         ->dehydrated(false),
                                 ]),
@@ -262,10 +291,11 @@ class PurchaseOrderInvoiceResource extends Resource
                         
                     Tab::make('Invoicing Item Details')
                         ->schema([
-                            Section::make('Invoicing/ Stored Item Details')
+                            Section::make('Invoicing/ Stored Item Details from All Register Arrivals')
                                 ->schema([
                                     Repeater::make('invoice_items')
                                         ->schema([
+                                            TextInput::make('register_arrival_id')->label('Register Arrival ID')->disabled()->dehydrated(),
                                             TextInput::make('item_id_i')->label('Item ID')->disabled()->dehydrated(),
                                             TextInput::make('item_code_i')->label('Item Code')->disabled(),
                                             TextInput::make('item_name_i')->label('Item Name')->disabled(),
@@ -279,12 +309,12 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->dehydrated()
                                                 ->numeric(),
                                         ])
-                                        ->columns(4)
+                                        ->columns(5)
                                         ->disabled()
                                         ->dehydrated(true),
 
                                     Placeholder::make('grand_total')
-                                    ->label('Grand Total of Invoicing Items')
+                                    ->label('Grand Total of All Invoicing Items')
                                     ->content(fn (Get $get): string =>
                                         'Rs. ' . number_format(
                                             collect($get('invoice_items') ?? [])
@@ -364,7 +394,6 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ),
                                 ])
                         ]),
-
 
                     Tab::make('Payment Details')
                         ->schema([
@@ -563,7 +592,6 @@ class PurchaseOrderInvoiceResource extends Resource
         ]);
     }
 
-
     protected static function clearForm(callable $set): void
     {
         $set('items', []);
@@ -571,13 +599,10 @@ class PurchaseOrderInvoiceResource extends Resource
         $set('provider_name', null);
         $set('provider_id', null);
         $set('wanted_date', null);
-        $set('location_id', null);
-        $set('location_name', null);
-        $set('received_date', null);
         $set('invoice_number', null);
-        $set('register_arrival_id', null);
-        $set('register_arrival_options', []);
         $set('material_qc_items', []);
+        $set('invoice_items', []);
+        $set('advance_invoices', []);
     }
 
     public static function table(Table $table): Table
