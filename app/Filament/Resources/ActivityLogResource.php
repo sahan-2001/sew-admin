@@ -43,6 +43,7 @@ class ActivityLogResource extends Resource
                 Tables\Columns\TextColumn::make('causer.name')->label('Caused By')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('created_at')->label('Created At')->sortable()->dateTime(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\Filter::make('created_at')
                     ->form([
@@ -58,68 +59,86 @@ class ActivityLogResource extends Resource
                         return $query
                             ->when($data['created_from'], fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
                             ->when($data['created_until'], fn ($query, $date) => $query->whereDate('created_at', '<=', $date));
-                    }),
+                    }),            
             ])
             ->headerActions([
                 Tables\Actions\Action::make('export')
-                    ->label('Export')
+                    ->label('Export Activity Logs')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('info')
                     ->form([
-                        Forms\Components\Select::make('export_type')
-                            ->label('Export Type')
-                            ->options([
-                                'pdf' => 'PDF',
-                                'excel' => 'Excel',
-                            ])
-                            ->required(),
+                        Forms\Components\Checkbox::make('today')
+                            ->label('Export Today')
+                            ->reactive(),
+
                         Forms\Components\DatePicker::make('from_date')
                             ->label('From Date')
-                            ->required()
-                            ->visible(fn ($get) => !$get('today')),
+                            ->maxDate(now()->toDateString())
+                            ->visible(fn (callable $get) => ! $get('today'))
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $toDate = $get('to_date');
+                                // If from_date is set after to_date, reset to_date
+                                if ($toDate && $state > $toDate) {
+                                    $set('to_date', null);
+                                }
+                            }),
+
                         Forms\Components\DatePicker::make('to_date')
                             ->label('To Date')
-                            ->required()
-                            ->visible(fn ($get) => !$get('today')),
-                        Forms\Components\Checkbox::make('today')
-                            ->label('Today')
+                            ->maxDate(now()->toDateString())
+                            ->visible(fn (callable $get) => ! $get('today'))
                             ->reactive()
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('from_date', $state ? now()->startOfDay() : null))
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('to_date', $state ? now()->endOfDay() : null)),
-                        Forms\Components\Select::make('user_scope')
-                            ->label('User Scope')
-                            ->options([
-                                'self' => 'Self Activity',
-                                'all' => 'All User Activity',
-                            ])
-                            ->visible(fn () => auth()->user()->can('view other users activity logs'))
-                            ->required(),
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $fromDate = $get('from_date');
+                                // If to_date is set before from_date, reset from_date
+                                if ($fromDate && $state < $fromDate) {
+                                    $set('from_date', null);
+                                }
+                            }),
+
+                        Forms\Components\TextInput::make('permission_type')
+                            ->label('Permission Type')
+                            ->disabled()
+                            ->default(fn () => auth()->user()->can('view other users activity logs') ? 'View All Users' : 'View Self Only'),
                     ])
                     ->action(function (array $data) {
+                        $user = auth()->user();
+
+                        $canViewAll = $user->can('view other users activity logs');
+                        $canViewSelf = $user->can('view self activity logs');
+
+                        if (! $canViewAll && ! $canViewSelf) {
+                            abort(403, 'You do not have permission to export activity logs.');
+                        }
+
+                        // Adjust dates if "today" selected
                         if ($data['today']) {
-                            $data['from_date'] = now()->startOfDay();
-                            $data['to_date'] = now()->endOfDay();
+                            $fromDate = now()->toDateString();
+                            $toDate = now()->toDateString();
+                        } else {
+                            $fromDate = $data['from_date'] ?? null;
+                            $toDate = $data['to_date'] ?? null;
                         }
 
-                        if (!isset($data['user_scope'])) {
-                            $data['user_scope'] = 'self';
-                        }
-
-                        $query = Activity::query()
-                            ->whereBetween('created_at', [$data['from_date'], $data['to_date']]);
-
-                        if ($data['user_scope'] === 'self' || !auth()->user()->can('view other users activity logs')) {
-                            $query->where('causer_id', auth()->id());
-                        }
-
-                        $activities = $query->get();
-
-                        if ($data['export_type'] === 'pdf') {
-                            $pdf = PDF::loadView('exports.activities', ['activities' => $activities]);
-                            return $pdf->download('activities.pdf');
-                        } elseif ($data['export_type'] === 'excel') {
-                            return Excel::download(new ActivitiesExport($activities), 'activities.xlsx');
-                        }
-                    }),
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\ActivitiesExport(
+                                viewAll: $canViewAll,
+                                fromDate: $fromDate,
+                                toDate: $toDate,
+                            ),
+                            'activity-logs-' . now()->format('Y-m-d_H-i-s') . '.xlsx'
+                        );
+                    })
+                    ->visible(fn () =>
+                        auth()->user()->can('view self activity logs') ||
+                        auth()->user()->can('view other users activity logs')
+                    )
+                    ->modalHeading('Export Activity Logs')
+                    ->modalDescription('Select "Today" or specify a date range. The export respects your permission scope.')
+                    ->modalButton('Download')
             ]);
+
     }
 
     public static function getPages(): array

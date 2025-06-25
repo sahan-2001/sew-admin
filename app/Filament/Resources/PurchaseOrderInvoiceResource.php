@@ -618,7 +618,8 @@ class PurchaseOrderInvoiceResource extends Resource
                 TextColumn::make('adv_paid')->label('Advance Paid')->sortable()->toggleable(),
                 TextColumn::make('additional_cost')->label('Additional Cost')->sortable()->toggleable(),
                 TextColumn::make('discount')->label('Discounts/Deductions')->sortable()->toggleable(),
-                TextColumn::make('due_payment')->label('Payment Due')->sortable(),
+                TextColumn::make('due_payment')->label('Full Payment Due')->sortable(),
+                TextColumn::make('due_payment_for_now')->label('Payment Due (now)')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -646,6 +647,7 @@ class PurchaseOrderInvoiceResource extends Resource
                     ->color('primary')
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (PurchaseOrderInvoice $record): bool =>
+                        auth()->user()?->can('pay purchase order invoice') &&
                         in_array($record->status, ['pending', 'partially_paid']) &&
                         $record->due_payment_for_now > 0
                     )
