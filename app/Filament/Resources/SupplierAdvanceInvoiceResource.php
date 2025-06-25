@@ -278,8 +278,10 @@ class SupplierAdvanceInvoiceResource extends Resource
                     ->label('Pay')
                     ->color('primary')
                     ->icon('heroicon-o-banknotes')
-                    ->visible(fn (SupplierAdvanceInvoice $record): bool => 
-                        in_array($record->status, ['pending', 'partially_paid']) && $record->remaining_amount > 0
+                    ->visible(fn (SupplierAdvanceInvoice $record): bool =>
+                        auth()->user()?->can('pay supp adv invoice') &&
+                        in_array($record->status, ['pending', 'partially_paid']) &&
+                        $record->remaining_amount > 0
                     )
                     ->form([
                         Section::make('Payment Information')

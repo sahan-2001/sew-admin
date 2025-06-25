@@ -195,10 +195,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Purchase order invoices
         Permission::firstOrCreate(['name' => 'create purchase order invoices']);
         Permission::firstOrCreate(['name' => 'purchase_order_invoices.export']);
+        Permission::firstOrCreate(['name' => 'pay purchase order invoice']);
 
         // Purchase order Advance invoices
         Permission::firstOrCreate(['name' => 'supplier advance invoices.export']);
         Permission::firstOrCreate(['name' => 'create supplier advance invoices']);
+        Permission::firstOrCreate(['name' => 'pay supp adv invoice']);
 
         // Stocks
         Permission::firstOrCreate(['name' => 'create emergency stocks']);
