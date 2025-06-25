@@ -12,6 +12,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException; 
 use Illuminate\Database\UniqueConstraintViolationException; 
+use pxlrbt\FilamentExcel\Actions\Pages\ExportAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use pxlrbt\FilamentExcel\Columns\Column;
 
 class ListUsers extends ListRecords
 {
@@ -30,6 +33,33 @@ class ListUsers extends ListRecords
                 ->modalDescription('Required fields: name, email, password')
                 ->visible(fn () => auth()->user()?->can('users.import')),
 
+            ExportAction::make()
+                ->label('Export Users')
+                ->color('info')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->exports([
+                    ExcelExport::make()
+                        ->fromTable()
+                        ->withFilename('users-' . now()->format('Y-m-d-H-i-s'))
+                        ->withColumns([
+                            Column::make('id')->heading('ID'),
+                            Column::make('name')->heading('Name'),
+                            Column::make('email')->heading('Email'),
+                            Column::make('created_by')->heading('Created By'),
+                            Column::make('updated_by')->heading('Updated By'),
+                            Column::make('created_at')->heading('Created At')->getStateUsing(
+                                fn ($record) => optional($record->created_at)->format('Y-m-d H:i:s')
+                            ),
+                            Column::make('updated_at')->heading('Updated At')->getStateUsing(
+                                fn ($record) => optional($record->updated_at)->format('Y-m-d H:i:s')
+                            ),
+                        ])
+                ])
+                ->modalHeading('Export Users')
+                ->modalDescription('Export all system user details.')
+                ->modalButton('Start Export')
+                ->visible(fn () => auth()->user()?->can('users.export')),
+                
             Actions\CreateAction::make()
                 ->visible(fn () => auth()->user()?->can('create users')),
         ];

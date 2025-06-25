@@ -11,6 +11,9 @@ use EightyNine\ExcelImport\EnhancedDefaultImport;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\UniqueConstraintViolationException;
+use pxlrbt\FilamentExcel\Actions\Pages\ExportAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use pxlrbt\FilamentExcel\Columns\Column;
 
 class ListSuppliers extends ListRecords
 {
@@ -32,6 +35,39 @@ class ListSuppliers extends ListRecords
                 ->modalDescription('Required fields: name, shop_name, address, email, phone_1')
                 ->visible(fn () => auth()->user()?->can('suppliers.import')),
 
+            ExportAction::make()
+                ->label('Export Suppliers')
+                ->color('info')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->exports([
+                    ExcelExport::make()
+                        ->fromTable()
+                        ->withFilename('suppliers-' . now()->format('Y-m-d-H-i-s'))
+                        ->withColumns([
+                            Column::make('supplier_id')->heading('Supplier ID'),
+                            Column::make('name')->heading('Name'),
+                            Column::make('shop_name')->heading('Shop Name'),
+                            Column::make('address')->heading('Address'),
+                            Column::make('email')->heading('Email'),
+                            Column::make('phone_1')->heading('Phone 1'),
+                            Column::make('phone_2')->heading('Phone 2'),
+                            Column::make('outstanding_balance')->heading('Outstanding Balance')->getStateUsing(
+                                fn ($record) => number_format($record->outstanding_balance ?? 0, 2)
+                            ),
+                            Column::make('created_at')->heading('Created At')->getStateUsing(
+                                fn ($record) => optional($record->created_at)->format('Y-m-d H:i:s')
+                            ),
+                            Column::make('updated_at')->heading('Updated At')->getStateUsing(
+                                fn ($record) => optional($record->updated_at)->format('Y-m-d H:i:s')
+                            ),
+                        ])
+                        ->modifyQueryUsing(fn ($query) => $query->with('approvedBy'))
+                ])
+                ->modalHeading('Export Suppliers')
+                ->modalDescription('Export supplier records including approval details.')
+                ->modalButton('Start Export')
+                ->visible(fn () => auth()->user()?->can('suppliers.export')),
+    
             Actions\CreateAction::make()
                 ->visible(fn () => auth()->user()?->can('create suppliers')),
         ];

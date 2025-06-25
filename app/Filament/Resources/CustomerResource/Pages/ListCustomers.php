@@ -7,6 +7,9 @@ use App\Models\Customer;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Pages\Actions;
 use EightyNine\ExcelImport\ExcelImportAction;
+use pxlrbt\FilamentExcel\Actions\Pages\ExportAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use pxlrbt\FilamentExcel\Columns\Column;
 use EightyNine\ExcelImport\EnhancedDefaultImport;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +34,45 @@ class ListCustomers extends ListRecords
                 ->modalHeading('Upload Customers Excel File')
                 ->modalDescription('Required fields: name, shop_name, address, email, phone_1')
                 ->visible(fn () => auth()->user()?->can('customers.import')),
+                
+            ExportAction::make()
+                ->label('Export Customer List')
+                ->color('info')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->exports([
+                    ExcelExport::make()
+                        ->fromTable()
+                        ->withFilename('customers-export-' . date('Y-m-d-H-i-s'))
+                        ->withColumns([
+                            Column::make('customer_id')->heading('ID'),
+                            Column::make('name')->heading('Customer Name'),
+                            Column::make('shop_name')->heading('Shop Name'),
+                            Column::make('address')->heading('Address'),
+                            Column::make('email')->heading('Email'),
+                            Column::make('phone_1')->heading('Primary Phone'),
+                            Column::make('phone_2')->heading('Secondary Phone'),
+                            Column::make('remaining_balance')
+                                ->heading('Balance')
+                                ->getStateUsing(fn ($record) => number_format($record->remaining_balance, 2)),
+                            Column::make('requested_by')
+                                ->heading('Requested By')
+                                ->getStateUsing(fn ($record) => $record->requestedBy?->name),
+                            Column::make('approved_by')
+                                ->heading('Approved By')
+                                ->getStateUsing(fn ($record) => $record->approvedBy?->name),
+                            Column::make('created_at')
+                                ->heading('Created Date')
+                                ->getStateUsing(fn ($record) => $record->created_at->format('Y-m-d H:i:s')),
+                            Column::make('updated_at')
+                                ->heading('Updated Date')
+                                ->getStateUsing(fn ($record) => $record->updated_at->format('Y-m-d H:i:s')),
+                        ])
+                        ->modifyQueryUsing(fn ($query) => $query->with(['requestedBy', 'approvedBy']))
+                ])
+                ->modalHeading('Export Customers')
+                ->modalDescription('Select the format and columns to export')
+                ->modalButton('Start Export')
+                ->visible(fn () => auth()->user()?->can('customers.export')),
 
             Actions\CreateAction::make()
                 ->visible(fn () => auth()->user()?->can('create customers')),
