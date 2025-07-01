@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('third_party_service_processes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('third_party_service_id')->constrained()->onDelete('cascade');
-            $table->integer('sequence_number');
             $table->string('description');
             $table->string('related_table')->nullable();
             $table->unsignedBigInteger('related_record_id')->nullable();

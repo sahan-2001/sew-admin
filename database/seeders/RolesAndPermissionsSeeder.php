@@ -243,7 +243,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'email' => 'admin@example.com',
         ], [
             'name' => 'admin',
-            'password' => bcrypt('12345678'), // Hash the password
+            'password' => bcrypt('12345678'), 
+            'phone_1' => 123456789, 
+            'nic' => 123456789,
+            'address_line_1' => 'Default Address',
+            'city' => 'Default City',
         ]);
 
         // Create the main company

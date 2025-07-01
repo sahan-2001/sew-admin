@@ -12,7 +12,7 @@ class ThirdPartyService extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['supplier_id', 'name', 'created_by', 'updated_by'];
+    protected $fillable = ['supplier_id', 'name', 'service_total', 'created_by', 'updated_by'];
 
     public function supplier()
     {
@@ -34,6 +34,12 @@ class ThirdPartyService extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    }
+
+    public function updateServiceTotal()
+    {
+        $total = $this->processes()->sum('total');
+        $this->update(['service_total' => $total]);
     }
 
     public function getActivitylogOptions(): LogOptions

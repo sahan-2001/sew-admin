@@ -1865,7 +1865,7 @@ class EnterPerformanceRecordResource extends Resource
                     ->openUrlInNewTab(),
                 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => $record->status !== 'completed'),
+                    ->visible(fn ($record) => $record->status !== 'reported'),
             ]);
     }
 

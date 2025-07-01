@@ -3,10 +3,8 @@
 namespace App\Filament\Resources\AssignDailyOperationsResource\Pages;
 
 use App\Filament\Resources\AssignDailyOperationsResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-
 
 class EditAssignDailyOperations extends EditRecord
 {
@@ -22,11 +20,11 @@ class EditAssignDailyOperations extends EditRecord
         $this->callHook('beforeFill');
 
         $data = $this->getRecord()->toArray();
-        
+
         $data['order_type'] = $this->getRecord()->order_type;
         $data['order_id'] = $this->getRecord()->order_id;
         $data['operation_date'] = $this->getRecord()->operation_date;
-        
+
         // Load lines with nested relations
         $data['daily_operations'] = $this->getRecord()->lines()->with([
             'productionLine',
@@ -35,7 +33,7 @@ class EditAssignDailyOperations extends EditRecord
             'assignedEmployees.user',
             'assignedSupervisors.user',
             'assignedProductionMachines',
-            'assignedThirdPartyServices'
+            'assignedThirdPartyServices',
         ])->get()->map(function ($line) {
             return [
                 'id' => $line->id,
@@ -57,29 +55,27 @@ class EditAssignDailyOperations extends EditRecord
                 'target_e' => $line->target_e,
                 'target_m' => $line->target_m,
                 'measurement_unit' => $line->measurement_unit,
-                
-
+                'disabled' => $line->status === 'reported', // ✅ Mark as disabled if reported
             ];
         })->toArray();
-
 
         $this->form->fill($data);
 
         $this->callHook('afterFill');
     }
 
-
-    // Add this method to handle the update, creating missing related records if needed
     protected function handleRecordUpdate($record, array $data): Model
     {
-        // Update main record
         $record->update($data);
 
-        // Update the daily operations and their related records
         foreach ($data['daily_operations'] as $operation) {
-            // Find or create the operation line
+            if (!empty($operation['disabled'])) {
+                continue; // ✅ Skip lines that are reported
+            }
+
+            // Update or create operation line
             $line = $record->lines()->updateOrCreate(
-                ['id' => $operation['id'] ?? null], // If ID exists, update; otherwise create new
+                ['id' => $operation['id'] ?? null],
                 [
                     'production_line_id' => $operation['production_line_id'],
                     'workstation_id' => $operation['workstation_id'],
@@ -87,7 +83,7 @@ class EditAssignDailyOperations extends EditRecord
                     'machine_setup_time' => $operation['machine_setup_time'],
                     'labor_setup_time' => $operation['labor_setup_time'],
                     'machine_run_time' => $operation['machine_run_time'],
-                    'labor_run_time' => $operation['labor_run_time'] ,
+                    'labor_run_time' => $operation['labor_run_time'],
                     'target_duration' => $operation['target_duration'] ?? null,
                     'target_e' => $operation['target_e'] ?? null,
                     'target_m' => $operation['target_m'] ?? null,
@@ -97,7 +93,6 @@ class EditAssignDailyOperations extends EditRecord
                 ]
             );
 
-            // Sync or create related entities (employees, supervisors, etc.)
             $this->syncOrCreateRelations($line, 'assignedEmployees', 'user_id', $operation['employee_ids'] ?? []);
             $this->syncOrCreateRelations($line, 'assignedSupervisors', 'user_id', $operation['supervisor_ids'] ?? []);
             $this->syncOrCreateRelations($line, 'assignedProductionMachines', 'production_machine_id', $operation['machine_ids'] ?? []);
@@ -107,13 +102,10 @@ class EditAssignDailyOperations extends EditRecord
         return $record;
     }
 
-
     protected function syncOrCreateRelations($line, string $relationName, string $foreignKey, array $ids)
     {
-        // Delete old relations not in the new list
         $line->$relationName()->whereNotIn($foreignKey, $ids)->delete();
 
-        // Add new relations if not existing
         foreach ($ids as $id) {
             $line->$relationName()->firstOrCreate(
                 [$foreignKey => $id],
@@ -126,5 +118,4 @@ class EditAssignDailyOperations extends EditRecord
     {
         return $this->getResource()::getUrl();
     }
-
 }

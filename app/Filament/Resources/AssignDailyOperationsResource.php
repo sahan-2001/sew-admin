@@ -294,7 +294,8 @@ class AssignDailyOperationsResource extends Resource
                                                             ->options(fn () => ProductionLine::pluck('name', 'id'))
                                                             ->reactive()
                                                             ->afterStateUpdated(fn ($set) => $set('workstation_id', null))
-                                                            ->required(),
+                                                            ->required()
+                                                            ->disabled(fn ($get) => $get('disabled')),
 
                                                         Select::make('workstation_id')
                                                             ->label('Workstation')
@@ -303,7 +304,8 @@ class AssignDailyOperationsResource extends Resource
                                                             ->reactive()
                                                             ->afterStateUpdated(fn ($set) => $set('operation_id', null))
                                                             ->required()
-                                                            ->disabled(fn (callable $get) => $get('production_line_id') === null),
+                                                            ->disabled(fn (callable $get) => $get('production_line_id') === null || $get('disabled')),
+
 
                                                         Select::make('operation_id')
                                                             ->label('Operation')
@@ -314,7 +316,7 @@ class AssignDailyOperationsResource extends Resource
                                                             )
                                                             ->required()
                                                             ->columns(2)
-                                                            ->disabled(fn (callable $get) => $get('workstation_id') === null)
+                                                            ->disabled(fn (callable $get) => $get('workstation_id') === null || $get('disabled'))
                                                             ->reactive()
                                                             ->afterStateUpdated(function ($state, callable $set) {
                                                                 $operation = \App\Models\Operation::with(['employee', 'supervisor', 'machine', 'thirdPartyService'])->find($state);
@@ -343,41 +345,45 @@ class AssignDailyOperationsResource extends Resource
                                                                 }
                                                             }),
 
-                                                        TextInput::make('machine_setup_time')->label('Machine Setup Time')->numeric()->default(0)->reactive(),
-                                                        TextInput::make('labor_setup_time')->label('Labor Setup Time')->numeric()->default(0)->reactive(),
-                                                        TextInput::make('machine_run_time')->label('Machine Run Time')->numeric()->default(0)->reactive(),
-                                                        TextInput::make('labor_run_time')->label('Labor Run Time')->numeric()->default(0)->reactive(),
+                                                        TextInput::make('machine_setup_time')->label('Machine Setup Time')->numeric()->default(0)->reactive()->disabled(fn ($get) => $get('disabled')),
+                                                        TextInput::make('labor_setup_time')->label('Labor Setup Time')->numeric()->default(0)->reactive()->disabled(fn ($get) => $get('disabled')),
+                                                        TextInput::make('machine_run_time')->label('Machine Run Time')->numeric()->default(0)->reactive()->disabled(fn ($get) => $get('disabled')),
+                                                        TextInput::make('labor_run_time')->label('Labor Run Time')->numeric()->default(0)->reactive()->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('employee_ids')
                                                             ->label('Employees')
                                                             ->options(\App\Models\User::role('employee')->pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->columnSpanFull(),
+                                                            ->columnSpanFull()
+                                                            ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('supervisor_ids')
                                                             ->label('Supervisors')
                                                             ->options(\App\Models\User::role('supervisor')->pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->columnSpanFull(),
+                                                            ->columnSpanFull()
+                                                            ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('machine_ids')
                                                             ->label('Automated Machines')
                                                             ->options(\App\Models\ProductionMachine::pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->columnSpanFull(),
+                                                            ->columnSpanFull()
+                                                            ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('third_party_service_ids')
                                                             ->label('Third Party Services')
                                                             ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->columnSpanFull(),
+                                                            ->columnSpanFull()
+                                                            ->disabled(fn ($get) => $get('disabled')),
 
-                                                        Select::make('target_duration')->label('Target Duration')->options(['hourly' => 'Hourly', 'daily' => 'Daily']),
-                                                        TextInput::make('target_e')->label('Target per Employee')->numeric(),
-                                                        TextInput::make('target_m')->label('Target per Machine')->numeric(),
+                                                        Select::make('target_duration')->label('Target Duration')->options(['hourly' => 'Hourly', 'daily' => 'Daily'])->disabled(fn ($get) => $get('disabled')),
+                                                        TextInput::make('target_e')->label('Target per Employee')->numeric()->disabled(fn ($get) => $get('disabled')),
+                                                        TextInput::make('target_m')->label('Target per Machine')->numeric()->disabled(fn ($get) => $get('disabled')),
                                                         Select::make('measurement_unit')
                                                             ->label('Measurement Unit')
-                                                            ->options(['pcs' => 'Pieces', 'kgs' => 'Kilograms', 'liters' => 'Liters', 'minutes' => 'Minutes', 'hours' => 'Hours']),
+                                                            ->options(['pcs' => 'Pieces', 'kgs' => 'Kilograms', 'liters' => 'Liters', 'minutes' => 'Minutes', 'hours' => 'Hours'])->disabled(fn ($get) => $get('disabled')),
                                                     ]),
                                                 ])
                                                 ->itemLabel(fn (array $state): ?string => ($state['workstation_name'] ?? '') . ' - ' . ($state['operation_description'] ?? ''))

@@ -10,6 +10,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Section;
+
 
 class UserResource extends Resource
 {
@@ -22,24 +24,63 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->required()
-                    ->email()
-                    ->maxLength(255)
-                    ->unique(User::class, 'email', ignoreRecord: true),
-                Forms\Components\Hidden::make('password')
-                    ->default('12345678') // Default password for new users
-                    ->dehydrateStateUsing(fn ($state) => bcrypt($state)),
-                Forms\Components\Select::make('roles')
-                    ->label('Roles')
-                    ->relationship('roles', 'name')
-                    ->options(\Spatie\Permission\Models\Role::all()->pluck('name', 'id'))
-                    ->preload()
-                    ->multiple()
-                    ->required()
+                Section::make('Personal Details')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('nic')
+                            ->label('NIC Number')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Hidden::make('password')
+                            ->default('12345678') // Default password for new users
+                            ->dehydrateStateUsing(fn ($state) => bcrypt($state)),
+                    ]),
+
+                Section::make('Contact Details')
+                    ->columns(3)
+                    ->schema([
+                        Forms\Components\TextInput::make('email')
+                            ->required()
+                            ->email()
+                            ->maxLength(255)
+                            ->unique(User::class, 'email', ignoreRecord: true),
+                        Forms\Components\TextInput::make('phone_1')
+                            ->label('Phone 1')
+                            ->required()
+                            ->numeric(),
+                        Forms\Components\TextInput::make('Phone_2')
+                            ->label('Phone 2')
+                            ->numeric(),
+                        Forms\Components\TextInput::make('address_line_1')
+                            ->label('Address Line 1')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('address_line_2')
+                            ->label('Address Line 2')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('city')
+                            ->label('City')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('zip_code')
+                            ->label('Zip Code')
+                            ->numeric(),
+                    ]),
+
+                Section::make('User Roles')
+                    ->columns(1)
+                    ->schema([
+                        Forms\Components\Select::make('roles')
+                            ->label('Roles')
+                            ->relationship('roles', 'name')
+                            ->options(\Spatie\Permission\Models\Role::all()->pluck('name', 'id'))
+                            ->preload()
+                            ->multiple()
+                            ->required()     
+                    ])
                     ->visible(fn () => auth()->user()->hasRole('admin')),
             ]);
     }
@@ -48,16 +89,18 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('id')->label('User ID')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('name')->label('Name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('email')->label('Email')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('phone_1')->label('Phone')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('roles.name')->label('Roles')->sortable()->searchable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable(true)->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable(true)->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable(true)->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable(true)->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),

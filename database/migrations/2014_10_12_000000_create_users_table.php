@@ -17,6 +17,13 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->integer('phone_1');
+            $table->integer('phone_2')->nullable();
+            $table->integer('zip_code')->nullable();
+            $table->integer('nic');
+            $table->string('address_line_1');
+            $table->string('address_loine_2')->nullable();
+            $table->string('city');
             $table->rememberToken();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();

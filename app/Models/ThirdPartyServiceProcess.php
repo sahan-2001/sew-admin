@@ -11,7 +11,6 @@ class ThirdPartyServiceProcess extends Model
 
     protected $fillable = [
         'third_party_service_id',
-        'sequence_number',
         'description',
         'related_table',
         'related_record_id',
@@ -39,5 +38,18 @@ class ThirdPartyServiceProcess extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+    
+        static::created(function ($model) {
+            $model->thirdPartyService?->updateServiceTotal();
+        });
+
+        static::updated(function ($model) {
+            $model->thirdPartyService?->updateServiceTotal();
+        });
+
+        static::deleted(function ($model) {
+            $model->thirdPartyService?->updateServiceTotal();
+        });
     }
+
 }

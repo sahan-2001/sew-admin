@@ -6,6 +6,7 @@ use App\Filament\Resources\EndOfDayReportResource;
 use App\Models\EndOfDayReportOperation;
 use App\Models\EndOfDayReport;
 use App\Models\EnterPerformanceRecord;
+use App\Models\AssignDailyOperationLine;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -44,6 +45,7 @@ class CreateEndOfDayReport extends CreateRecord
     {
         $records = $this->data['matching_records_full'] ?? [];
         $updatedRecordIds = [];
+        $operationLineIds = [];
 
         foreach ($records as $record) {
             if (isset($record['id'], $record['assign_daily_operation_id'], $record['assign_daily_operation_line_id'])) {
@@ -57,12 +59,19 @@ class CreateEndOfDayReport extends CreateRecord
                 
                 // Collect IDs to update
                 $updatedRecordIds[] = $record['id'];
+                $operationLineIds[] = $record['assign_daily_operation_line_id'];
             }
         }
 
-        // Update status of all related EnterPerformanceRecord models
+        // Update status of related EnterPerformanceRecord models
         if (!empty($updatedRecordIds)) {
             EnterPerformanceRecord::whereIn('id', $updatedRecordIds)
+                ->update(['status' => 'reported']);
+        }
+
+        // Update status of related AssignDailyOperationLine models
+        if (!empty($operationLineIds)) {
+            AssignDailyOperationLine::whereIn('id', $operationLineIds)
                 ->update(['status' => 'reported']);
         }
 

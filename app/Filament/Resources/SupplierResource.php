@@ -9,6 +9,11 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Carbon;
 
 class SupplierResource extends Resource
 {
@@ -56,28 +61,76 @@ class SupplierResource extends Resource
                 Tables\Columns\TextColumn::make('supplier_id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('address')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('phone_2')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('outstanding_balance')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('creatededBy.email')->label('Requested By Email')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('approvedBy.email')->label('Approved By Email')->sortable()->searchable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                // Define your filters if needed
+                // Filter by Supplier ID
+                Filter::make('supplier_id')
+                    ->label('Supplier ID')
+                    ->form([
+                        TextInput::make('supplier_id'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['supplier_id'],
+                            fn ($query, $value) => $query->where('supplier_id', $value)
+                        );
+                    }),
+
+                // Filter by Outstanding Balance
+                Filter::make('outstanding_balance')
+                    ->label('Outstanding Balance')
+                    ->form([
+                        TextInput::make('outstanding_balance'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['outstanding_balance'],
+                            fn ($query, $value) => $query->where('outstanding_balance', $value)
+                        );
+                    }),
+
+                // Filter by Created Date (single date only)
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('created_date')
+                            ->label('Date')
+                            ->maxDate(Carbon::today()),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['created_date'],
+                            fn ($query, $date) => $query->whereDate('created_at', $date)
+                        );
+                    }),
             ])
             ->actions([
+                ViewAction::make()
+                    ->label('View')
+                    ->modalHeading('Supplier Details')
+                    ->modalSubmitAction(false) // disables the "Submit" button
+                    ->modalCancelActionLabel('Close')
+                    ->form(fn (Supplier $record) => [
+                        Forms\Components\TextInput::make('supplier_id')->label('Supplier ID')->disabled()->default($record->supplier_id),
+                        Forms\Components\TextInput::make('name')->label('Name')->disabled()->default($record->name),
+                        Forms\Components\TextInput::make('shop_name')->label('Shop Name')->disabled()->default($record->shop_name),
+                        Forms\Components\TextInput::make('phone_1')->label('Phone 1')->disabled()->default($record->phone_1),
+                        Forms\Components\TextInput::make('phone_2')->label('Phone 2')->disabled()->default($record->phone_2),
+                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->disabled()->default($record->outstanding_balance),
+                    ]),
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Supplier $record) => auth()->user()->can('edit suppliers')),
                 Tables\Actions\DeleteAction::make()
