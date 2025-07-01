@@ -12,7 +12,7 @@ class ThirdPartyService extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['supplier_id', 'name', 'service_total', 'created_by', 'updated_by'];
+    protected $fillable = ['supplier_id', 'name', 'service_total', 'paid', 'remaining_balance','status', 'created_by', 'updated_by'];
 
     public function supplier()
     {

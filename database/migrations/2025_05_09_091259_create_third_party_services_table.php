@@ -19,6 +19,9 @@ class CreateThirdPartyServicesTable extends Migration
                 ->onDelete('cascade');
             $table->string('name');
             $table->decimal('service_total', 15, 2)->default(0);
+            $table->decimal('paid', 15, 2)->default(0);
+            $table->decimal('remaining_balance', 15, 2)->virtualAs('service_total');
+            $table->string('status')->default('created');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->timestamps();

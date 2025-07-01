@@ -268,19 +268,16 @@ class ThirdPartyServiceResource extends Resource
                 TextColumn::make('id')
                     ->label('Service ID')
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-
                 TextColumn::make('name')->label('Service Name'),
-
                 TextColumn::make('supplier.name')->label('Supplier'),
-
                 TextColumn::make('service_total')->label('Service Total'),
-
-                TextColumn::make('created_at')->label('Created Date')->date(),
-
+                TextColumn::make('remaining_balance')->label('Remaining Balance'),
+                TextColumn::make('status')->label('Status'),
                 ...(
                     Auth::user()->can('view audit columns')
                         ? [
                             TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                             TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                             TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                         ]

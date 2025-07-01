@@ -16,4 +16,9 @@ class CreateProductionMachine extends CreateRecord
         $this->record->calculateDepreciation();
     }
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
 }
