@@ -19,6 +19,7 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Actions\ViewAction;
 
 
 class TemporaryOperationResource extends Resource
@@ -56,11 +57,14 @@ class TemporaryOperationResource extends Resource
                                 Select::make('order_id')
                                     ->label('Order')
                                     ->required()
+                                    ->searchable()
                                     ->options(function ($get) {
                                         if ($get('order_type') === 'customer_order') {
-                                            return CustomerOrder::pluck('name', 'order_id');
+                                            return \App\Models\CustomerOrder::all()
+                                                ->mapWithKeys(fn ($order) => [$order->order_id => "ID={$order->order_id} | Name={$order->name}"]);
                                         } elseif ($get('order_type') === 'sample_order') {
-                                            return SampleOrder::pluck('name', 'order_id');
+                                            return \App\Models\SampleOrder::all()
+                                                ->mapWithKeys(fn ($order) => [$order->order_id => "ID={$order->order_id} | Name={$order->name}"]);
                                         }
                                         return [];
                                     })
@@ -71,9 +75,9 @@ class TemporaryOperationResource extends Resource
 
                                         $orderType = $get('order_type');
                                         if ($orderType === 'customer_order') {
-                                            $order = CustomerOrder::find($state);
+                                            $order = \App\Models\CustomerOrder::find($state);
                                         } elseif ($orderType === 'sample_order') {
-                                            $order = SampleOrder::find($state);
+                                            $order = \App\Models\SampleOrder::find($state);
                                         }
 
                                         if ($order) {
@@ -86,7 +90,7 @@ class TemporaryOperationResource extends Resource
                                     })
                                     ->disabled(fn ($get, $record) => $record !== null)
                                     ->dehydrated(),
-                            ]),
+                                ]),
 
                         TextInput::make('customer_id')
                             ->label('Customer ID')
@@ -120,107 +124,150 @@ class TemporaryOperationResource extends Resource
                 
                 Section::make('Production Details')
                     ->schema([
-                                Textarea::make('description')
-                                    ->label('Operation Description')
-                                    ->nullable()
-                                    ->columns(1)
-                                    ->columnSpan('full')
-                                    ->required(),
+                        // 🔹 First Grid
+                        Forms\Components\Grid::make(1)->schema([
+                            Textarea::make('description')
+                                ->label('Operation Description')
+                                ->nullable()
+                                ->required()
+                                ->columnSpan('full'),
+                        ]),
 
-                                Select::make('production_line_id')
-                                    ->label('Production Line')
-                                    ->options(ProductionLine::all()->pluck('name', 'id'))
-                                    ->columns(1)
-                                    ->reactive()
-                                    ->dehydrated(),
+                        Forms\Components\Grid::make(2)->schema([
+                            Select::make('production_line_id')
+                                ->label('Production Line')
+                                ->options(\App\Models\ProductionLine::all()->pluck('name', 'id'))
+                                ->reactive()
+                                ->afterStateUpdated(fn (callable $set) => $set('workstation_id', null))
+                                ->dehydrated(),
 
-                                Select::make('workstation_id')
-                                    ->label('Workstation')
-                                    ->options(Workstation::all()->pluck('name', 'id'))
-                                    ->columns(1)
-                                    ->reactive()
-                                    ->dehydrated(),
+                            Select::make('workstation_id')
+                                ->label('Workstation')
+                                ->reactive()
+                                ->options(function (callable $get) {
+                                    $productionLineId = $get('production_line_id');
 
-                                TextInput::make('machine_setup_time')
-                                    ->label('Machine Setup Time')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->columns(1),
+                                    return $productionLineId
+                                        ? \App\Models\Workstation::where('production_line_id', $productionLineId)
+                                            ->pluck('name', 'id')
+                                        : \App\Models\Workstation::pluck('name', 'id'); 
+                                })
+                                ->required(fn (callable $get) => filled($get('production_line_id')))
+                                ->dehydrated(),
+                        ]),
 
-                                TextInput::make('machine_run_time')
-                                    ->label('Machine Run Time')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->required()
-                                    ->columns(1),
+                        // 🔹 Second Grid: Setup & Run Times
+                        Forms\Components\Grid::make(4)->schema([
+                            TextInput::make('machine_setup_time')
+                                ->label('Machine Setup Time')
+                                ->numeric()
+                                ->default(0),
 
-                                TextInput::make('labor_setup_time')
-                                    ->label('Labor Setup Time')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->columns(1),
+                            TextInput::make('machine_run_time')
+                                ->label('Machine Run Time')
+                                ->numeric()
+                                ->default(0)
+                                ->required(),
 
-                                TextInput::make('labor_run_time')
-                                    ->label('Labor Run Time')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->required()
-                                    ->columns(1),
+                            TextInput::make('labor_setup_time')
+                                ->label('Labor Setup Time')
+                                ->numeric()
+                                ->default(0),
 
-                                Forms\Components\MultiSelect::make('employee_ids')
-                                    ->label('Employees')
-                                    ->options(\App\Models\User::role('employee')->pluck('name', 'id'))
-                                    ->searchable()
-                                    ->required()
-                                    ->columns(1),
+                            TextInput::make('labor_run_time')
+                                ->label('Labor Run Time')
+                                ->numeric()
+                                ->default(0)
+                                ->required(),
+                        ]),
 
-                                Forms\Components\MultiSelect::make('supervisor_ids')
-                                    ->label('Supervisors')
-                                    ->options(\App\Models\User::role('supervisor')->pluck('name', 'id'))
-                                    ->searchable()
-                                    ->columns(1),
+                        // 🔹 Third Grid: Selectables
+                        Forms\Components\Grid::make(1)->schema([
+                            Forms\Components\MultiSelect::make('employee_ids')
+                                ->label('Employees')
+                                ->options(\App\Models\User::role('employee')->pluck('name', 'id'))
+                                ->searchable()
+                                ->required(),
 
-                                Forms\Components\MultiSelect::make('machine_ids')
-                                    ->label('Machines')
-                                    ->options(\App\Models\ProductionMachine::pluck('name', 'id'))
-                                    ->searchable()
-                                    ->columns(1),
+                            Forms\Components\MultiSelect::make('supervisor_ids')
+                                ->label('Supervisors')
+                                ->options(\App\Models\User::role('supervisor')->pluck('name', 'id'))
+                                ->searchable(),
 
-                                Forms\Components\MultiSelect::make('third_party_service_ids')
-                                    ->label('Third Party Services')
-                                    ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
-                                    ->searchable()
-                                    ->columns(1),
+                            Forms\Components\MultiSelect::make('machine_ids')
+                                ->label('Machines')
+                                ->options(\App\Models\ProductionMachine::pluck('name', 'id'))
+                                ->searchable(),
+
+                            Forms\Components\MultiSelect::make('third_party_service_ids')
+                                ->label('Third Party Services')
+                                ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
+                                ->searchable(),
+                        ]),
                     ])
-                    ->columns(1),
-
+                    ->columns(1)
         ]);
-}
+    }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('id')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('description')->sortable(),
-                TextColumn::make('setup_time')->sortable(),
-                TextColumn::make('run_time')->sortable(),
-                TextColumn::make('created_at')->sortable(),
+                TextColumn::make('order_type'),
+                TextColumn::make('order_id')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->actions([
+                ViewAction::make()
+                ->label('View')
+                ->modalHeading(fn ($record) => "Temporary Operation #{$record->id}")
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->form(fn ($record) => [
+                    Forms\Components\Section::make('Overview')
+                        ->columns(2)
+                        ->schema([
+                            TextInput::make('id')->default(str_pad($record->id, 5, '0', STR_PAD_LEFT))->label('Operation ID')->disabled(),
+                            TextInput::make('order_type')->default(ucwords(str_replace('_', ' ', $record->order_type)))->label('Order Type')->disabled(),
+                            TextInput::make('order_id')->default($record->order_id)->label('Order ID')->disabled(),
+                        ]),
+
+                    Forms\Components\Section::make('Operation Details')
+                        ->columns(2)
+                        ->schema([
+                            DatePicker::make('operation_date')->default($record->operation_date)->label('Operation Date')->disabled(),
+                            Textarea::make('description')->default($record->description)->label('Operation Description')->disabled()->columnSpanFull(),
+
+                            TextInput::make('production_line_id')
+                                ->default(optional($record->productionLine)->name ?? 'N/A')
+                                ->label('Production Line ID')->disabled(),
+
+                            TextInput::make('workstation_id')
+                                ->default(optional($record->workstation)->name ?? 'N/A')
+                                ->label('Workstation ID')->disabled(),
+
+                            TextInput::make('machine_setup_time')->default($record->machine_setup_time)->label('Machine Setup Time')->disabled(),
+                            TextInput::make('machine_run_time')->default($record->machine_run_time)->label('Machine Run Time')->disabled(),
+                            TextInput::make('labor_setup_time')->default($record->labor_setup_time)->label('Labor Setup Time')->disabled(),
+                            TextInput::make('labor_run_time')->default($record->labor_run_time)->label('Labor Run Time')->disabled(),
+                        ]),
+                ]),
+
                 EditAction::make(),
                 DeleteAction::make(),
-            ]);
+            ])
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

@@ -41,7 +41,7 @@ class CreateMaterialQC extends CreateRecord
                 'add_scrap' => $item['add_scrap'] ?? 0,
                 'total__returned' => $item['total_returned'] ?? 0,
                 'total_scrap' => $item['total_scrap'] ?? 0,
-                'available_to_store' => $item['available_to_store'] ?? 0,
+                'available_to_store' => $item['available_to_store'],
                 'store_location_id' => $item['store_location_id'] ?? null,
                 'register_arrival_id' => $data['register_arrival_id'], 
                 'inspected_by' => $item['inspected_by'],               
@@ -61,7 +61,7 @@ class CreateMaterialQC extends CreateRecord
 
             \App\Models\Stock::create([
                 'item_id' => $item['item_id'],
-                'quantity' => $item['available_to_store'], 
+                'quantity' => $item['available_to_store'],
                 'cost' => $cost, 
                 'location_id' => $item['store_location_id'], 
                 'purchase_order_id' => $data['purchase_order_id'], 

@@ -20,7 +20,9 @@ use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
-
+use Filament\Tables\Filters\TextFilter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 
 
 class MaterialQCResource extends Resource
@@ -54,7 +56,6 @@ class MaterialQCResource extends Resource
                                                 $set('register_arrival_id', null);
                                                 $set('items', []);
                                                 $set('provider_type', null);
-                                                $set('provider_name', null);
                                                 $set('provider_id', null);
                                                 $set('wanted_date', null);
                                                 $set('location_id', null);
@@ -82,19 +83,17 @@ class MaterialQCResource extends Resource
 
                                                 // Set supplier info
                                                 $set('provider_type', $purchaseOrder->provider_type);
-                                                $set('provider_name', $purchaseOrder->provider_name);
                                                 $set('provider_id', $purchaseOrder->provider_id);
                                                 $set('wanted_date', $purchaseOrder->wanted_date);
                                             }),
 
                                         Forms\Components\TextInput::make('provider_type')->label('Provider Type')->disabled(),
-                                        Forms\Components\TextInput::make('provider_name')->label('Provider Name')->disabled(),
                                         Forms\Components\TextInput::make('provider_id')->label('Provider ID')->disabled(),
                                         Forms\Components\TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
                                     ])
                                 ]),        
                                     
-                                Forms\Components\Section::make('Purchase Order Details')
+                                Forms\Components\Section::make('Register Arrrival Details')
                                     ->schema([    
                                         Forms\Components\Select::make('register_arrival_id')
                                             ->label('Register Arrival ID')
@@ -330,7 +329,7 @@ class MaterialQCResource extends Resource
                                 ]),
                         ]),
 
-                        Tab::make('Store QC Items')
+                        Tab::make('Store QC Passed Items')
                         ->schema([
                             Forms\Components\Section::make('Store QC Items')
                                 ->schema([
@@ -407,16 +406,29 @@ class MaterialQCResource extends Resource
                                                     (float) ($get('total_scrapped_qc') ?? 0) + (float) ($get('add_scrap') ?? 0)
                                                 )
                                                 ->dehydrated(true),
-
-                                            Forms\Components\Placeholder::make('available_to_store')
+                            
+                                            Forms\Components\Placeholder::make('available')
                                                 ->label('Available to Store')
                                                 ->live()
-                                                ->content(fn (callable $get) =>
-                                                    ($get('quantity') ?? 0)
-                                                    - ((float) ($get('total_returned_qc') ?? 0) + (float) ($get('add_returned') ?? 0))
-                                                    - ((float) ($get('total_scrapped_qc') ?? 0) + (float) ($get('add_scrap') ?? 0))
-                                                )
-                                                ->dehydrated(true),
+                                                ->content(function (callable $get, callable $set) {
+                                                    $qty = (float) ($get('quantity') ?? 0);
+                                                    $returned = (float) ($get('total_returned_qc') ?? 0) + (float) ($get('add_returned') ?? 0);
+                                                    $scrapped = (float) ($get('total_scrapped_qc') ?? 0) + (float) ($get('add_scrap') ?? 0);
+                                                    $available = $qty - $returned - $scrapped;
+
+                                                    // Set the hidden field
+                                                    $set('available_to_store', $available);
+
+                                                    return $available;
+                                                })
+                                                ->dehydrated(false),
+
+                                            Forms\Components\TextInput::make('available_to_store')
+                                                ->label('Available to Store')
+                                                ->hidden()
+                                                ->disabled()
+                                                ->dehydrated(),
+    
                                             Select::make('store_location_id')
                                                 ->label('Store Location')
                                                 ->options(\App\Models\InventoryLocation::where('location_type', 'picking')->pluck('name', 'id'))
@@ -447,20 +459,16 @@ class MaterialQCResource extends Resource
                 TextColumn::make('purchase_order_id')
                     ->label('Purchase Order ID')
                     ->sortable()
-                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('inspected_quantity')
                     ->label('Inspected Quantity')
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
-
                 TextColumn::make('approved_qty')
                     ->label('Approved Quantity')
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
-
                 TextColumn::make('returned_qty')
                     ->label('Returned Quantity')
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
-
                 TextColumn::make('scrapped_qty')
                     ->label('Scrapped Quantity')
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
@@ -469,15 +477,61 @@ class MaterialQCResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
-            ->filters([])
+            ->filters([
+                Filter::make('id')
+                    ->label('QC Record ID')
+                    ->form([
+                        Forms\Components\TextInput::make('id')
+                            ->placeholder('Enter QC Record ID'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['id'] ?? null,
+                            fn ($query, $id) => $query->where('id', 'like', "%{$id}%")
+                        );
+                    }),
+
+                Filter::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->form([
+                        Forms\Components\TextInput::make('purchase_order_id')
+                            ->placeholder('Enter Purchase Order ID'),
+                    ])
+                    ->query(fn ($query, $data) =>
+                        $query->when(
+                            $data['purchase_order_id'] ?? null,
+                            fn ($query, $poId) => $query->where('purchase_order_id', 'like', "%{$poId}%")
+                        )
+                    ),
+
+                Filter::make('status')
+                    ->label('Status')
+                    ->form([
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'pending' => 'Pending',
+                                'approved' => 'Approved',
+                                'rejected' => 'Rejected',
+                                'invoiced' => 'Invoiced',
+                                // add other statuses you have
+                            ])
+                            ->placeholder('Select status'),
+                    ])
+                    ->query(fn ($query, $data) =>
+                        $query->when(
+                            $data['status'] ?? null,
+                            fn ($query, $status) => $query->where('status', $status)
+                        )
+                    ),
+            ])
             ->actions([
                 Action::make('reCorrection')
                     ->label('Re-Correction')

@@ -20,6 +20,8 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\ViewAction;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Filters\Filter;
+
 
 class ProductionLineOperationResource extends Resource
 {
@@ -55,6 +57,8 @@ class ProductionLineOperationResource extends Resource
                     ]),
 
 
+                Forms\Components\Section::make('Operations')
+                    ->schema([
                     Forms\Components\Repeater::make('operations')
                         ->relationship()
                         ->schema([
@@ -136,6 +140,7 @@ class ProductionLineOperationResource extends Resource
                         ->label('Operation Lines')
                         ->required()
                         ->columnSpan(12),
+                    ]),
             ]);
     }
 
@@ -143,20 +148,74 @@ class ProductionLineOperationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Workstation ID')->sortable(),
-                TextColumn::make('name')->label('Workstation Name')->sortable(),
-                TextColumn::make('status')->label('Status')->sortable(),
-                TextColumn::make('production_line_id')->label('Production Line ID')->sortable(),
+                TextColumn::make('id')
+                    ->label('Workstation ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('name')
+                    ->label('Workstation Name')
+                    ->searchable(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->sortable(),
+                TextColumn::make('production_line_id')
+                    ->label('Production Line ID')
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 ...(
-                Auth::user()->can('view audit columns')
-                    ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
-                    ]
-                    : []
-                    ),
+                    Auth::user()->can('view audit columns')
+                        ? [
+                            TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                            TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        ]
+                        : []
+                ),
+            ])
+            ->filters([
+                Filter::make('id')
+                    ->label('Workstation ID')
+                    ->form([
+                        Forms\Components\TextInput::make('Workstation ID')
+                            ->label('Workstation ID')
+                            ->placeholder('Enter ID'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->where('id', 'like', '%' . $data['value'] . '%');
+                        }
+                    }),
+
+                Filter::make('production_line_id')
+                    ->label('Production Line')
+                    ->form([
+                        Forms\Components\Select::make('Production Line ID')
+                            ->options(\App\Models\ProductionLine::pluck('name', 'id'))
+                            ->placeholder('Select Production Line'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->where('production_line_id', $data['value']);
+                        }
+                    }),
+
+                Filter::make('status')
+                    ->label('Status')
+                    ->form([
+                        Forms\Components\Select::make('Status')
+                            ->options([
+                                'active' => 'Active',
+                                'inactive' => 'Inactive',
+                            ])
+                            ->placeholder('Select Status'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->where('status', $data['value']);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('toggleStatus')
@@ -175,19 +234,16 @@ class ProductionLineOperationResource extends Resource
                             ->success()
                             ->send();
                     }),
-        
+
                 EditAction::make()
-                    ->visible(fn ($record) => 
-                        auth()->user()->can('edit workstations') 
-                    ),
+                    ->visible(fn ($record) => auth()->user()->can('edit workstations')),
 
                 DeleteAction::make()
-                    ->visible(fn ($record) => 
-                        auth()->user()->can('delete workstations') 
-                    ),
+                    ->visible(fn ($record) => auth()->user()->can('delete workstations')),
             ])
             ->recordUrl(null);
     }
+
 
     public static function getRelations(): array
     {
