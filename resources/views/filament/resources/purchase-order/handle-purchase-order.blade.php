@@ -16,22 +16,26 @@
                 $status = $record->status;
                 $progressValue = match($status) {
                     'paused' => 0,
-                    'planned' => 25,
-                    'released' => 50,
-                    'partially arrived' => 65,
-                    'arrived' => 75,
-                    'completed' => 100,
+                    'planned' => 10,
+                    'released' => 30,
+                    'partially arrived' => 50,
+                    'arrived' => 65,
+                    'inspected' => 80,
+                    'invoiced' => 90,
+                    'closed' => 100,
                     default => 0
                 };
 
                 $color = match($status) {
-                    'paused' => '#e5e7eb',
-                    'planned' => '#3b82f6',
-                    'released' => '#f59e0b',
-                    'partially arrived' => '#f59e0b',
-                    'arrived' => '#ef4444',
-                    'completed' => '#10b981',
-                    default => '#e5e7eb'
+                    'paused' => '#e5e7eb',          // light gray
+                    'planned' => '#3b82f6',         // blue
+                    'released' => '#f59e0b',        // amber
+                    'partially arrived' => '#fbbf24', // light amber
+                    'arrived' => '#ef4444',         // red
+                    'inspected' => '#10b981',       // green
+                    'invoiced' => '#6b7280',        // gray
+                    'closed' => '#111827',          // dark
+                    default => '#e5e7eb'            // fallback gray
                 };
             @endphp
 

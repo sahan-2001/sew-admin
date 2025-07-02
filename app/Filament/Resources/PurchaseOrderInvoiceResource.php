@@ -31,7 +31,8 @@ use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action; 
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
-
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 
 
 class PurchaseOrderInvoiceResource extends Resource
@@ -289,9 +290,9 @@ class PurchaseOrderInvoiceResource extends Resource
                                 ]),
                         ]),
                         
-                    Tab::make('Invoicing Item Details')
+                    Tab::make('Invoiced / Stored Item Details')
                         ->schema([
-                            Section::make('Invoicing/ Stored Item Details from All Register Arrivals')
+                            Section::make('Invoiced / Stored Item Details from All Register Arrivals')
                                 ->schema([
                                     Repeater::make('invoice_items')
                                         ->schema([
@@ -314,7 +315,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->dehydrated(true),
 
                                     Placeholder::make('grand_total')
-                                    ->label('Grand Total of All Invoicing Items')
+                                    ->label('Grand Total of All Invoiced / Stored Items')
                                     ->content(fn (Get $get): string =>
                                         'Rs. ' . number_format(
                                             collect($get('invoice_items') ?? [])
@@ -398,23 +399,33 @@ class PurchaseOrderInvoiceResource extends Resource
                     Tab::make('Payment Details')
                         ->schema([
                             Section::make('Summary')
-                                ->columns(2)
+                                ->columns(3)
                                 ->schema([
+                                    Placeholder::make('grand_total_of_arrivals')
+                                        ->label('Grand Total of All Arrived Items')
+                                        ->content(fn (Get $get): string =>
+                                            'Rs. ' . number_format(
+                                                collect($get('items') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['total'] ?? 0)),
+                                                2
+                                            )
+                                        ),
+                                    
                                     Placeholder::make('grand_total')
-                                    ->label('Grand Total of Invoicing Items')
-                                    ->content(fn (Get $get): string =>
-                                        'Rs. ' . number_format(
-                                            collect($get('invoice_items') ?? [])
-                                                ->sum(fn ($item) => floatval($item['total'] ?? 0)),
-                                            2
-                                        )
-                                    ),
+                                        ->label('Grand Total of Invoiced/Stored Items')
+                                        ->content(fn (Get $get): string =>
+                                            'Rs. ' . number_format(
+                                                collect($get('invoice_items') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['total'] ?? 0)),
+                                                2
+                                            )
+                                        ),
                                     
                                     Placeholder::make('total_paid_amount')
                                         ->label('Total Paid Amount')
                                         ->content(fn (Get $get): string => 
                                             'Rs. ' . number_format(
-                                                collect($get('supplier_advance_invoices') ?? [])
+                                                collect($get('advance_invoices') ?? [])
                                                     ->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)),
                                                 2
                                             )
@@ -569,21 +580,32 @@ class PurchaseOrderInvoiceResource extends Resource
                             Section::make('Payment Details')
                                 ->columns(2)
                                 ->schema([
+                                    Select::make('total_calculation_method')
+                                        ->label('Total Calculation Method')
+                                        ->options([
+                                            'invoice_items' => 'Invoiced / Stored Items Total',
+                                            'material_qc' => 'Material QC Items Total',
+                                        ])
+                                        ->default('invoice_items')
+                                        ->required()
+                                        ->live(),
+                                        
                                     Placeholder::make('payment_due')
                                         ->label('Payment Due')
-                                        ->content(fn (Get $get): string =>
-                                            'Rs. ' . number_format(
-                                                // Sum of item totals
-                                                (collect($get('items') ?? [])->sum(fn ($item) => floatval($item['total'] ?? 0)))
-                                                +
-                                                (collect($get('additional_costs') ?? [])->sum(fn ($item) => floatval($item['total_c'] ?? 0)))
-                                                -
-                                                (collect($get('supplier_advance_invoices') ?? [])->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)))
-                                                -
-                                                (collect($get('discounts / deductions') ?? [])->sum(fn ($item) => floatval($item['total_d'] ?? 0))),
+                                        ->content(function (Get $get): string {
+                                            // Determine which total to use based on selection
+                                            $itemsTotal = $get('total_calculation_method') === 'material_qc'
+                                                ? collect($get('items') ?? [])->sum(fn ($item) => floatval($item['total'] ?? 0))
+                                                : collect($get('invoice_items') ?? [])->sum(fn ($item) => floatval($item['total'] ?? 0));
+                                            
+                                            return 'Rs. ' . number_format(
+                                                $itemsTotal
+                                                + (collect($get('additional_costs') ?? [])->sum(fn ($item) => floatval($item['total_c'] ?? 0)))
+                                                - (collect($get('advance_invoices') ?? [])->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)))
+                                                - (collect($get('discounts_deductions') ?? [])->sum(fn ($item) => floatval($item['total_d'] ?? 0))),
                                                 2
-                                            )
-                                        ),
+                                            );
+                                        }),
                                 ])
                         ]),
 
@@ -609,30 +631,45 @@ class PurchaseOrderInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Invoice ID')->sortable()
+                TextColumn::make('id')->label('Invoice ID')->sortable()->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('purchase_order_id')->label('PO ID')->sortable()
+                TextColumn::make('purchase_order_id')->label('PO ID')->sortable()->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('register_arrival_id')->label('Register Arrival ID')->sortable(),
                 TextColumn::make('status')->label('Status')->sortable(),
                 TextColumn::make('adv_paid')->label('Advance Paid')->sortable()->toggleable(),
-                TextColumn::make('additional_cost')->label('Additional Cost')->sortable()->toggleable(),
-                TextColumn::make('discount')->label('Discounts/Deductions')->sortable()->toggleable(),
                 TextColumn::make('due_payment')->label('Full Payment Due')->sortable(),
                 TextColumn::make('due_payment_for_now')->label('Payment Due (now)')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Invoice Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'partially_paid' => 'Partially Paid',
+                        'paid' => 'Paid',
+                    ])
+                    ->searchable(),
+
+                Filter::make('purchase_order_id')
+                    ->label('PO ID')
+                    ->form([
+                        TextInput::make('po_id')->label('Enter PO ID')->numeric(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['po_id'], fn ($q, $poId) =>
+                            $q->where('purchase_order_id', $poId)
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('pdf')

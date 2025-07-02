@@ -431,9 +431,21 @@ class MaterialQCResource extends Resource
     
                                             Select::make('store_location_id')
                                                 ->label('Store Location')
-                                                ->options(\App\Models\InventoryLocation::where('location_type', 'picking')->pluck('name', 'id'))
-                                                #->required(fn (callable $get) => ($get('available_to_store') ?? 0) > 0),
-                                                ->required(),
+                                                ->required()
+                                                ->options(function () {
+                                                    return \App\Models\InventoryLocation::with('warehouse')
+                                                        ->where('location_type', 'picking')
+                                                        ->get()
+                                                        ->mapWithKeys(function ($location) {
+                                                            $warehouseId = $location->warehouse?->id ?? 'N/A';
+                                                            $locationId = $location->id;
+                                                            $locationName = $location->name;
+
+                                                            $label = "{$locationId} | {$locationName}";
+
+                                                            return [$locationId => $label];
+                                                        });
+                                                }),
                                         ])
                                         ->disableItemCreation()
                                         ->disableItemDeletion(),

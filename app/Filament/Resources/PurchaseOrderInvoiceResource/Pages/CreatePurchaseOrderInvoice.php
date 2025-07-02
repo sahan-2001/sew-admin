@@ -50,6 +50,7 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 'adv_paid' => $totalPaidAmount, 
                 'additional_cost' => $totalAdditionalCost,
                 'discount' => $totalDiscountsDeductions,
+                'total_calculation_method' => $data['total_calculation_method'] ?? null,
                 'due_payment' => $paymentDue,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),

@@ -26,6 +26,8 @@ use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Tabs;
 use Illuminate\Support\Carbon;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 
 class PurchaseOrderResource extends Resource
 {
@@ -143,7 +145,6 @@ class PurchaseOrderResource extends Resource
                                                             ->label('Quantity')
                                                             ->numeric()
                                                             ->required()
-                                                            ->live()
                                                             ->afterStateUpdated(function ($state, callable $set) {
                                                                 $set('remaining_quantity', $state);
                                                                 $set('arrived_quantity', 0);
@@ -175,57 +176,80 @@ class PurchaseOrderResource extends Resource
     }
 
     public static function table(Table $table): Table
-{
-    return $table
-        ->columns([
-            TextColumn::make('id')
-                ->label('Order ID')
-                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-            TextColumn::make('provider_type')->label('Provider Type'),
-            TextColumn::make('provider_id')->label('Provider ID'),
-            TextColumn::make('provider_name')->label('Provider Name'),
-            TextColumn::make('wanted_date')->label('Wanted Date')->date(),
-            TextColumn::make('status')->label('Status')
-                ->badge()
-                ->colors([
-                    'planned' => 'gray',
-                    'released' => 'blue',
-                    'cancelled' => 'red',
-                    'completed' => 'green',
-                ]),
-            ...(
-                Auth::user()->can('view audit columns')
-                    ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
-                    ]
-                    : []
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')
+                    ->label('Order ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('provider_type')->label('Provider Type'),
+                TextColumn::make('provider_id')->label('Provider ID')->searchable(),
+                TextColumn::make('wanted_date')->label('Wanted Date')->date(),
+                TextColumn::make('status')->label('Status')
+                    ->badge()
+                    ->colors([
+                        'planned' => 'gray',
+                        'released' => 'blue',
+                        'cancelled' => 'red',
+                        'completed' => 'green',
+                    ]),
+                ...(
+                    Auth::user()->can('view audit columns')
+                        ? [
+                            TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                            TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        ]
+                        : []
+                        ),
+            ])
+            ->filters([
+                SelectFilter::make('provider_type')
+                    ->label('Provider Type')
+                    ->options([
+                        'supplier' => 'Supplier',
+                        'customer' => 'Customer',
+                    ])
+                    ->placeholder('All Types'),
+
+                Filter::make('wanted_date')
+                    ->label('Wanted Delivery Date')
+                    ->form([
+                        DatePicker::make('date')
+                            ->label('Wanted Delivery Date')
+                            ->closeOnDateSelection(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['date'], fn ($q, $date) =>
+                            $q->whereDate('wanted_date', $date)
+                        );
+                    }),
+            ])
+            ->actions([
+                Action::make('handle')
+                    ->label('Handle')
+                    ->url(fn ($record) => PurchaseOrderResource::getUrl('handle', ['record' => $record]))
+                    ->openUrlInNewTab(false),
+
+                EditAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('edit purchase orders') &&
+                        $record->status === 'planned'
                     ),
-        ])
-        ->actions([
-            Action::make('handle')
-                ->label('Handle')
-                ->url(fn ($record) => PurchaseOrderResource::getUrl('handle', ['record' => $record]))
-                ->openUrlInNewTab(false),
 
-            EditAction::make()
-                ->visible(fn ($record) => 
-                    auth()->user()->can('edit purchase orders') &&
-                    $record->status === 'planned'
-                ),
-
-            DeleteAction::make()
-                ->visible(fn ($record) => 
-                    auth()->user()->can('delete purchase orders') &&
-                    $record->status === 'planned'
-                ),
-            
-        ])
-        ->defaultSort('wanted_date', 'desc')
-        ->recordUrl(null);
-}
+                DeleteAction::make()
+                    ->visible(fn ($record) => 
+                        auth()->user()->can('delete purchase orders') &&
+                        $record->status === 'planned'
+                    ),
+                
+            ])
+            ->defaultSort('wanted_date', 'desc')
+            ->recordUrl(null);
+    }
 
 
 

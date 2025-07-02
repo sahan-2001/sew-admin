@@ -98,25 +98,26 @@ class HandlePurchaseOrder extends Page
         }
     }
 
-    // Delete Purchase Order
-    public function deleteOrder()
+    // Resume Purchase Order
+    public function resumeOrder()
     {
         try {
-            $this->record->delete();
+            $this->record->update([
+                'status' => 'released',
+            ]);
 
             activity()
                 ->performedOn($this->record)
-                ->log('Purchase Order deleted');
+                ->log('Purchase Order resumed (status changed to released)');
 
             Notification::make()
-                ->title('Purchase Order Deleted')
+                ->title('Purchase Order Resumed')
                 ->success()
-                ->body('The purchase order has been deleted.')
+                ->body('The purchase order has been resumed and marked as released.')
                 ->send();
 
-            return redirect()->route('filament.resources.purchase-orders.index');
+            return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
         } catch (\Exception $e) {
-
         }
     }
 
@@ -125,7 +126,8 @@ class HandlePurchaseOrder extends Page
         $actions = [
             // Close action
             Action::make('Close')
-                ->label('Close')
+                ->label('Back to Purchase Orders')
+                ->icon('heroicon-o-arrow-left') 
                 ->color('primary')
                 ->url(fn () => PurchaseOrderResource::getUrl('index'))
                 ->openUrlInNewTab(false),
@@ -135,7 +137,7 @@ class HandlePurchaseOrder extends Page
         if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_purchase_order')
                 ->label('Release Purchase Order')
-                ->color('warning')
+                ->color('info')
                 ->icon('heroicon-o-check-circle')
                 ->requiresConfirmation()
                 ->modalHeading('Confirm Release')
@@ -158,7 +160,7 @@ class HandlePurchaseOrder extends Page
         }
 
         // Show "Pause Order" action if the status is 'planned', 'released', or 'partially arrived'
-        if (in_array($this->record->status, ['planned', 'released', 'partially arrived'])) {
+        if (in_array($this->record->status, ['released', 'partially arrived', 'inspected', 'invoiced'])) {
             $actions[] = Action::make('pause_order')
                 ->label('Pause Order')
                 ->color('danger')
@@ -170,21 +172,21 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->pauseOrder());
         }
 
-        // Show "Delete Order" action if the status is 'planned' or 'released'
-        if ($this->record->status === 'planned') {
-            $actions[] = Action::make('delete_order')
-                ->label('Delete Order')
-                ->color('danger')
-                ->icon('heroicon-o-trash')
+        // Show "Resume Order" action if the status is 'paused'
+        if ($this->record->status === 'paused') {
+            $actions[] = Action::make('resume_order')
+                ->label('Resume Order')
+                ->color('info')
+                ->icon('heroicon-o-play-circle')
                 ->requiresConfirmation()
-                ->modalHeading('Confirm Deletion')
-                ->modalDescription('Are you sure you want to delete this purchase order? This action cannot be undone.')
-                ->modalButton('Yes, Delete Order')
-                ->action(fn () => $this->deleteOrder());
+                ->modalHeading('Confirm Resume')
+                ->modalDescription('Are you sure you want to resume this purchase order? It will be marked as released.')
+                ->modalButton('Yes, Resume Order')
+                ->action(fn () => $this->resumeOrder());
         }
 
         // Show "Print PDF" action
-        if (in_array($this->record->status, ['planned', 'released', 'partially arrived', 'arrived'])) {
+        if (in_array($this->record->status, ['planned', 'released', 'partially arrived', 'arrived', 'paused', 'invoiced', 'inspected', 'closed'])) {
             $actions[] = Action::make('printPdf')
                 ->label('Print PDF')
                 ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))

@@ -26,7 +26,8 @@ use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action; 
 use Filament\Support\Enums\Js;
 use Illuminate\Support\Facades\Auth;
-
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 
 class SupplierAdvanceInvoiceResource extends Resource
 {
@@ -255,16 +256,38 @@ class SupplierAdvanceInvoiceResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'partially_paid' => 'Partially Paid',
+                        'paid' => 'Paid',
+                        'deducted' => 'deducted',
+                    ])
+                    ->searchable(),
+
+                Filter::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->form([
+                        TextInput::make('po_id')
+                            ->label('Enter PO ID')
+                            ->numeric(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['po_id'] ?? null,
+                            fn ($q, $poId) => $q->where('purchase_order_id', $poId)
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('viewPdf')

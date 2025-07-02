@@ -40,21 +40,17 @@ class RegisterArrivalResource extends Resource
                                 ->nullable()
                                 ->reactive()
                                 ->afterStateUpdated(fn ($state, Set $set) => static::loadPurchaseOrderDetails($state, $set)),
-
-                            TextInput::make('provider_name')
-                                ->label('Provider Name')
+                            
+                            TextInput::make('provider_type')
+                                ->label('Provider Type')
                                 ->disabled()
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
 
-                            TextInput::make('provider_phone')
-                                ->label('Provider Phone')
+                            TextInput::make('provider_id')
+                                ->label('Provider ID')
                                 ->disabled()
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
-
-                            TextInput::make('due_date')
-                                ->label('Due Date')
-                                ->disabled()
-                                ->hidden(fn (Get $get) => !$get('purchase_order_id')),
+                            
                         ]),
                 ]),
 
@@ -165,12 +161,23 @@ class RegisterArrivalResource extends Resource
                         ->schema([
                             Select::make('location_id')
                                 ->label('Location')
-                                ->relationship('location', 'name')
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->options(fn () => InventoryLocation::orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
-                                    ->pluck('name', 'id')),
+                                ->options(function () {
+                                    return \App\Models\InventoryLocation::with('warehouse')
+                                        ->orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
+                                        ->get()
+                                        ->mapWithKeys(function ($location) {
+                                            $warehouseId = $location->warehouse?->id ?? 'N/A';
+                                            $locationId = $location->id;
+                                            $locationName = $location->name;
+
+                                            $label = "ID: {$locationId} | Warehouse: {$warehouseId} | Name: {$locationName}";
+
+                                            return [$locationId => $label];
+                                        });
+                                }),
 
                             DatePicker::make('received_date')
                                 ->label('Received Date')
@@ -199,8 +206,8 @@ class RegisterArrivalResource extends Resource
     public static function loadPurchaseOrderDetails($purchaseOrderId, Set $set)
     {
         if (!$purchaseOrderId) {
-            $set('provider_name', null);
-            $set('provider_phone', null);
+            $set('provider_id', null);
+            $set('provider_type', null);
             $set('due_date', null);
             $set('purchase_order_items', []);
             return;
@@ -209,8 +216,8 @@ class RegisterArrivalResource extends Resource
         $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
 
         if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-            $set('provider_name', $purchaseOrder->provider_name);
-            $set('provider_phone', $purchaseOrder->provider_phone);
+            $set('provider_id', $purchaseOrder->provider_id);
+            $set('provider_type', $purchaseOrder->provider_type);
             $set('due_date', $purchaseOrder->wanted_date);
 
             $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
@@ -237,8 +244,8 @@ class RegisterArrivalResource extends Resource
                 ->body('The selected purchase order is not in a released or partially arrived status.')
                 ->send();
 
-            $set('provider_name', null);
-            $set('provider_phone', null);
+            $set('provider_id', null);
+            $set('provider_type', null);
             $set('due_date', null);
             $set('purchase_order_items', []);
         }

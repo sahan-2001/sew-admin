@@ -22,6 +22,7 @@ class PurchaseOrderInvoice extends Model
         'adv_paid',
         'additional_cost',
         'discount',
+        'total_calculation_method',
         'due_payment',
         'due_payment_for_now',
         'created_by',
