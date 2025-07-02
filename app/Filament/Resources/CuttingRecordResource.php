@@ -35,6 +35,12 @@ use Illuminate\Support\Facades\URL;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use App\Models\ReleaseMaterialLine;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Carbon;
+
 
 class CuttingRecordResource extends Resource
 {
@@ -888,13 +894,14 @@ class CuttingRecordResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('id')
+                    ->label('Record ID')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('operation_date')
                     ->label('Date')
-                    ->date(),
-                    
+                    ->date()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('cuttingStation.name')
-                    ->label('Station'),
-                    
+                    ->label('Station')->searchable(),
                 Tables\Columns\TextColumn::make('order_type')
                     ->label('Order Type')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -902,33 +909,45 @@ class CuttingRecordResource extends Resource
                         'sample_order' => 'Sample',
                         'internal' => 'Internal',
                         default => $state,
-                    }),
-                    
+                    }),        
                 Tables\Columns\TextColumn::make('order_id')
                     ->label('Order ID')
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                    
-                Tables\Columns\TextColumn::make('total_pieces')
-                    ->label('Pieces'),
-                    
-                Tables\Columns\TextColumn::make('employees_count')
-                    ->label('Operators')
-                    ->counts('employees'),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                
+                Tables\Filters\SelectFilter::make('order_type')
+                    ->label('Order Type')
+                    ->options([
+                        'customer_order' => 'Customer Orders',
+                        'sample_order' => 'Sample Orders',
+                    ]),
+
+                Tables\Filters\Filter::make('operation_date')
+                    ->label('Operation Date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date')
+                            ->label('Select Date')
+                            ->closeOnDateSelection()
+                            ->maxDate(Carbon::today()), 
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['date'], fn ($q, $date) =>
+                            $q->whereDate('operation_date', $date)
+                        );
+                    }),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('Print Report')
                     ->label('Print Report')
                     ->icon('heroicon-o-printer')
@@ -940,13 +959,108 @@ class CuttingRecordResource extends Resource
                     ->color('gray')
                     ->url(fn ($record) => route('cutting-records.print-labels', $record))
                     ->openUrlInNewTab(),
-                    
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+
+                Tables\Actions\Action::make('recorrect')
+                    ->label('Recorrect')
+                    ->color('danger')
+                    ->icon('heroicon-o-arrow-path')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Recorrection')
+                    ->modalContent(new HtmlString('
+                        <p>This will reverse all changes made by this cutting record including:</p>
+                        <ul class="list-disc list-inside pl-4">
+                            <li>Restore material quantities</li>
+                            <li>Reset order and release material statuses</li>
+                            <li>Delete all related records</li>
+                        </ul>
+                        <p class="mt-2 font-semibold text-red-600">Are you sure you want to proceed?</p>
+                    '))
+                    ->modalSubmitActionLabel('Yes, recorrect')
+                    ->action(function (CuttingRecord $record) {
+                        return static::recorrectCuttingRecord($record);
+                    }),
             ])
             ->bulkActions([
             ]);
     }
+
+    public static function recorrectCuttingRecord(CuttingRecord $record)
+    {
+        return DB::transaction(function () use ($record) {
+            // 1. Reverse cut quantities in release material lines
+            if ($record->release_material_id) {
+                $releaseMaterialLines = ReleaseMaterialLine::where('release_material_id', $record->release_material_id)
+                    ->get();
+
+                foreach ($releaseMaterialLines as $line) {
+                    $cutQuantity = $record->orderItems->sum(function ($item) use ($line) {
+                        // Access variations through the order item relationship
+                        $variations = $item->variations;
+                        
+                        $itemMatch = $item->item_id == $line->item_id;
+                        $variationMatch = $variations->contains('item_id', $line->item_id);
+                        
+                        return $itemMatch || $variationMatch 
+                            ? ($item->quantity + $variations->sum('quantity'))
+                            : 0;
+                    });
+
+                    $line->update([
+                        'cut_quantity' => max(0, $line->cut_quantity - $cutQuantity)
+                    ]);
+                }
+            }
+
+            // 2. Reset order status
+            if ($record->order_type === 'customer_order') {
+                $order = \App\Models\CustomerOrder::find($record->order_id);
+                $order->status = 'material released';
+                $order->save();
+            } elseif ($record->order_type === 'sample_order') {
+                $order = \App\Models\SampleOrder::find($record->order_id);
+                $order->status = 'material released';
+                $order->save();
+            }
+
+            // 3. Reset release material status
+            if ($record->release_material_id) {
+                $releaseMaterial = \App\Models\ReleaseMaterial::find($record->release_material_id);
+                $releaseMaterial->status = 'released'; 
+                $releaseMaterial->save();
+            }
+
+            // 4. Delete all related records
+            $record->employees()->delete();
+            $record->qualityControls()->delete();
+            $record->wasteRecords()->delete();
+            $record->nonInventoryWaste()->delete();
+            $record->byProductRecords()->delete();
+            
+            // Delete barcode images and labels
+            foreach ($record->cutPieceLabels as $label) {
+                $path = str_replace('storage/', '', $label->barcode);
+                Storage::disk('public')->delete($path);
+            }
+            $record->cutPieceLabels()->delete();
+            
+            // Delete through the proper relationships
+            $record->orderItems()->each(function($item) {
+                $item->variations()->delete();
+                $item->delete();
+            });
+
+            // 5. Finally, delete the record itself
+            $record->delete();
+
+            Notification::make()
+                ->title('Cutting record recorrected successfully')
+                ->success()
+                ->send();
+
+            return redirect(static::getUrl('index'));
+        });
+    }
+
 
     public static function getRelations(): array
     {

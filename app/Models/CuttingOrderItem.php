@@ -25,11 +25,10 @@ class CuttingOrderItem extends Model
         return $this->belongsTo(CuttingRecord::class);
     }
 
-    public function variations(): HasMany
+    public function variations()
     {
         return $this->hasMany(CuttingOrderVariation::class, 'order_item_id');
     }
-
     public function labels(): HasMany
     {
         return $this->hasMany(CuttingLabel::class);

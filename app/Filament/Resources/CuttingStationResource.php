@@ -18,6 +18,7 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Filters\Filter;
 
 class CuttingStationResource extends Resource
 {
@@ -48,6 +49,7 @@ class CuttingStationResource extends Resource
             ->columns([
                 TextColumn::make('id')
                     ->searchable()
+                    ->label('Station ID')
                     ->sortable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('name')->searchable()->sortable(),
@@ -55,27 +57,34 @@ class CuttingStationResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                TrashedFilter::make(),
+                Filter::make('name')
+                    ->label('Filter by Name')
+                    ->form([
+                        TextInput::make('value')
+                            ->label('Name Contains')
+                            ->placeholder('Enter name...')
+                            ->autocomplete(false),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['value'], fn ($q, $value) => $q->where('name', 'like', "%{$value}%"));
+                    }),
             ])
             ->actions([
                 EditAction::make(),
                 DeleteAction::make(),
                 ForceDeleteAction::make(),
-                RestoreAction::make(),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
-                ForceDeleteBulkAction::make(),
-                RestoreBulkAction::make(),
             ]);
     }
 

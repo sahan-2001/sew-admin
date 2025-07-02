@@ -9,6 +9,12 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Section;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Support\Carbon;
+
 
 class CustomerResource extends Resource
 {
@@ -21,24 +27,39 @@ class CustomerResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('shop_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('address')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->required()
-                    ->email()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone_1')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone_2')
-                    ->maxLength(255),
+                Section::make('Customer Details')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('shop_name')
+                            ->maxLength(255),
+                    ]),
+                Section::make('Contact Details')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('address_line_1')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('address_line_2')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('city')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('zip_code')
+                            ->numeric()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('email')
+                            ->required()
+                            ->email()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone_1')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone_2')
+                            ->maxLength(255),
+                    ]),
                 Forms\Components\Hidden::make('remaining_balance')
                     ->default(0),
                 Forms\Components\Hidden::make('requested_by')
@@ -54,29 +75,66 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('customer_id')
                     ->label('Customer ID')
                     ->sortable()
+                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('address')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('phone_2')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('remaining_balance')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('requestedBy.email')->label('Requested By Email')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('approvedBy.email')->label('Approved By Email')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('remaining_balance')->sortable(),
+                
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                // Define your filters if needed
+                // Filter by Customer ID
+                Filter::make('customer_id')
+                    ->label('Customer ID')
+                    ->form([
+                        TextInput::make('customer_id'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['customer_id'],
+                            fn ($query, $value) => $query->where('customer_id', $value)
+                        );
+                    }),
+
+                // Filter by Remaining Balance
+                Filter::make('remaining_balance')
+                    ->label('Remaining Balance')
+                    ->form([
+                        TextInput::make('remaining_balance'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['remaining_balance'],
+                            fn ($query, $value) => $query->where('remaining_balance', $value)
+                        );
+                    }),
+                
+                // Filter by Created Date (single date only)
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('created_date')
+                            ->label('Created Date')
+                            ->maxDate(Carbon::today()),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['created_date'],
+                            fn ($query, $date) => $query->whereDate('created_at', $date)
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

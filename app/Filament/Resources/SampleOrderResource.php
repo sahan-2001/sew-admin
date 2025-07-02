@@ -24,8 +24,9 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
-
-
+use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Carbon;
+use Filament\Tables\Filters\SelectFilter;
 
 class SampleOrderResource extends Resource
 {
@@ -39,56 +40,71 @@ class SampleOrderResource extends Resource
     {
         return $form
             ->schema([
-                // Customer Selection
-                Select::make('customer_id')
-                    ->label('Customer')
-                    ->options(fn () => Customer::pluck('name', 'customer_id')->toArray())
-                    ->searchable()
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, $state) {
-                        $customer = Customer::find($state);
+                Section::make('Customer Details')
+                    ->columns(2)
+                    ->schema([
+                        // Customer Selection
+                        Select::make('customer_id')
+                            ->label('Customer')
+                            ->options(fn () =>
+                                \App\Models\Customer::all()
+                                    ->mapWithKeys(fn ($customer) => [
+                                        $customer->customer_id => "id={$customer->customer_id} | name={$customer->name}"
+                                    ])
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function (callable $set, $state) {
+                                $customer = \App\Models\Customer::find($state);
 
-                        if ($customer) {
-                            $set('customer_name', $customer->name);
-                            $set('phone_1', $customer->phone_1);
-                            $set('phone_2', $customer->phone_2);
-                            $set('email', $customer->email);
-                        }
-                    }),
+                                if ($customer) {
+                                    $set('customer_name', $customer->name);
+                                    $set('phone_1', $customer->phone_1);
+                                    $set('phone_2', $customer->phone_2);
+                                    $set('email', $customer->email);
+                                }
+                            }),
 
-                // Customer Details (Readonly Fields)
-                TextInput::make('customer_name')
-                    ->label('Customer Name')
-                    ->disabled(),
+                            // Customer Details (Readonly Fields)
+                            TextInput::make('customer_name')
+                                ->label('Customer Name')
+                                ->disabled(),
 
-                TextInput::make('phone_1')
-                    ->label('Phone 1')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('phone_1')
+                                ->label('Phone 1')
+                                ->nullable()
+                                ->disabled(),
 
-                TextInput::make('phone_2')
-                    ->label('Phone 2')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('phone_2')
+                                ->label('Phone 2')
+                                ->nullable()
+                                ->disabled(),
 
-                TextInput::make('email')
-                    ->label('Email')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('email')
+                                ->label('Email')
+                                ->nullable()
+                                ->disabled(),
+                    ]),
 
                 // Order Details
-                TextInput::make('name')
-                    ->label('Order Name')
-                    ->required(),
+                Section::make('Order Details')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Order Name')
+                            ->required(),
 
-                DatePicker::make('wanted_delivery_date')
-                    ->label('Wanted Delivery Date')
-                    ->required(),
+                        DatePicker::make('wanted_delivery_date')
+                            ->label('Wanted Delivery Date')
+                            ->required()
+                            ->minDate(Carbon::today()),
 
-                Textarea::make('special_notes')
-                    ->label('Special Notes')
-                    ->nullable(),
+                        Textarea::make('special_notes')
+                            ->label('Special Notes')
+                            ->nullable(),
+                    ]),
 
                 Hidden::make('added_by')
                     ->default(fn () => auth()->user()->id)
@@ -191,10 +207,12 @@ class SampleOrderResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('order_id')
-                    ->label('ID')
+                    ->label('Order ID')
+                    ->searchable()
+                    ->sortable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('customer.name')->label('Customer Name'),
-                TextColumn::make('name')->label('Order Name'),
+                TextColumn::make('customer.name')->label('Customer Name')->searchable(),
+                TextColumn::make('name')->label('Order Name')->searchable(),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
                 BadgeColumn::make('status')
                     ->label('Status')
@@ -209,12 +227,60 @@ class SampleOrderResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
+            ])
+            ->filters([
+                // Filter by Status
+                SelectFilter::make('status')
+                    ->label('Order Status')
+                    ->options([
+                        'planned' => 'Planned',
+                        'material released' => 'Material Released',
+                        'released' => 'Released',
+                        'cut' => 'Cut',
+                        'started' => 'Started',
+                        'completed' => 'Completed',
+                        'delivered' => 'Delivered',
+                        'accepted' => 'Accepted',
+                        'invoiced' => 'Invoiced',
+                        'closed' => 'Closed',
+                        'rejected' => 'Rejected',
+                    ])
+                    ->searchable(),
+
+                // Filter by Created Date
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('date')
+                            ->label('Created Date')
+                            ->maxDate(today())
+                            ->closeOnDateSelection()
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['date'], fn ($q, $date) =>
+                                $q->whereDate('created_at', $date)
+                            );
+                    }),
+                Filter::make('wanted_delivery_date')
+                    ->label('Wanted Delivery Date')
+                    ->form([
+                        DatePicker::make('date')
+                            ->label('Wanted Delivery Date')
+                            ->closeOnDateSelection()
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['date'], fn ($q, $date) =>
+                                $q->whereDate('wanted_delivery_date', $date)
+                            );
+                    }),
             ])
             ->actions([
                 EditAction::make()
@@ -222,15 +288,15 @@ class SampleOrderResource extends Resource
                     auth()->user()->can('edit sample orders') &&
                     in_array($record->status, ['planned', 'released'])
                 ),
-            DeleteAction::make()
-            ->visible(fn ($record) => 
-                auth()->user()->can('delete sample orders') &&
-                $record->status === 'planned'
-            ),
-            Action::make('handle')
-                    ->label('Handle')
-                    ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
-                    ->openUrlInNewTab(false),
+                DeleteAction::make()
+                ->visible(fn ($record) => 
+                    auth()->user()->can('delete sample orders') &&
+                    $record->status === 'planned'
+                ),
+                Action::make('handle')
+                        ->label('Handle')
+                        ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
+                        ->openUrlInNewTab(false),
             ])
             ->recordUrl(null);
             

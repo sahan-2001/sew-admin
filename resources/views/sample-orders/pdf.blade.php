@@ -70,7 +70,11 @@
             </tr>
             <tr>
                 <th>Sample Order ID</th>
-                <td>{{ $sampleOrderDetails['id'] }}</td>
+                <td>{{ str_pad($sampleOrderDetails['id'], 5, '0', STR_PAD_LEFT) }}</td>
+            </tr>
+            <tr>
+                <th>Customer ID</th>
+                <td>{{ $sampleOrderDetails['customer_id'] }}</td>
             </tr>
             <tr>
                 <th>Customer Name</th>
@@ -81,7 +85,7 @@
                 <td>{{ $sampleOrderDetails['wanted_delivery_date'] }}</td>
             </tr>
             <tr>
-                <th>Created Date</th>
+                <th>Order Created Date</th>
                 <td>{{ $sampleOrderDetails['created_at'] }}</td>
             </tr>
         </table>

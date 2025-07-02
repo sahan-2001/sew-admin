@@ -1,177 +1,156 @@
 <x-filament::page>
+    @php
+        $statusConfig = [
+            'planned' => ['progress' => 10, 'color' => '#3b82f6'],
+            'material released' => ['progress' => 20, 'color' => '#60a5fa'],
+            'released' => ['progress' => 30, 'color' => '#93c5fd'],
+            'cut' => ['progress' => 40, 'color' => '#f59e0b'],
+            'started' => ['progress' => 50, 'color' => '#fbbf24'],
+            'completed' => ['progress' => 70, 'color' => '#10b981'],
+            'delivered' => ['progress' => 80, 'color' => '#34d399'],
+            'accepted' => ['progress' => 90, 'color' => '#059669'],
+            'invoiced' => ['progress' => 95, 'color' => '#6b7280'],
+            'closed' => ['progress' => 100, 'color' => '#111827'],
+            'rejected' => ['progress' => 100, 'color' => '#ef4444']
+        ];
 
-    <br>
-    <div class="flex items-center gap-4 w-full md:w-1/2">
+        $currentStatus = $record->status ?? 'planned';
+        $currentConfig = $statusConfig[$currentStatus] ?? $statusConfig['planned'];
+        $progressValue = $currentConfig['progress'];
+        $color = $currentConfig['color'];
         
-        <!-- Blinking Status Text (Left) -->
-        <div class="text-lg font-semibold text-gray-700 animate-blink whitespace-nowrap">
-            {{ ucfirst($record->status) }}
-        </div>
+        // Proper date handling
+        $wantedDate = $record->wanted_delivery_date;
+        $formattedWantedDate = null;
+        
+        if ($wantedDate instanceof \Carbon\Carbon || $wantedDate instanceof \DateTime) {
+            $formattedWantedDate = $wantedDate->format('M d, Y');
+        } elseif (is_string($wantedDate)) {
+            try {
+                $formattedWantedDate = \Carbon\Carbon::parse($wantedDate)->format('M d, Y');
+            } catch (\Exception $e) {
+                $formattedWantedDate = $wantedDate; // Fallback to raw string if parsing fails
+            }
+        }
+    @endphp
 
-        <!-- Filled Progress Bar -->
-        <div class="w-full bg-gray-200 rounded-md overflow-hidden">
-            @php
-                $status = $record->status;
-                $progressValue = match($status) {
-                    'planned' => 25,
-                    'released' => 50,
-                    'rejected' => 75,
-                    'accepted' => 100,
-                    default => 0
-                };
-
-                $color = match($status) {
-                    'planned' => '#3b82f6',
-                    'released' => '#f59e0b',
-                    'rejected' => '#ef4444',
-                    'accepted' => '#10b981',
-                    default => '#e5e7eb'
-                };
-            @endphp
-
-            <div class="h-3 rounded-md transition-all duration-500 ease-in-out"
-                style="width: {{ $progressValue }}%; background-color: {{ $color }};">
+    <div class="space-y-6">
+        <!-- Status Progress Bar -->
+        <div class="flex items-center gap-4 w-full md:w-1/2">
+            <div class="text-lg font-semibold text-gray-700 animate-blink whitespace-nowrap">
+                {{ ucfirst($currentStatus) }}
+            </div>
+            
+            <div class="w-full bg-gray-200 rounded-md overflow-hidden">
+                <div class="h-3 rounded-md transition-all duration-500 ease-in-out"
+                    style="width: {{ $progressValue }}%; background-color: {{ $color }};">
+                </div>
+            </div>
+            
+            <div class="text-lg font-semibold text-gray-700">
+                {{ $progressValue }}%
             </div>
         </div>
 
-        <!-- Progress Percentage -->
-        <div class="text-lg font-semibold text-gray-700">
-            {{ $progressValue }}%
+        <br>
+        <br>
+
+        <!-- Order Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+                <p><strong>Order ID:</strong> {{ $record->order_id }}</p>
+                <p><strong>Customer:</strong> {{ $record->customer->name ?? 'N/A' }}</p>
+                <p><strong>Order Name:</strong> {{ $record->name }}</p>
+            </div>
+            
+            <div class="space-y-2">
+                <p><strong>Status:</strong> {{ ucfirst($currentStatus) }}</p>
+                <p><strong>Wanted Delivery Date:</strong> {{ $formattedWantedDate ?? 'N/A' }}</p>
+                <p><strong>Special Notes:</strong> {{ $record->special_notes ?? 'None' }}</p>
+            </div>
         </div>
 
-    </div>
-
-    <br>
-
-    <!-- Order Details (2 Columns) -->
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <p><strong>Order ID:</strong> {{ $record->order_id }}</p>
-            <p><strong>Customer:</strong> {{ $record->customer->name }}</p>
-            <p><strong>Order Name:</strong> {{ $record->name }}</p>
-        </div>
-
-        <div>
-            <p><strong>Status:</strong> {{ $record->status }}</p>
-            <p><strong>Wanted Delivery Date:</strong> {{ $record->wanted_delivery_date }}</p>
-            <p><strong>Special Notes:</strong> {{ $record->special_notes }}</p>
-        </div>
-    </div>
-
-    <!-- Order Items -->
-    <h2 class="text-xl font-semibold mt-6">Order Items</h2>
-    <table class="w-full border-collapse border border-gray-300 mt-2">
-        <thead>
-            <tr class="bg-blue-100">
-                <th class="border border-gray-300 p-2">Item Name</th>
-                <th class="border border-gray-300 p-2">Quantity</th>
-                <th class="border border-gray-300 p-2 text-right">Price</th>
-                <th class="border border-gray-300 p-2 text-right">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php $grandTotal = 0; @endphp
-            @foreach ($record->items as $item)
-                @if (!$item->is_variation)
-                    <tr>
-                        <td class="border border-gray-300 p-2">{{ $item->item_name }}</td>
-                        <td class="border border-gray-300 p-2">{{ $item->quantity }}</td>
-                        <td class="border border-gray-300 p-2 text-right">{{ $item->price }}</td>
-                        <td class="border border-gray-300 p-2 text-right">{{ $item->total }}</td>
-                    </tr>
-                    @php $grandTotal += $item->total; @endphp
-                @endif
-            @endforeach
-        </tbody>
-    </table>
-
-    <h2 class="text-xl font-semibold mt-6">Variation Items</h2>
-    <table class="w-full border-collapse border border-gray-300 mt-2">
-        <thead>
-            <tr class="bg-blue-100">
-                <th class="border border-gray-300 p-2">Parent Item Name</th>
-                <th class="border border-gray-300 p-2">Variation Name</th>
-                <th class="border border-gray-300 p-2">Quantity</th>
-                <th class="border border-gray-300 p-2 text-right">Price</th>
-                <th class="border border-gray-300 p-2 text-right">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($record->items as $item)
-                @if ($item->is_variation)
-                    <tr class="bg-blue-50 font-semibold">
-                        <td colspan="5" class="border border-gray-300 p-2">{{ $item->item_name }}</td>
-                    </tr>
-                    @foreach ($item->variations as $variation)
-                        <tr>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2">{{ $variation->variation_name }}</td>
-                            <td class="border border-gray-300 p-2">{{ $variation->quantity }}</td>
-                            <td class="border border-gray-300 p-2 text-right">{{ $variation->price }}</td>
-                            <td class="border border-gray-300 p-2 text-right">{{ $variation->total }}</td>
+        <!-- Order Items -->
+        <div class="space-y-4">
+            <h2 class="text-xl font-semibold">Order Items</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-blue-100">
+                            <th class="border border-gray-300 p-2">Item Name</th>
+                            <th class="border border-gray-300 p-2">Quantity</th>
+                            <th class="border border-gray-300 p-2 text-right">Price</th>
+                            <th class="border border-gray-300 p-2 text-right">Total</th>
                         </tr>
-                        @php $grandTotal += $variation->total; @endphp
-                    @endforeach
-                @endif
-            @endforeach
-        </tbody>
-    </table>
+                    </thead>
+                    <tbody>
+                        @php $grandTotal = 0; @endphp
+                        @foreach ($record->items as $item)
+                            @if (!$item->is_variation)
+                                <tr>
+                                    <td class="border border-gray-300 p-2">{{ $item->item_name }}</td>
+                                    <td class="border border-gray-300 p-2">{{ $item->quantity }}</td>
+                                    <td class="border border-gray-300 p-2 text-right">{{ number_format($item->price, 2) }}</td>
+                                    <td class="border border-gray-300 p-2 text-right">{{ number_format($item->total, 2) }}</td>
+                                </tr>
+                                @php $grandTotal += $item->total; @endphp
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    <div class="text-right font-bold mt-6">
-        <p>Grand Total: {{ $grandTotal }}</p>
+        <!-- Variation Items -->
+        <div class="space-y-4">
+            <h2 class="text-xl font-semibold">Variation Items</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-blue-100">
+                            <th class="border border-gray-300 p-2">Parent Item</th>
+                            <th class="border border-gray-300 p-2">Variation</th>
+                            <th class="border border-gray-300 p-2">Quantity</th>
+                            <th class="border border-gray-300 p-2 text-right">Price</th>
+                            <th class="border border-gray-300 p-2 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($record->items as $item)
+                            @if ($item->is_variation)
+                                <tr class="bg-blue-50 font-semibold">
+                                    <td colspan="5" class="border border-gray-300 p-2">{{ $item->item_name }}</td>
+                                </tr>
+                                @foreach ($item->variations as $variation)
+                                    <tr>
+                                        <td class="border border-gray-300 p-2"></td>
+                                        <td class="border border-gray-300 p-2">{{ $variation->variation_name }}</td>
+                                        <td class="border border-gray-300 p-2">{{ $variation->quantity }}</td>
+                                        <td class="border border-gray-300 p-2 text-right">{{ number_format($variation->price, 2) }}</td>
+                                        <td class="border border-gray-300 p-2 text-right">{{ number_format($variation->total, 2) }}</td>
+                                    </tr>
+                                    @php $grandTotal += $variation->total; @endphp
+                                @endforeach
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Grand Total -->
+        <div class="text-right font-bold">
+            <p>Grand Total: {{ number_format($grandTotal, 2) }}</p>
+        </div>
     </div>
 
     <style>
-        .progress-bar-container {
-            height: 10px;
-            background-color: #e5e7eb;
-            border-radius: 9999px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            transition: width 0.5s ease-in-out;
-        }
-
-        /* Status Labels */
-        .status-label {
-            display: inline-block;
-            width: 25%;
-            text-align: center;
-        }
-
-        /* Highlight active status label */
-        .status-label.text-blue-600 {
-            font-weight: bold;
-            color: #3b82f6; /* Blue color */
-        }
-
-        .status-label.text-green-600 {
-            font-weight: bold;
-            color: #10b981; /* Green color */
-        }
-
-        .status-label.text-red-600 {
-            font-weight: bold;
-            color: #ef4444; /* Red color */
-        }
-
-        .status-label.text-yellow-600 {
-            font-weight: bold;
-            color: #f59e0b; /* Yellow color */
-        }
-
-        /* Blinking Status */
         @keyframes blink {
-            50% {
-                opacity: 0.5;
-            }
+            50% { opacity: 0.5; }
         }
-
         .animate-blink {
             animation: blink 1s infinite;
-            font-weight: bold;
+            color: {{ $color }};
         }
     </style>
-
 </x-filament::page>

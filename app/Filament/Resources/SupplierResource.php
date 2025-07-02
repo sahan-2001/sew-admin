@@ -14,6 +14,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Carbon;
+use Filament\Forms\Components\Section;
+
 
 class SupplierResource extends Resource
 {
@@ -26,26 +28,44 @@ class SupplierResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('shop_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('address')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->required()
-                    ->email()
-                    ->maxLength(255)
-                    ->unique(Supplier::class, 'email', ignoreRecord: true),
-                Forms\Components\TextInput::make('phone_1')
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(Supplier::class, 'phone_1', ignoreRecord: true),
-                Forms\Components\TextInput::make('phone_2')
-                    ->maxLength(255),
+                Section::make('Supplier Details')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('shop_name')
+                            ->required()
+                            ->maxLength(255),
+                    ]),
+
+                Section::make('Contact Details')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('address_line_1')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('address_line_2')
+                            ->nullable()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('city')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('zip_code')
+                            ->required()
+                            ->numeric(),
+                        Forms\Components\TextInput::make('email')
+                            ->required()
+                            ->email()
+                            ->maxLength(255)
+                            ->unique(Supplier::class, 'email', ignoreRecord: true),
+                        Forms\Components\TextInput::make('phone_1')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(Supplier::class, 'phone_1', ignoreRecord: true),
+                        Forms\Components\TextInput::make('phone_2')
+                            ->maxLength(255),
+                    ]),
                 Forms\Components\Hidden::make('outstanding_balance')
                     ->default(0),
                 Forms\Components\Hidden::make('added_by')
@@ -107,7 +127,7 @@ class SupplierResource extends Resource
                     ->label('Created Date')
                     ->form([
                         DatePicker::make('created_date')
-                            ->label('Date')
+                            ->label('Created Date')
                             ->maxDate(Carbon::today()),
                     ])
                     ->query(function ($query, array $data) {

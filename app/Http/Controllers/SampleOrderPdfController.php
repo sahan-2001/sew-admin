@@ -32,6 +32,7 @@ class SampleOrderPdfController extends Controller
 
         $sampleOrderDetails = [
             'id' => $sample_order->order_id,
+            'customer_id' => $sample_order->customer_id,
             'customer_name' => $sample_order->customer->name ?? 'N/A',
             'wanted_delivery_date' => $sample_order->wanted_delivery_date,
             'status' => $sample_order->status,

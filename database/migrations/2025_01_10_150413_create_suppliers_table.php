@@ -14,10 +14,13 @@ class CreateSuppliersTable extends Migration
     public function up()
     {
         Schema::create('suppliers', function (Blueprint $table) {
-            $table->id('supplier_id'); // This adds the 'id' column as the primary key
+            $table->id('supplier_id'); 
             $table->string('name');
             $table->string('shop_name');
-            $table->string('address');
+            $table->string('address_line_1');
+            $table->string('address_line_2')->nullable();
+            $table->string('city');
+            $table->integer('zip_code')->nullable(); 
             $table->string('email');
             $table->string('phone_1');
             $table->string('phone_2')->nullable();

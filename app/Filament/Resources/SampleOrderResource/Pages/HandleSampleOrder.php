@@ -152,8 +152,9 @@ class HandleSampleOrder extends Page
     {
         $actions = [
             Action::make('Close')
-                ->label('Close')
+                ->label('Back to Sample Orders')
                 ->color('primary')
+                ->icon('heroicon-o-arrow-left') 
                 ->url(fn () => SampleOrderResource::getUrl('index'))
                 ->openUrlInNewTab(false),
         ];
@@ -173,7 +174,7 @@ class HandleSampleOrder extends Page
         }
 
         // Actions for released status
-        if (in_array($this->record->status, ['released', 'started'])) {
+        if (in_array($this->record->status, ['released', 'cut', 'started'])) {
             $actions[] = Action::make('complete_order')
                 ->label('Complete Order')
                 ->color('success')
@@ -200,7 +201,7 @@ class HandleSampleOrder extends Page
         if (in_array($this->record->status, ['released', 'started', 'cut'])) {
             $actions[] = Action::make('pause_order')
                 ->label('Pause Order')
-                ->color('warning')
+                ->color('danger')
                 ->icon('heroicon-o-pause')
                 ->requiresConfirmation()
                 ->modalHeading('Pause Sample Order')
@@ -223,8 +224,8 @@ class HandleSampleOrder extends Page
         if ($this->record->status === 'paused'){
             $actions[] = Action::make('resume_order')
                 ->label('Resume Order')
-                ->color('warning')
-                ->icon('heroicon-o-pause')
+                ->color('info')
+                ->icon('heroicon-o-play')
                 ->requiresConfirmation()
                 ->modalHeading('Resume Sample Order')
                 ->modalDescription('Are you sure you want to Resume this sample order? All Operations will be started from paused point')
@@ -284,7 +285,7 @@ class HandleSampleOrder extends Page
 
 
         // Plan Order (Change status back to "planned") for 'released', 'accepted', 'rejected' statuses
-        if (in_array($this->record->status, ['released', 'started'])) {
+        if (in_array($this->record->status, ['released', 'start'])) {
             $actions[] = Action::make('plan_order')
                 ->label('Plan Order')
                 ->color('gray')
@@ -298,7 +299,7 @@ class HandleSampleOrder extends Page
         }
 
         // Show "Print PDF" action
-        if (in_array($this->record->status, ['planned', 'released', 'accepted', 'rejected', 'cut', 'started', 'paused'])) {
+        if (in_array($this->record->status, ['planned', 'released', 'accepted', 'rejected', 'cut', 'started', 'paused', 'completed', 'delivered'])) {
             $actions[] = Action::make('printPdf')
             ->label('Print PDF')
             ->url(fn () => route('sample-orders.pdf', ['sample_order' => $this->record->order_id]))

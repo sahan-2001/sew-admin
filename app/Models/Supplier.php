@@ -12,12 +12,15 @@ class Supplier extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $primaryKey = 'supplier_id'; // Set the primary key to 'supplier_id'
+    protected $primaryKey = 'supplier_id';
 
     protected $fillable = [
         'name',
         'shop_name',
-        'address',
+        'address_line_1',
+        'address_line_2',
+        'city',
+        'zip_code',
         'email',
         'phone_1',
         'phone_2',
