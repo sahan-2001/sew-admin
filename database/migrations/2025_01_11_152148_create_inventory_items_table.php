@@ -16,6 +16,8 @@ class CreateInventoryItemsTable extends Migration
             $table->text('special_note')->nullable();
             $table->string('uom');
             $table->integer('available_quantity')->default(0);
+            $table->decimal('moq', 12, 2)->nullable();
+            $table->decimal('max_order_quantity', 12, 2)->nullable();
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

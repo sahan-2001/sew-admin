@@ -5,60 +5,55 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Stock extends Model
+class StockReturn extends Model
 {
     use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
+        'stock_id',
         'item_id',
+        'location_id',
+        'purchase_order_id',
+        'provider_type',
+        'provider_id',
         'quantity',
         'cost',
-        'location_id',
-        'purchase_order_id', 
+        'reason',
         'created_by',
         'updated_by',
     ];
 
+    public function stock()
+    {
+        return $this->belongsTo(Stock::class);
+    }
+
     public function item()
     {
-        return $this->belongsTo(InventoryItem::class, 'item_id');
+        return $this->belongsTo(Item::class);
     }
 
     public function location()
     {
-        return $this->belongsTo(InventoryLocation::class, 'location_id');
+        return $this->belongsTo(InventoryLocation::class);
     }
 
     public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
-    protected static function boot()
+    public function creator()
     {
-        parent::boot();
-
-        static::saved(function ($stock) {
-            $stock->updateItemAvailableQuantity();
-        });
-
-        static::deleted(function ($stock) {
-            $stock->updateItemAvailableQuantity();
-        });
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updateItemAvailableQuantity()
+    // Optional: polymorphic relation if you need dynamic provider
+    public function provider()
     {
-        $item = $this->item; 
-        if ($item) {
-            $sum = self::where('item_id', $item->id)->sum('quantity');
-
-            $item->available_quantity = $sum;
-            $item->saveQuietly();
-        }
+        return $this->morphTo(__FUNCTION__, 'provider_type', 'provider_id');
     }
 
     protected static function booted()
@@ -79,11 +74,11 @@ class Stock extends Model
             ->logOnly($this->fillable)
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('stock')
+            ->useLogName('stock_return')
             ->setDescriptionForEvent(function (string $eventName) {
                 $user = auth()->user();
                 $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
-                return "Stock #{$this->id} has been {$eventName}{$userInfo}";
+                return "StockReturn #{$this->id} has been {$eventName}{$userInfo}";
             });
     }
 }

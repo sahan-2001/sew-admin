@@ -10,6 +10,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Grid, Section, Repeater};
+use Filament\Tables\Filters\Filter;
 
 class NonInventoryItemResource extends Resource
 {
@@ -22,27 +24,31 @@ class NonInventoryItemResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('item_id')
-                    ->label('Item ID')
-                    ->disabled()
-                    ->default(fn () => self::generateItemId()),
+                Section::make('Item Details')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('item_id')
+                        ->label('Item ID')
+                        ->disabled()
+                        ->default(fn () => self::generateItemId()),
 
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
+                    Forms\Components\TextInput::make('name')
+                        ->required()
+                        ->maxLength(255),
 
-                Forms\Components\Select::make('non_inventory_category_id')
-                    ->label('Category')
-                    ->options(fn () => self::getCategoryOptions())
-                    ->required(),
+                    Forms\Components\Select::make('non_inventory_category_id')
+                        ->label('Category')
+                        ->options(fn () => self::getCategoryOptions())
+                        ->required(),
 
-                Forms\Components\TextInput::make('price')
-                    ->numeric()
-                    ->required(),
+                    Forms\Components\TextInput::make('price')
+                        ->numeric()
+                        ->required(),
 
-                Forms\Components\Textarea::make('remarks')
-                    ->label('Remarks')
-                    ->nullable(),
+                    Forms\Components\Textarea::make('remarks')
+                        ->label('Remarks')
+                        ->nullable(),
+                ]),
             ]);
     }
 
@@ -55,19 +61,37 @@ class NonInventoryItemResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('category.name')->label('Category')->searchable(),
                 Tables\Columns\TextColumn::make('price')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
+            ])
+            ->filters([
+                Filter::make('price')
+                    ->form([
+                        TextInput::make('price_min')
+                            ->label('Min Price')
+                            ->numeric()
+                            ->placeholder('Min'),
+                        TextInput::make('price_max')
+                            ->label('Max Price')
+                            ->numeric()
+                            ->placeholder('Max'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['price_min'], fn ($q) => $q->where('price', '>=', $data['price_min']))
+                            ->when($data['price_max'], fn ($q) => $q->where('price', '<=', $data['price_max']));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

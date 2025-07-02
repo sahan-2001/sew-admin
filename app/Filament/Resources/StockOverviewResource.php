@@ -15,6 +15,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 
 class StockOverviewResource extends Resource
 {
@@ -118,7 +122,7 @@ class StockOverviewResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(Stock::query()->where('quantity', '>', 0)) // Only show stocks with quantity > 0
+            ->query(Stock::query()->where('quantity', '>', 0)) 
             ->columns([
                 TextColumn::make('location.warehouse.name')
                     ->label('Warehouse')
@@ -144,30 +148,271 @@ class StockOverviewResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('id')->label('Recorded ID')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('warehouse_id')
-                    ->label('Filter by Warehouse')
-                    ->relationship('location.warehouse', 'name'),
+                Filter::make('item_code')
+                    ->label('Item Code')
+                    ->form([
+                        Forms\Components\TextInput::make('item_code')
+                            ->placeholder('Enter Item Code'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['item_code'],
+                            fn ($query, $itemCode) => $query->whereHas('item', fn ($q) =>
+                                $q->where('item_code', 'like', "%{$itemCode}%")
+                            )
+                        )
+                    ),
 
-                Tables\Filters\SelectFilter::make('location_id')
-                    ->label('Filter by Location')
-                    ->relationship('location', 'name'),
-                
-                // Add a filter to show zero quantity items if needed
-                Tables\Filters\Filter::make('show_zero_quantity')
-                    ->label('Show Zero Quantity Items')
-                    ->query(fn (Builder $query) => $query->where('quantity', 0))
-                    ->default(false)
-                    ->hidden(),
-            ]);
+                Filter::make('warehouse')
+                    ->label('Warehouse')
+                    ->form([
+                        Forms\Components\Select::make('warehouse_id')
+                            ->options(\App\Models\Warehouse::pluck('name', 'id'))
+                            ->searchable()
+                            ->placeholder('Select Warehouse'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['warehouse_id'],
+                            fn ($query, $warehouseId) => $query->whereHas('location.warehouse', fn ($q) =>
+                                $q->where('id', $warehouseId)
+                            )
+                        )
+                    ),
+
+                Filter::make('location')
+                    ->label('Location')
+                    ->form([
+                        Forms\Components\Select::make('location_id')
+                            ->options(
+                                \App\Models\InventoryLocation::whereHas('warehouse', function ($q) {
+                                    $q->whereIn('location_type', ['picking', 'shipment']);
+                                })->pluck('name', 'id')
+                            )
+                            ->searchable()
+                            ->placeholder('Select Picking/Shipment Location'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['location_id'],
+                            fn ($query, $locationId) => $query->where('location_id', $locationId)
+                        )
+                    ),
+            ])
+            ->actions([
+                Action::make('getStocks')
+                    ->label('Retrieve Stocks')
+                    ->icon('heroicon-o-plus-circle')
+                    ->modalHeading('Get Stocks')
+                    ->modalWidth('md')
+                    ->mountUsing(function ($form, $record) {
+                        $form->fill([
+                            'item_id' => $record->item_id,
+                            'item_code' => $record->item->item_code,
+                            'item_name' => $record->item->name,
+                            'location_id' => $record->location_id,
+                            'cost' => $record->cost,
+                            'available_quantity' => $record->quantity,
+                        ]);
+                    })
+                    ->form([
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\TextInput::make('item_id')->disabled(),
+                            Forms\Components\TextInput::make('item_code')->label('Item Code')->disabled(),
+                            Forms\Components\TextInput::make('item_name')->label('Item Name')->disabled(),
+                            Forms\Components\TextInput::make('location_id')->label('Location ID')->disabled(),
+                            Forms\Components\TextInput::make('cost')
+                                ->label('Cost')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0)
+                                ->readonly(),
+                            Forms\Components\TextInput::make('available_quantity')->label('Available Quantity')->disabled(),
+                            Forms\Components\TextInput::make('quantity')
+                                ->label('Quantity to Get')
+                                ->numeric()
+                                ->required()
+                                ->rules(['gt:0'])
+                                ->rules(function (callable $get) {
+                                    return ['lte:' . $get('available_quantity')];
+                                }),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason')
+                                ->required()
+                                ->columnSpan(2)
+                                ->rows(2),
+                        ]),
+                    ])
+                    ->action(function ($record, array $data) {
+                        \App\Models\StockGet::create([
+                            'stock_id' => $record->id,
+                            'item_id' => $record->item_id,
+                            'location_id' => $record->location_id,
+                            'quantity' => $data['quantity'],
+                            'cost' => $data['cost'],
+                            'reason' => $data['reason'],
+                            'created_by' => auth()->id(),
+                        ]);
+
+                        $record->decrement('quantity', $data['quantity']);
+
+                        Notification::make()
+                            ->title('Stock Retrieved Successfully')
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('returnStocks')
+                    ->label('Return Stocks')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->modalHeading('Return Stocks')
+                    ->modalWidth('md')
+                    ->visible(fn ($record) => $record->purchase_order_id !== null)
+                    ->mountUsing(function ($form, $record) {
+                        $purchaseOrder = $record->purchaseOrder;
+
+                        $form->fill([
+                            'item_id' => $record->item_id,
+                            'item_code' => $record->item->item_code,
+                            'item_name' => $record->item->name,
+                            'location_id' => $record->location_id,
+                            'cost' => $record->cost,
+                            'available_quantity' => $record->quantity,
+                            'purchase_order_id' => $record->purchase_order_id,
+                            'provider_type' => $purchaseOrder?->provider_type,
+                            'provider_id' => $purchaseOrder?->provider_id,
+                        ]);
+                    })
+                    ->form([
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\TextInput::make('item_id')->disabled(),
+                            Forms\Components\TextInput::make('item_code')->label('Item Code')->disabled(),
+                            Forms\Components\TextInput::make('item_name')->label('Item Name')->disabled(),
+                            Forms\Components\TextInput::make('location_id')->label('Location ID')->disabled(),
+                            Forms\Components\TextInput::make('cost')
+                                ->label('Cost')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0)
+                                ->readonly(),
+                            Forms\Components\TextInput::make('available_quantity')->label('Available Quantity')->disabled(),
+                            Forms\Components\TextInput::make('purchase_order_id')->label('PO ID')->disabled(),
+                            Forms\Components\Hidden::make('provider_type')->required(),
+                            Forms\Components\TextInput::make('provider_id')
+                                ->label('Supplier ID')
+                                ->readonly()
+                                ->visible(fn (callable $get) => $get('provider_type') === 'supplier'),
+                            Forms\Components\TextInput::make('provider_id')
+                                ->label('Customer ID')
+                                ->readonly()
+                                ->visible(fn (callable $get) => $get('provider_type') === 'customer'),
+                            Forms\Components\TextInput::make('quantity')
+                                ->label('Quantity to Return')
+                                ->numeric()
+                                ->required()
+                                ->rules(['gt:0'])
+                                ->rules(fn (callable $get) => ['lte:' . $get('available_quantity')]),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason')
+                                ->required()
+                                ->columnSpan(2)
+                                ->rows(2),
+                        ]),
+                    ])
+                    ->action(function ($record, array $data) {
+                        \App\Models\StockReturn::create([
+                            'stock_id' => $record->id,
+                            'item_id' => $record->item_id,
+                            'location_id' => $record->location_id,
+                            'purchase_order_id' => $record->purchase_order_id,
+                            'provider_type' => $data['provider_type'],
+                            'provider_id' => $data['provider_id'],
+                            'quantity' => $data['quantity'],
+                            'cost' => $data['cost'],
+                            'reason' => $data['reason'],
+                            'created_by' => auth()->id(),
+                        ]);
+
+                        // Manually decrement quantity to be sure
+                        $record->quantity = $record->quantity - $data['quantity'];
+                        $record->save();
+
+                        Notification::make()
+                            ->title('Stock Returned Successfully')
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('destroyStock')
+                    ->label('Destroy Stock')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->modalHeading('Destroy Stock')
+                    ->modalWidth('md')
+                    ->mountUsing(function ($form, $record) {
+                        $form->fill([
+                            'item_id' => $record->item_id,
+                            'item_code' => $record->item->item_code,
+                            'item_name' => $record->item->name,
+                            'location_id' => $record->location_id,
+                            'cost' => $record->cost,
+                            'available_quantity' => $record->quantity,
+                        ]);
+                    })
+                    ->form([
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\TextInput::make('item_id')->disabled(),
+                            Forms\Components\TextInput::make('item_code')->label('Item Code')->disabled(),
+                            Forms\Components\TextInput::make('item_name')->label('Item Name')->disabled(),
+                            Forms\Components\TextInput::make('location_id')->label('Location ID')->disabled(),
+                            Forms\Components\TextInput::make('cost')
+                                ->label('Cost')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0)
+                                ->readonly(),
+                            Forms\Components\TextInput::make('available_quantity')->label('Available Quantity')->disabled(),
+                            Forms\Components\TextInput::make('quantity')
+                                ->label('Quantity to Destroy')
+                                ->numeric()
+                                ->required()
+                                ->rules(['gt:0'])
+                                ->rules(function (callable $get) {
+                                    return ['lte:' . $get('available_quantity')];
+                                }),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason')
+                                ->required()
+                                ->columnSpan(2)
+                                ->rows(2),
+                        ]),
+                    ])
+                    ->action(function ($record, array $data) {
+                        \App\Models\StockDestroy::create([
+                            'stock_id' => $record->id,
+                            'item_id' => $record->item_id,
+                            'location_id' => $record->location_id,
+                            'quantity' => $data['quantity'],
+                            'cost' => $data['cost'],
+                            'reason' => $data['reason'],
+                            'created_by' => auth()->id(),
+                        ]);
+
+                        $record->decrement('quantity', $data['quantity']);
+
+                        Notification::make()
+                            ->title('Stock Destroyed Successfully')
+                            ->success()
+                            ->send();
+                    }),
+                ]);
     }
 
 

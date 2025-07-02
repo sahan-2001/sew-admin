@@ -11,6 +11,8 @@ use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Actions;
+use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Grid, Section, Repeater};
+
 
 
 class InventoryItemResource extends Resource
@@ -24,32 +26,57 @@ class InventoryItemResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('item_code')
-                    ->label('Item Code')
-                    ->disabled()
-                    ->default(fn () => self::generateItemCode()),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Select::make('category')
-                    ->label('Category')
-                    ->options(fn () => self::getCategoryOptions())
-                    ->required(),
-                Forms\Components\Textarea::make('special_note')
-                    ->label('Special Note')
-                    ->nullable(),
-                Forms\Components\Select::make('uom')
-                    ->label('Unit of Measure')
-                    ->options([
-                        'kg' => 'Kg',
-                        'liters' => 'Liters',
-                        'meters' => 'Meters',
-                        'pcs' => 'Pcs',
-                        // ...other units...
-                    ])
-                    ->required(),
+                Section::make('Item Code')
+                ->schema([
+                    Forms\Components\TextInput::make('item_code')
+                        ->label('Item Code')
+                        ->disabled()
+                        ->default(fn () => self::generateItemCode()),
+                ]),
+
+                Section::make('Item Details')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->label('Item Name')
+                        ->required()
+                        ->maxLength(255),
+                    Forms\Components\Select::make('category')
+                        ->label('Category')
+                        ->options(fn () => self::getCategoryOptions())
+                        ->required(),
+                    Forms\Components\Select::make('uom')
+                        ->label('Unit of Measure')
+                        ->options([
+                            'kg' => 'Kg',
+                            'liters' => 'Liters',
+                            'meters' => 'Meters',
+                            'pcs' => 'Pcs',
+                            // ...other units...
+                        ])
+                        ->required(),
+                ]),
+                
+                Section::make('Additional Information')
+                ->columns(3)
+                ->schema([
+                    Forms\Components\TextInput::make('moq')
+                        ->label('Alert Quantity / MOQ')
+                        ->numeric()
+                        ->nullable(),
+                    Forms\Components\TextInput::make('max_order_quantity')
+                        ->label('Maximum Order Quantity')
+                        ->numeric()
+                        ->nullable(),
+                    Forms\Components\Textarea::make('special_note')
+                        ->label('Notes')
+                        ->nullable()
+                        ->columns(3),
+                ]),
+
                 Forms\Components\TextInput::make('available_quantity')
                     ->label('Available Quantity')
+                    ->hidden()
                     ->default(0)
                     ->numeric(),
             ]);
@@ -62,21 +89,47 @@ class InventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('item_code')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('uom')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('available_quantity')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('uom')->label('UOM'),
+                Tables\Columns\TextColumn::make('available_quantity')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                // Define your filters if needed
+                Tables\Filters\SelectFilter::make('uom')
+                    ->label('Unit of Measure')
+                    ->options(
+                        \App\Models\InventoryItem::query()
+                            ->distinct()
+                            ->pluck('uom', 'uom') 
+                            ->filter() 
+                            ->toArray()
+                    ),
+
+                Tables\Filters\Filter::make('available_quantity_range')
+                    ->label('Available Quantity')
+                    ->form([
+                        Forms\Components\TextInput::make('min')
+                            ->label('Min')
+                            ->numeric()
+                            ->placeholder('e.g. 0'),
+                        Forms\Components\TextInput::make('max')
+                            ->label('Max')
+                            ->numeric()
+                            ->placeholder('e.g. 100'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['min'], fn ($q) => $q->where('available_quantity', '>=', $data['min']))
+                            ->when($data['max'], fn ($q) => $q->where('available_quantity', '<=', $data['max']));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

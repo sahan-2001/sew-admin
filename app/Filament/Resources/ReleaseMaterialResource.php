@@ -50,7 +50,7 @@ class ReleaseMaterialResource extends Resource
 
                             Select::make('order_id')
                                 ->label('Order')
-                                ->helperText('You can select only orders with released status.')
+                                ->helperText('You can select only orders with released, Cut, Started status.')
                                 ->required()
                                 ->searchable()
                                 ->options(function ($get) {
@@ -59,7 +59,7 @@ class ReleaseMaterialResource extends Resource
 
                                     if ($orderType === 'customer_order') {
                                         $orders = \App\Models\CustomerOrder::with('customer')
-                                            ->whereNotIn('status', ['planned', 'paused'])
+                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed'])
                                             ->get();
 
                                         $options = $orders->mapWithKeys(function ($order) {
@@ -69,7 +69,7 @@ class ReleaseMaterialResource extends Resource
 
                                     } elseif ($orderType === 'sample_order') {
                                         $orders = \App\Models\SampleOrder::with('customer')
-                                            ->whereNotIn('status', ['planned', 'paused'])
+                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed', 'accepted', 'rejected'])
                                             ->get();
 
                                         $options = $orders->mapWithKeys(function ($order) {
@@ -170,12 +170,15 @@ class ReleaseMaterialResource extends Resource
                                         ->options(function () {
                                             return \App\Models\InventoryItem::all()
                                                 ->mapWithKeys(function ($item) {
-                                                    return [$item->id => "{$item->name} ({$item->item_code})"];
+                                                    return [
+                                                        $item->id => "ID={$item->id} | Item Code={$item->item_code} | Name={$item->name}"
+                                                    ];
                                                 });
                                         })
                                         ->required()
                                         ->reactive()
-                                        ->columnSpan(3),
+                                        ->searchable()
+                                        ->columnSpan(6),
 
                                     Forms\Components\Select::make('stock_id')
                                         ->label('Select Stock (Location, Qty, Cost)')
@@ -207,7 +210,7 @@ class ReleaseMaterialResource extends Resource
                                                     ->mapWithKeys(function ($stock) {
                                                         $poId = $stock->purchase_order_id ?? '###'; 
                                                         return [
-                                                            $stock->id => "{$stock->location->name} - Qty: {$stock->quantity} - PO ID: {$poId}"
+                                                            $stock->id => "Location Id: {$stock->location->name} - Qty: {$stock->quantity} - PO ID: {$poId}"
                                                         ];
                                                     });
                                             }
@@ -228,26 +231,27 @@ class ReleaseMaterialResource extends Resource
                                                 $set('cost', 0);
                                             }
                                         })
-                                        ->columnSpan(4),
+                                        ->columnSpan(6),
 
                                     Forms\Components\TextInput::make('stored_quantity')
                                         ->label('Available Quantity')
                                         ->disabled()
                                         ->reactive()
-                                        ->columnSpan(2),
+                                        ->columnSpan(3),
 
                                     Forms\Components\TextInput::make('location_id')
                                         ->label('Location ID')
                                         ->disabled()
                                         ->reactive()
-                                        ->dehydrated(true),
+                                        ->dehydrated(true)
+                                        ->columnSpan(3),
                                     
                                     Forms\Components\TextInput::make('cost')
                                         ->label('Cost')
                                         ->disabled()
                                         ->reactive()
                                         ->dehydrated(true)
-                                        ->columnSpan(2),
+                                        ->columnSpan(3),
                                     
                                     Forms\Components\TextInput::make('quantity')
                                         ->label('Quantity')
@@ -262,7 +266,7 @@ class ReleaseMaterialResource extends Resource
                                                     ->title('Entered quantity exceeds available stock.')
                                                     ->body("Only {$stock->quantity} units are available at the selected location.")
                                                     ->danger()
-                                                    ->persistent()
+                                                    ->duration(5000)
                                                     ->send();
 
                                                 $set('quantity', null); // Clear the field
@@ -270,7 +274,7 @@ class ReleaseMaterialResource extends Resource
                                         })
                                         ->numeric()
                                         ->minValue(1)
-                                        ->columnSpan(2),
+                                        ->columnSpan(3),
                                 ]),
                         ])
                         ->minItems(1)
@@ -289,7 +293,7 @@ class ReleaseMaterialResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('id')->label('RM ID')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('order_type')->sortable(),
                 TextColumn::make('order_id')->sortable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('status')->label('Material Status'),
@@ -297,76 +301,95 @@ class ReleaseMaterialResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
-            ->actions([
-            Tables\Actions\Action::make('viewItems')
-                ->label('View Items')
-                ->icon('heroicon-o-eye')
-                ->modalHeading(fn ($record) => "Released Items with ID #" . str_pad($record->id, 5, '0', STR_PAD_LEFT))
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Close')
-                ->form([
-                    Forms\Components\Repeater::make('items')
-                        ->label('')
-                        ->schema([
-                            Forms\Components\Grid::make(4)
-                                ->schema([
-                                    Forms\Components\TextInput::make('item_code')
-                                        ->label('Item Code')
-                                        ->disabled(),
-                                    Forms\Components\TextInput::make('item_name')
-                                        ->label('Item Name')
-                                        ->disabled(),
-                                    Forms\Components\TextInput::make('quantity')
-                                        ->label('Quantity')
-                                        ->disabled(),
-                                    Forms\Components\TextInput::make('location')
-                                        ->label('Location')
-                                        ->disabled(),
-                                ])
-                        ])
-                        ->default(function ($record) {
-                            return $record->lines->map(function ($line) {
-                                return [
-                                    'item_code' => $line->item->item_code ?? 'N/A',
-                                    'item_name' => $line->item->name ?? 'N/A',
-                                    'quantity' => $line->quantity,
-                                    'location' => $line->location->name ?? 'N/A',
-                                ];
-                            });
-                        })
-                        ->disableItemCreation()
-                        ->disableItemDeletion()
-                        ->disableItemMovement()
-                        ->columnSpan('full'),
-                ]),
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Material Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'released' => 'Released',
+                        'corrected' => 'Corrected',
+                    ])
+                    ->placeholder('All Statuses'),
 
-                Tables\Actions\Action::make('Print Release')
-                    ->label('Release Report')
-                    ->icon('heroicon-o-printer')
-                    ->color('primary')
-                    ->url(fn ($record) => route('release-materials.print', $record))
-                    ->openUrlInNewTab()
-                    ->tooltip('Print Release Document'),
-                
-                Tables\Actions\Action::make('re-correction')
-                    ->label('Re-correct')
-                    ->color('danger')
-                    ->visible(fn ($record) => $record->status === 'released')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        static::handleReCorrection($record);
-                    })
-                    ->icon('heroicon-o-trash'),
+                Tables\Filters\SelectFilter::make('order_type')
+                    ->label('Order Type')
+                    ->options([
+                        'customer' => 'Customer Order',
+                        'sample' => 'Sample Order',
+                    ])
+                    ->placeholder('All Order Types'),
             ])
-            ->recordUrl(null);
+            ->actions([
+                Tables\Actions\Action::make('viewItems')
+                    ->label('View Items')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading(fn ($record) => "Released Items with ID #" . str_pad($record->id, 5, '0', STR_PAD_LEFT))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->form([
+                        Forms\Components\Repeater::make('items')
+                            ->label('')
+                            ->schema([
+                                Forms\Components\Grid::make(4)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('item_code')
+                                            ->label('Item Code')
+                                            ->disabled(),
+                                        Forms\Components\TextInput::make('item_name')
+                                            ->label('Item Name')
+                                            ->disabled(),
+                                        Forms\Components\TextInput::make('quantity')
+                                            ->label('Quantity')
+                                            ->disabled(),
+                                        Forms\Components\TextInput::make('location')
+                                            ->label('Location')
+                                            ->disabled(),
+                                    ])
+                            ])
+                            ->default(function ($record) {
+                                return $record->lines->map(function ($line) {
+                                    return [
+                                        'item_code' => $line->item->item_code ?? 'N/A',
+                                        'item_name' => $line->item->name ?? 'N/A',
+                                        'quantity' => $line->quantity,
+                                        'location' => $line->location->name ?? 'N/A',
+                                    ];
+                                });
+                            })
+                            ->disableItemCreation()
+                            ->disableItemDeletion()
+                            ->disableItemMovement()
+                            ->columnSpan('full'),
+                    ]),
+
+                    Tables\Actions\Action::make('Print Release')
+                        ->label('Report')
+                        ->icon('heroicon-o-printer')
+                        ->color('primary')
+                        ->url(fn ($record) => route('release-materials.print', $record))
+                        ->openUrlInNewTab()
+                        ->tooltip('Print Release Document'),
+                    
+                    Tables\Actions\Action::make('re-correction')
+                        ->label('Re-correct')
+                        ->color('danger')
+                        ->visible(fn ($record) => $record->status === 'released')
+                        ->requiresConfirmation()
+                        ->action(function ($record) {
+                            static::handleReCorrection($record);
+                        })
+                        ->icon('heroicon-o-trash'),
+                ])
+            ->recordUrl(null)
+            ->defaultSort('created_at', 'desc');
     }
 
     

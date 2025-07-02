@@ -18,4 +18,9 @@ class CreateRegisterArrival extends CreateRecord
         // Update PurchaseOrder and PurchaseOrderItem quantities
         RegisterArrivalResource::updatePurchaseOrderStatusAndItems($registerArrival);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

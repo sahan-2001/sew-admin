@@ -1,5 +1,5 @@
 <?php
-// filepath: /C:/Users/User/Desktop/Sahan_Personal Files/Academics/project/sew-admin/app/Filament/Resources/InventoryLocationResource.php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\InventoryLocationResource\Pages;
@@ -11,6 +11,8 @@ use Filament\Tables\Table;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Grid, Section, Repeater};
+
 
 class InventoryLocationResource extends Resource
 {
@@ -23,59 +25,70 @@ class InventoryLocationResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('warehouse_id')
-                    ->label('Warehouse')
-                    ->options(function () {
-                        return \App\Models\Warehouse::all()->pluck('name', 'id');
-                    })
-                    ->required(), // Warehouse must be selected
+                Section::make('Warehouse Details')
+                ->schema([
+                    Forms\Components\Select::make('warehouse_id')
+                        ->label('Warehouse')
+                        ->searchable()
+                        ->options(function () {
+                            return \App\Models\Warehouse::all()
+                                ->mapWithKeys(fn($w) => ["{$w->id}" => "ID - {$w->id} | Name - {$w->name}"])
+                                ->toArray();
+                        })
+                        ->required()
+                ]),
 
-                // Name field (required, enforce uniqueness)
-                Forms\Components\TextInput::make('name')
-                    ->label('Name')
-                    ->required()
-                    ->unique(
-                        table: InventoryLocation::class,
-                        column: 'name',
-                        ignoreRecord: true // Allows editing without triggering uniqueness error for the same record
-                    ),
+                Section::make('Location Details')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->label('Name')
+                        ->required()
+                        ->unique(
+                            table: InventoryLocation::class,
+                            column: 'name',
+                            ignoreRecord: true 
+                        ),
 
-                // Location Type (required)
-                Forms\Components\Select::make('location_type')
-                    ->options([
-                        'arrival' => 'Arrival',
-                        'picking' => 'Picking',
-                        'shipment' => 'Shipment',
-                    ])
-                    ->default('picking')
-                    ->required(), // Location type must be selected
+                    Forms\Components\Select::make('location_type')
+                        ->options([
+                            'arrival' => 'Arrival',
+                            'picking' => 'Picking',
+                            'shipment' => 'Shipment',
+                        ])
+                        ->default('picking')
+                        ->required(), 
+                    ]),
 
-                // Note (required, default value to avoid null)
-                Forms\Components\TextInput::make('note')
-                    ->label('Note')
-                    ->required()
-                    ->default('No notes provided'),
+                Section::make('Remarks / Notes')
+                ->schema([
+                    Forms\Components\TextInput::make('note')
+                        ->label('Note')
+                        ->required()
+                        ->default('No notes provided'),
+                ]),
 
-                // Capacity (required, default value to avoid null)
-                Forms\Components\TextInput::make('capacity')
-                    ->label('Capacity')
-                    ->required()
-                    ->default('0'),
+                Section::make('Capacity')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('capacity')
+                        ->label('Capacity')
+                        ->required()
+                        ->default('0'),
 
-                // Measure of Capacity (required, default value to avoid null)
-                Forms\Components\Select::make('measure_of_capacity')
-                    ->options([
-                        'liters' => 'Liters',
-                        'm^3' => 'Cubic Meters',
-                        'cm^3' => 'Cubic Centimeters',
-                        'box' => 'Box',
-                        'pallets' => 'Pallets',
-                        'other' => 'Other',
-                    ])
-                    ->required()
-                    ->default('liters'),
+                    Forms\Components\Select::make('measure_of_capacity')
+                        ->options([
+                            'liters' => 'Liters',
+                            'm^3' => 'Cubic Meters',
+                            'cm^3' => 'Cubic Centimeters',
+                            'box' => 'Box',
+                            'pallets' => 'Pallets',
+                            'other' => 'Other',
+                        ])
+                        ->required()
+                        ->default('liters'),
+                ]),
 
-                // User ID will be set automatically to the logged-in user
                 Forms\Components\Hidden::make('created_by')
                     ->default(fn () => auth()->id()),
             ]);
@@ -94,7 +107,7 @@ class InventoryLocationResource extends Resource
                     ->label('Warehouse')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name') // Add name column to the table
+                Tables\Columns\TextColumn::make('name') 
                     ->sortable(),
                 Tables\Columns\TextColumn::make('location_type')
                     ->sortable(),
@@ -105,15 +118,23 @@ class InventoryLocationResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
-            ->filters([])
+            ->filters([
+                Tables\Filters\SelectFilter::make('location_type')
+                    ->label('Location Type')
+                    ->options([
+                        'arrival' => 'Arrival',
+                        'picking' => 'Picking',
+                        'shipment' => 'Shipment',
+                    ])
+            ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->visible(fn (InventoryLocation $record) => auth()->user()->can('edit inventory locations')),

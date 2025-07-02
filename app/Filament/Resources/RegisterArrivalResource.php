@@ -31,7 +31,6 @@ class RegisterArrivalResource extends Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            // Section 1: Purchase Order Details
             Section::make('Purchase Order Details')
                 ->schema([
                     Grid::make(2)
@@ -59,16 +58,15 @@ class RegisterArrivalResource extends Resource
                         ]),
                 ]),
 
-            // Section 2: Purchase Order Items
             Section::make('Purchase Order Items')
             ->schema([
                 Repeater::make('purchase_order_items')
                     ->schema([
                         TextInput::make('item_id')
                             ->label('Item ID')
-                            ->required() // Ensure it is required
-                            ->dehydrated(), // Ensure it is included in the form submission
-
+                            ->required()
+                            ->dehydrated() ,
+                             
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('item_code')
@@ -161,8 +159,7 @@ class RegisterArrivalResource extends Resource
                     }),
         ]),
         
-            // Section 3: Arrival Information and Invoice Upload
-            Section::make('Arrival Information and Invoice Upload')
+            Section::make('Arrival Information and Invoice Data')
                 ->schema([
                     Grid::make(2)
                         ->schema([
@@ -200,238 +197,291 @@ class RegisterArrivalResource extends Resource
     }
 
     public static function loadPurchaseOrderDetails($purchaseOrderId, Set $set)
-{
-    if (!$purchaseOrderId) {
-        $set('provider_name', null);
-        $set('provider_phone', null);
-        $set('due_date', null);
-        $set('purchase_order_items', []);
-        return;
-    }
-
-    $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-
-    if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-        $set('provider_name', $purchaseOrder->provider_name);
-        $set('provider_phone', $purchaseOrder->provider_phone);
-        $set('due_date', $purchaseOrder->wanted_date);
-
-        $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-            ->with('inventoryItem')
-            ->get();
-
-        $itemsData = $items->map(function ($item) {
-            return [
-                'item_id' => $item->inventory_item_id,
-                'item_code' => $item->inventoryItem->item_code,
-                'item_name' => $item->inventoryItem->name,
-                'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
-                'arrived_quantity' => $item->arrived_quantity ?? 0,
-                'price' => $item->price,
-                'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
-            ];
-        })->toArray();
-
-        $set('purchase_order_items', $itemsData);
-    } else {
-        Notification::make()
-            ->title('Invalid Purchase Order')
-            ->danger()
-            ->body('The selected purchase order is not in a released or partially arrived status.')
-            ->send();
-
-        $set('provider_name', null);
-        $set('provider_phone', null);
-        $set('due_date', null);
-        $set('purchase_order_items', []);
-    }
-}
-
-    public static function updatePurchaseOrderStatusAndItems($registerArrival)
-{
-    $purchaseOrderId = $registerArrival->purchase_order_id;
-
-    if ($purchaseOrderId) {
-        foreach ($registerArrival->items as $item) {
-            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                ->where('inventory_item_id', $item->item_id)
-                ->first();
-
-            if ($purchaseOrderItem) {
-                $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
-                $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
-
-                $purchaseOrderItem->arrived_quantity += $item->quantity;
-                $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
-
-                $purchaseOrderItem->save();
-            }
-
-            // Check if the selected location type is "picking"
-            $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
-            if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
-                // Update status of RegisterArrivalItem to "QC passed"
-                $item->status = 'QC passed';
-                $item->save();
-
-                // Always create a new stock entry
-                \App\Models\Stock::create([
-                    'item_id' => $item->item_id,
-                    'location_id' => $registerArrival->location_id,
-                    'quantity' => $item->quantity,
-                    'cost' => $item->price, // Use the price from the creation form
-                    'purchase_order_id' => $purchaseOrderId, // Save purchase order ID
-                ]);
-            }
+    {
+        if (!$purchaseOrderId) {
+            $set('provider_name', null);
+            $set('provider_phone', null);
+            $set('due_date', null);
+            $set('purchase_order_items', []);
+            return;
         }
-
-        // Check if all items have zero remaining quantity
-        $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
-        $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
 
         $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-        if ($purchaseOrder) {
-            $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
-            $purchaseOrder->save();
+
+        if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
+            $set('provider_name', $purchaseOrder->provider_name);
+            $set('provider_phone', $purchaseOrder->provider_phone);
+            $set('due_date', $purchaseOrder->wanted_date);
+
+            $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                ->with('inventoryItem')
+                ->get();
+
+            $itemsData = $items->map(function ($item) {
+                return [
+                    'item_id' => $item->inventory_item_id,
+                    'item_code' => $item->inventoryItem->item_code,
+                    'item_name' => $item->inventoryItem->name,
+                    'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                    'arrived_quantity' => $item->arrived_quantity ?? 0,
+                    'price' => $item->price,
+                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
+                ];
+            })->toArray();
+
+            $set('purchase_order_items', $itemsData);
+        } else {
+            Notification::make()
+                ->title('Invalid Purchase Order')
+                ->danger()
+                ->body('The selected purchase order is not in a released or partially arrived status.')
+                ->send();
+
+            $set('provider_name', null);
+            $set('provider_phone', null);
+            $set('due_date', null);
+            $set('purchase_order_items', []);
         }
     }
-}
+
+    public static function updatePurchaseOrderStatusAndItems($registerArrival)
+    {
+        $purchaseOrderId = $registerArrival->purchase_order_id;
+
+        if ($purchaseOrderId) {
+            foreach ($registerArrival->items as $item) {
+                $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                    ->where('inventory_item_id', $item->item_id)
+                    ->first();
+
+                if ($purchaseOrderItem) {
+                    $purchaseOrderItem->arrived_quantity = $purchaseOrderItem->arrived_quantity ?? 0;
+                    $purchaseOrderItem->remaining_quantity = $purchaseOrderItem->remaining_quantity ?? $purchaseOrderItem->quantity;
+
+                    $purchaseOrderItem->arrived_quantity += $item->quantity;
+                    $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
+
+                    $purchaseOrderItem->save();
+                }
+
+                // Check if the selected location type is "picking"
+                $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
+                if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
+                    // Update status of RegisterArrivalItem to "QC passed"
+                    $item->status = 'QC passed';
+                    $item->save();
+
+                    // Always create a new stock entry
+                    \App\Models\Stock::create([
+                        'item_id' => $item->item_id,
+                        'location_id' => $registerArrival->location_id,
+                        'quantity' => $item->quantity,
+                        'cost' => $item->price, // Use the price from the creation form
+                        'purchase_order_id' => $purchaseOrderId, // Save purchase order ID
+                    ]);
+                }
+            }
+
+            // Check if all items have zero remaining quantity
+            $allItems = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)->get();
+            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+
+            $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+            if ($purchaseOrder) {
+                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                $purchaseOrder->save();
+            }
+        }
+    }
 
 
     public static function table(Tables\Table $table): Tables\Table
-{
-    return $table
-        ->columns([
-            TextColumn::make('id')
-                ->label('ID')
-                ->sortable()
-                ->searchable()
-                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-            TextColumn::make('purchase_order_id')
-                ->label('Purchase Order ID')
-                ->sortable()
-                ->searchable()
-                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-            TextColumn::make('invoice_number')->sortable()->searchable(),
-            TextColumn::make('received_date')->sortable()->searchable(),
-            TextColumn::make('location_id')->sortable(),
-            TextColumn::make('location.name')->sortable(),
-            TextColumn::make('status')
-                ->label('Status')
-                ->getStateUsing(function ($record) {
-                    $statuses = $record->items->pluck('status')->unique()->toArray();
-                    return implode(', ', $statuses);
-                })
-                ->sortable(),
-            ...(
-            Auth::user()->can('view audit columns')
-                ? [
-                    TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                    TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                    TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                    TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
-                ]
-                : []
-                ),
-        ])
-        ->filters([
-            SelectFilter::make('purchase_order_id')
-                ->label('Purchase Order')
-                ->relationship('purchaseOrder', 'id'),
-        ])
-        ->defaultSort('id', 'desc')
-        ->recordUrl(null)
-        ->actions([
-            Action::make('Download PDF')
-                ->label('Print GRN')
-                ->icon('heroicon-o-printer')
-                ->color('success')
-                ->url(fn ($record) => route('register-arrivals.print', $record)) 
-                ->openUrlInNewTab() 
-                ->tooltip('Download PDF Report'),
-        
-            Tables\Actions\Action::make('re-correction')
-                ->label('Re-correct')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->authorize(fn ($record) => 
-                    auth()->user()->can('re-correct register arrivals') &&
-                    !$record->items->contains('status', 'inspected') &&
-                    !$record->items->contains('status', 'invoiced') 
-                )
-                ->action(function ($record, $livewire) {
-                    // Store purchase order ID before deletion
-                    $purchaseOrderId = $record->purchase_order_id;
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('invoice_number')->sortable(),
+                TextColumn::make('received_date')->sortable(),
+                TextColumn::make('location_id')->sortable(),
+                TextColumn::make('location.name')->sortable(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->getStateUsing(function ($record) {
+                        $statuses = $record->items->pluck('status')->unique()->toArray();
+                        return implode(', ', $statuses);
+                    })
+                    ->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
+            ])
+            ->filters([
+                Tables\Filters\Filter::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->form([
+                        Forms\Components\TextInput::make('purchase_order_id')
+                            ->numeric()
+                            ->placeholder('Enter PO ID'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['purchase_order_id'], fn ($q) =>
+                            $q->where('purchase_order_id', $data['purchase_order_id'])
+                        );
+                    }),
 
-                    // Revert the quantities in PurchaseOrderItem, InventoryItem, and Stocks
-                    foreach ($record->items as $item) {
-                        $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                            ->where('inventory_item_id', $item->item_id)
-                            ->first();
+                Tables\Filters\Filter::make('invoice_number')
+                    ->label('Invoice Number')
+                    ->form([
+                        Forms\Components\TextInput::make('invoice_number')
+                            ->placeholder('Enter Invoice Number'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['invoice_number'], fn ($q) =>
+                            $q->where('invoice_number', 'like', '%' . $data['invoice_number'] . '%')
+                        );
+                    }),
 
-                        if ($purchaseOrderItem) {
-                            $purchaseOrderItem->arrived_quantity -= $item->quantity;
-                            $purchaseOrderItem->remaining_quantity += $item->quantity;
+                Tables\Filters\Filter::make('received_date')
+                    ->label('Received Date')
+                    ->form([
+                        Forms\Components\DatePicker::make('received_date')
+                            ->placeholder('Select Received Date')
+                            ->maxDate(now()),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['received_date'], fn ($q) =>
+                            $q->whereDate('received_date', $data['received_date'])
+                        );
+                    }),
 
-                            // Ensure values are not negative
-                            $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
-                            $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
+                Tables\Filters\Filter::make('status')
+                    ->form([
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'qc passed' => 'QC Passed',
+                                'to be inspected' => 'To Be Inspected',
+                                'inspected' => 'Inspected',
+                            ])
+                            ->placeholder('Select Status'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['status'], fn ($q) =>
+                            $q->whereHas('items', fn ($q2) =>
+                                $q2->where('status', $data['status'])
+                            )
+                        );
+                    }),
+            ])
 
-                            $purchaseOrderItem->save();
-                        }
+            ->defaultSort('id', 'desc')
+            ->recordUrl(null)
+            ->actions([
+                Action::make('Download PDF')
+                    ->label('Print GRN')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn ($record) => route('register-arrivals.print', $record)) 
+                    ->openUrlInNewTab() 
+                    ->tooltip('Download PDF Report'),
+            
+                Tables\Actions\Action::make('re-correction')
+                    ->label('Re-correct')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->authorize(fn ($record) => 
+                        auth()->user()->can('re-correct register arrivals') &&
+                        !$record->items->contains('status', 'inspected') &&
+                        !$record->items->contains('status', 'invoiced') 
+                    )
+                    ->action(function ($record, $livewire) {
+                        // Store purchase order ID before deletion
+                        $purchaseOrderId = $record->purchase_order_id;
 
-                        // Check if the item exists in InventoryItem and revert available quantity
-                        $inventoryItem = InventoryItem::find($item->item_id);
-                        if ($inventoryItem) {
-                            $inventoryItem->available_quantity -= $item->quantity;
+                        // Revert the quantities in PurchaseOrderItem, InventoryItem, and Stocks
+                        foreach ($record->items as $item) {
+                            $purchaseOrderItem = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                                ->where('inventory_item_id', $item->item_id)
+                                ->first();
 
-                            // Ensure available quantity is not negative
-                            $inventoryItem->available_quantity = max(0, $inventoryItem->available_quantity);
+                            if ($purchaseOrderItem) {
+                                $purchaseOrderItem->arrived_quantity -= $item->quantity;
+                                $purchaseOrderItem->remaining_quantity += $item->quantity;
 
-                            $inventoryItem->save();
-                        }
+                                // Ensure values are not negative
+                                $purchaseOrderItem->arrived_quantity = max(0, $purchaseOrderItem->arrived_quantity);
+                                $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity);
 
-                        // Revert the stock entry if the location type is "picking"
-                        $stock = \App\Models\Stock::where('item_id', $item->item_id)
-                            ->where('location_id', $record->location_id)
-                            ->first();
+                                $purchaseOrderItem->save();
+                            }
 
-                        if ($stock) {
-                            $stock->quantity -= $item->quantity;
+                            // Check if the item exists in InventoryItem and revert available quantity
+                            $inventoryItem = InventoryItem::find($item->item_id);
+                            if ($inventoryItem) {
+                                $inventoryItem->available_quantity -= $item->quantity;
 
-                            // Delete the stock record if the quantity becomes zero
-                            if ($stock->quantity <= 0) {
-                                $stock->delete();
-                            } else {
-                                $stock->save();
+                                // Ensure available quantity is not negative
+                                $inventoryItem->available_quantity = max(0, $inventoryItem->available_quantity);
+
+                                $inventoryItem->save();
+                            }
+
+                            // Revert the stock entry if the location type is "picking"
+                            $stock = \App\Models\Stock::where('item_id', $item->item_id)
+                                ->where('location_id', $record->location_id)
+                                ->first();
+
+                            if ($stock) {
+                                $stock->quantity -= $item->quantity;
+
+                                // Delete the stock record if the quantity becomes zero
+                                if ($stock->quantity <= 0) {
+                                    $stock->delete();
+                                } else {
+                                    $stock->save();
+                                }
                             }
                         }
-                    }
 
-                    // Soft delete the RegisterArrival record
-                    $record->delete();
+                        // Soft delete the RegisterArrival record
+                        $record->delete();
 
-                    // Update the status of the PurchaseOrder
-                    $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
-                    if ($purchaseOrder) {
-                        $allItems = $purchaseOrder->items;
-                        $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
-                        $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
+                        // Update the status of the PurchaseOrder
+                        $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+                        if ($purchaseOrder) {
+                            $allItems = $purchaseOrder->items;
+                            $allRemainingZero = $allItems->every(fn ($item) => $item->remaining_quantity === 0);
+                            $allArrivedZero = $allItems->every(fn ($item) => $item->arrived_quantity === 0);
 
-                        if ($allArrivedZero) {
-                            $purchaseOrder->status = 'released';
-                        } else {
-                            $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                            if ($allArrivedZero) {
+                                $purchaseOrder->status = 'released';
+                            } else {
+                                $purchaseOrder->status = $allRemainingZero ? 'arrived' : 'partially arrived';
+                            }
+
+                            $purchaseOrder->save();
                         }
 
-                        $purchaseOrder->save();
-                    }
-
-                    $livewire->redirect(request()->header('Referer'));
-                })
-                ->icon('heroicon-o-trash'),
-    ]);
-}
+                        $livewire->redirect(request()->header('Referer'));
+                    })
+                    ->icon('heroicon-o-trash'),
+        ]);
+    }
 
 
     public static function getPages(): array

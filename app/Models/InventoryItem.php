@@ -20,6 +20,8 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
+        'moq',
+        'max_order_quantity',
         'created_by',
         'updated_by',
     ];
