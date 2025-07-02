@@ -163,7 +163,7 @@ class HandleSampleOrder extends Page
         if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_sample_order')
                 ->label('Release Sample Order')
-                ->color('warning')
+                ->color('info')
                 ->icon('heroicon-o-check-circle')
                 ->requiresConfirmation()
                 ->modalHeading('Confirm Release')

@@ -43,7 +43,7 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Modal;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
-
+use Filament\Tables\Filters\SelectFilter;
 
 class EnterPerformanceRecordResource extends Resource
 {
@@ -779,21 +779,12 @@ class EnterPerformanceRecordResource extends Resource
                                                                 ->bulkToggleable(false)
                                                         ])
                                                 ]),
-                                            TextInput::make('emp_production')
-                                                ->label('Total Selected Labels')
-                                                ->disabled() 
-                                                ->reactive()
-                                                ->afterStateHydrated(function (callable $set, callable $get) {
-                                                    $employeeDetails = $get('employee_details') ?? [];
-                                                    $totalLabels = 0;
-
-                                                    foreach ($employeeDetails as $employee) {
-                                                        $selectedLabels = $employee['selected_labels_e'] ?? [];
-                                                        $totalLabels += is_array($selectedLabels) ? count($selectedLabels) : 0;
-                                                    }
-
-                                                    $set('total_selected_labels', $totalLabels);
-                                                }),
+                                            Placeholder::make('emp_production')
+                                                ->hidden()
+                                                ->content(fn (callable $get) => 
+                                                    (is_array($get('selected_labels_e')) ? count($get('selected_labels_e')) : 0) . ' label(s) selected'
+                                                )
+                                                ->reactive(),
                                         ]),
                                 ]),
                             ]),
@@ -1530,7 +1521,6 @@ class EnterPerformanceRecordResource extends Resource
                                                             ->searchable()
                                                             ->live()
                                                             ->reactive()
-                                                            ->required()
                                                             ->default([])
                                                             ->dehydrated()
                                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
@@ -1714,7 +1704,6 @@ class EnterPerformanceRecordResource extends Resource
                                                             ->searchable()
                                                             ->live()
                                                             ->reactive()
-                                                            ->required()
                                                             ->default([])
                                                             ->dehydrated()
                                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
@@ -1778,11 +1767,15 @@ class EnterPerformanceRecordResource extends Resource
                                                             ->searchable()
                                                             ->options(function () {
                                                                 return \App\Models\CuttingStation::all()
-                                                                    ->pluck('name', 'id')
+                                                                    ->mapWithKeys(function ($station) {
+                                                                        return [
+                                                                            $station->id => 'ID:' . $station->id . ' | Name:' . $station->name,
+                                                                        ];
+                                                                    })
                                                                     ->toArray();
                                                             })
                                                             ->visible(fn (callable $get) => $get('failed_item_action') === 'cutting_section')
-                                                            ->required(fn (callable $get) => $get('failed_item_action') === 'cutting_section') 
+                                                            ->required(fn (callable $get) => $get('failed_item_action') === 'cutting_section')
                                                             ->reactive(),
 
                                                     
@@ -1827,7 +1820,7 @@ class EnterPerformanceRecordResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('Record ID')->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                Tables\Columns\TextColumn::make('id')->label('Record ID')->searchable()->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('assignDailyOperation.order_type')
                     ->label('Order Type')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -1837,21 +1830,54 @@ class EnterPerformanceRecordResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('assignDailyOperation.order_id')
                     ->label('Order ID')
+                    ->searchable()
                     ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                Tables\Columns\TextColumn::make('assign_daily_operation_line_id')->label('Operation Line ID'),
+                Tables\Columns\TextColumn::make('assign_daily_operation_line_id')->label('Operation Line ID')->searchable(),
                 Tables\Columns\TextColumn::make('operation_date')->label('Operated Date')->date(),
                 Tables\Columns\TextColumn::make('operated_time_from')->label('Time From'),
                 Tables\Columns\TextColumn::make('operated_time_to')->label('Time To'),
+                Tables\Columns\TextColumn::make('status')->label('Status'),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('assignDailyOperation.order_type')
+                    ->label('Order Type')
+                    ->options([
+                        'customer_order' => 'Customer Order',
+                        'sample_order' => 'Sample Order',
+                    ]),
+
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'reported' => 'Reported',
+                        'recorded' => 'Recorded',
+                    ]),
+        
+                Tables\Filters\Filter::make('operation_date')
+                    ->label('Operation Date')
+                    ->form([
+                        DatePicker::make('operation_date')
+                            ->label('Select Operation Date')
+                            ->maxDate(now()->toDateString())
+                            ->closeOnDateSelection(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['operation_date'] ?? null,
+                            fn ($q, $date) => $q->whereDate('operation_date', $date)
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
@@ -1866,7 +1892,7 @@ class EnterPerformanceRecordResource extends Resource
                 
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn ($record) => $record->status !== 'reported'),
-            ]);
+            ])->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array
@@ -1874,7 +1900,6 @@ class EnterPerformanceRecordResource extends Resource
         return [
             'index' => Pages\ListEnterPerformanceRecords::route('/'),
             'create' => Pages\CreateEnterPerformanceRecord::route('/create'),
-            'edit' => Pages\EditEnterPerformanceRecord::route('/{record}/edit'),
         ];
     }
 }

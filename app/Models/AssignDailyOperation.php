@@ -11,7 +11,7 @@ class AssignDailyOperation extends Model
 {
     use SoftDeletes, LogsActivity;
 
-    protected $fillable = ['order_type', 'order_id', 'created_by', 'updated_by', 'operation_date'];
+    protected $fillable = ['order_type', 'order_id', 'created_by', 'status', 'updated_by', 'operation_date'];
     
     protected static $logFillable = true;
     protected static $logOnlyDirty = true;

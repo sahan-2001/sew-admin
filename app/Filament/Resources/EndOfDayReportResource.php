@@ -171,22 +171,36 @@ class EndOfDayReportResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('Reported ID')->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                Tables\Columns\TextColumn::make('id')->label('Reported ID')->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('operated_date')->label('Operation Date')->date(),
                 Tables\Columns\TextColumn::make('recorded_operations_count')->label('No of Reported Operations'),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('created_at')
+                    ->label('Created At')
+                    ->form([
+                        Forms\Components\DatePicker::make('created_at')
+                            ->label('Select Date')
+                            ->placeholder('Created date')
+                            ->maxDate(now()->toDateString())
+                            ->closeOnDateSelection(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['created_at'] ?? null,
+                            fn ($q, $date) => $q->whereDate('created_at', $date)
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('downloadPdf')
@@ -195,7 +209,7 @@ class EndOfDayReportResource extends Resource
                     ->url(fn (EndOfDayReport $record) => route('end-of-day-reports.pdf', $record))
                     ->openUrlInNewTab(),
                 Tables\Actions\DeleteAction::make(),
-            ]);
+            ])->defaultSort('id', 'desc');
     }
 
     public static function getRelations(): array

@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateProductionLineOperation extends CreateRecord
 {
     protected static string $resource = ProductionLineOperationResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

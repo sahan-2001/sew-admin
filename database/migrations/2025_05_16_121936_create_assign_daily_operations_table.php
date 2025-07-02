@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->string('order_type');
             $table->unsignedBigInteger('order_id');
             $table->date('operation_date');
+            $table->string('status')->default('created'); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

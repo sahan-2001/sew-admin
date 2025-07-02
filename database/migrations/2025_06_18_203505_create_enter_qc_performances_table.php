@@ -12,7 +12,7 @@ class CreateEnterQcPerformancesTable extends Migration
             $table->unsignedBigInteger('enter_performance_record_id');
             $table->integer('no_of_passed_items');
             $table->integer('no_of_failed_items');
-            $table->string('action_type', 50);
+            $table->string('action_type', 50)->nullable();
             $table->unsignedBigInteger('cutting_station_id')->nullable();
             $table->unsignedBigInteger('assign_operation_line_id')->nullable();
             

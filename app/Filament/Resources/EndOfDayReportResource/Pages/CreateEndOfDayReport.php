@@ -6,6 +6,7 @@ use App\Filament\Resources\EndOfDayReportResource;
 use App\Models\EndOfDayReportOperation;
 use App\Models\EndOfDayReport;
 use App\Models\EnterPerformanceRecord;
+use App\Models\AssignDailyOperation;
 use App\Models\AssignDailyOperationLine;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -40,15 +41,18 @@ class CreateEndOfDayReport extends CreateRecord
             $this->halt(); 
         }
     }
-    
+
     protected function afterCreate(): void
     {
         $records = $this->data['matching_records_full'] ?? [];
         $updatedRecordIds = [];
         $operationLineIds = [];
+        $assignDailyOperationIds = [];
 
         foreach ($records as $record) {
-            if (isset($record['id'], $record['assign_daily_operation_id'], $record['assign_daily_operation_line_id'])) {
+            if (
+                isset($record['id'], $record['assign_daily_operation_id'], $record['assign_daily_operation_line_id'])
+            ) {
                 // Create EndOfDayReportOperation record
                 EndOfDayReportOperation::create([
                     'end_of_day_report_id' => $this->record->id,
@@ -56,10 +60,11 @@ class CreateEndOfDayReport extends CreateRecord
                     'assign_daily_operation_id' => $record['assign_daily_operation_id'],
                     'operation_line_id' => $record['assign_daily_operation_line_id'] ?? 0,
                 ]);
-                
-                // Collect IDs to update
+
+                // Collect IDs
                 $updatedRecordIds[] = $record['id'];
                 $operationLineIds[] = $record['assign_daily_operation_line_id'];
+                $assignDailyOperationIds[] = $record['assign_daily_operation_id'];
             }
         }
 
@@ -75,8 +80,20 @@ class CreateEndOfDayReport extends CreateRecord
                 ->update(['status' => 'reported']);
         }
 
+        // ✅ Update status of related AssignDailyOperation models
+        if (!empty($assignDailyOperationIds)) {
+            AssignDailyOperation::whereIn('id', array_unique($assignDailyOperationIds))
+                ->update(['status' => 'recorded']);
+        }
+
+        // Update count of recorded operations in the report
         $this->record->update([
             'recorded_operations_count' => count($records),
         ]);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

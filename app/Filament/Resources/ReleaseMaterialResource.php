@@ -168,7 +168,8 @@ class ReleaseMaterialResource extends Resource
                                     Forms\Components\Select::make('item_id')
                                         ->label('Item')
                                         ->options(function () {
-                                            return \App\Models\InventoryItem::all()
+                                            return \App\Models\InventoryItem::where('available_quantity', '>', 0)
+                                                ->get()
                                                 ->mapWithKeys(function ($item) {
                                                     return [
                                                         $item->id => "ID={$item->id} | Item Code={$item->item_code} | Name={$item->name}"

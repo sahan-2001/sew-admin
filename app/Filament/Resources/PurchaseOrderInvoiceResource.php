@@ -749,44 +749,49 @@ class PurchaseOrderInvoiceResource extends Resource
                             ]),
                     ])
                     ->action(function (PurchaseOrderInvoice $record, array $data) {
-                        $paymentAmount = (float) $data['payment_amount'];
-                        $remainingBefore = $record->due_payment_for_now;
-                        $remainingAfter = $remainingBefore - $paymentAmount;
+                    $paymentAmount = (float) $data['payment_amount'];
+                    $remainingBefore = $record->due_payment_for_now;
+                    $remainingAfter = $remainingBefore - $paymentAmount;
 
-                        // Create payment record
-                        $payment = PoInvoicePayment::create([
-                            'purchase_order_invoice_id' => $record->id,
-                            'payment_amount' => $paymentAmount,
-                            'remaining_amount_before' => $remainingBefore,
-                            'remaining_amount_after' => $remainingAfter,
-                            'payment_method' => $data['payment_method'],
-                            'payment_reference' => $data['payment_reference'] ?? null,
-                            'notes' => $data['notes'] ?? null,
-                        ]);
+                    // Create payment record
+                    $payment = PoInvoicePayment::create([
+                        'purchase_order_invoice_id' => $record->id,
+                        'payment_amount' => $paymentAmount,
+                        'remaining_amount_before' => $remainingBefore,
+                        'remaining_amount_after' => $remainingAfter,
+                        'payment_method' => $data['payment_method'],
+                        'payment_reference' => $data['payment_reference'] ?? null,
+                        'notes' => $data['notes'] ?? null,
+                    ]);
 
-                        // Update the PurchaseOrderInvoice record
-                        $record->update([
-                            'due_payment_for_now' => $remainingAfter,
-                            'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
-                            'paid_date' => now(),
-                            'paid_via' => $data['payment_method'],
-                        ]);
+                    // Update invoice
+                    $record->update([
+                        'due_payment_for_now' => $remainingAfter,
+                        'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
+                        'paid_date' => now(),
+                        'paid_via' => $data['payment_method'],
+                    ]);
 
-                        Notification::make()
-                            ->title('Payment Recorded Successfully')
-                            ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
-                            ->success()
-                            ->actions([
-                                Action::make('viewReceipt')
-                                    ->label('View Receipt PDF')
-                                    ->url(route('purchase-order-invoice.payment-receipt', [
-                                        'invoice' => $record->id,
-                                        'payment' => $payment->id,
-                                    ]))
-                                    ->openUrlInNewTab(),
-                            ])
-                            ->send();
-                    }),
+                    if ($remainingAfter <= 0 && $record->purchase_order_id) {
+                        \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
+                            ->update(['status' => 'closed']);
+                    }
+
+                    Notification::make()
+                        ->title('Payment Recorded Successfully')
+                        ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
+                        ->success()
+                        ->actions([
+                            Action::make('viewReceipt')
+                                ->label('View Receipt PDF')
+                                ->url(route('purchase-order-invoice.payment-receipt', [
+                                    'invoice' => $record->id,
+                                    'payment' => $payment->id,
+                                ]))
+                                ->openUrlInNewTab(),
+                        ])
+                        ->send();
+                }),
     
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')

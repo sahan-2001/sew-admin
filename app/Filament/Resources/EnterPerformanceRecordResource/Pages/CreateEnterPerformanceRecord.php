@@ -42,7 +42,7 @@ class CreateEnterPerformanceRecord extends CreateRecord
                         EnterEmployeePerformance::create([
                             'enter_performance_record_id' => $performanceRecord->id,
                             'employee_id' => $emp['employee_id'], 
-                            'emp_production' =>  count($data['selected_labels_e'] ?? []),
+                            'emp_production' => count($emp['selected_labels_e'] ?? []),
                             'emp_downtime' => $emp['emp_downtime'] ?? 0,
                         ]);
 
@@ -162,38 +162,46 @@ class CreateEnterPerformanceRecord extends CreateRecord
             }
         }
 
-        if (!empty($data['selected_labels_qc_p'])) {
-            foreach ($data['selected_labels_qc_p'] as $labelId) {
-                EnterQcLabelPerformance::create([
-                    'enter_performance_record_id' => $performanceRecord->id,
-                    'cutting_label_id' => $labelId,
-                    'result' => 'passed',
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-        }
+        // Handle QC Performance - FIXED VERSION
+        $passedLabels = $data['selected_labels_qc_p'] ?? [];
+        $failedLabels = $data['selected_labels_qc_f'] ?? [];
+        $hasQcData = !empty($passedLabels) || !empty($failedLabels);
 
-        if (!empty($data['selected_labels_qc_f'])) {
-            foreach ($data['selected_labels_qc_f'] as $labelId) {
-                EnterQcLabelPerformance::create([
-                    'enter_performance_record_id' => $performanceRecord->id,
-                    'cutting_label_id' => $labelId,
-                    'result' => 'failed',
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
+        if ($hasQcData) {
+            // Save QC labels for passed items
+            if (!empty($passedLabels)) {
+                foreach ($passedLabels as $labelId) {
+                    EnterQcLabelPerformance::create([
+                        'enter_performance_record_id' => $performanceRecord->id,
+                        'cutting_label_id' => $labelId,
+                        'result' => 'passed',
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id(),
+                    ]);
+                }
             }
-        }
 
-        if (!empty($data['failed_item_action'])) {
+            // Save QC labels for failed items
+            if (!empty($failedLabels)) {
+                foreach ($failedLabels as $labelId) {
+                    EnterQcLabelPerformance::create([
+                        'enter_performance_record_id' => $performanceRecord->id,
+                        'cutting_label_id' => $labelId,
+                        'result' => 'failed',
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id(),
+                    ]);
+                }
+            }
+
+            // Save QC Performance record (always save when there's QC data)
             EnterQcPerformance::create([
                 'enter_performance_record_id' => $performanceRecord->id,
-                'action_type' => $data['failed_item_action'],
+                'action_type' => $data['failed_item_action'] ?? null,
                 'cutting_station_id' => $data['cutting_station_id'] ?? null,
                 'assign_operation_line_id' => $data['sawing_operation_id'] ?? null,
-                'no_of_passed_items' => count($data['selected_labels_qc_p'] ?? []),
-                'no_of_failed_items' => count($data['selected_labels_qc_f'] ?? []),
+                'no_of_passed_items' => count($passedLabels),
+                'no_of_failed_items' => count($failedLabels),
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -201,6 +209,11 @@ class CreateEnterPerformanceRecord extends CreateRecord
 
 
         return $performanceRecord;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
    
 

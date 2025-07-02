@@ -548,30 +548,45 @@ class AssignDailyOperationsResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('order_type'),
-                Tables\Columns\TextColumn::make('order_id')->sortable()
+                Tables\Columns\TextColumn::make('order_id')->sortable()->searchable()
                     ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('operation_date')->sortable(),
+                Tables\Columns\TextColumn::make('status'),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('order_type')
+                    ->label('Order Type')
                     ->options([
-                        'Customer Order' => 'Customer Order',
-                        'Sample Order' => 'Sample Order',
+                        'customer_order' => 'Customer Order',
+                        'sample_order' => 'Sample Order',
+                    ]),
+
+                Tables\Filters\Filter::make('operation_date')
+                    ->label('Operation Date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date')
+                            ->label('Select Operation Date')
+                            ->closeOnDateSelection()
                     ])
-                    ->label('Filter by Order Type'),
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['date'], fn ($q, $date) =>
+                            $q->whereDate('operation_date', $date)
+                        );
+                    }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn ($record) => $record->status !== 'recorded'),
             ])
             ->defaultSort('id', 'desc');
     }
