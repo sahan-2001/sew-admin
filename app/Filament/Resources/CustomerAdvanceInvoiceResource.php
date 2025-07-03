@@ -52,7 +52,7 @@ class CustomerAdvanceInvoiceResource extends Resource
     {
         $items = [];
         if ($orderType === 'customer_order') {
-            $customerOrderItems = \App\Models\CustomerOrderDescription::with('variationItems')
+            $customerOrderItems = \App\Models\CustomerOrderDescription::with(['variationItems', 'customerOrder'])
                 ->where('customer_order_id', $orderId)
                 ->get();
 
@@ -75,7 +75,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                 ];
             })->toArray();
         } elseif ($orderType === 'sample_order') {
-            $sampleOrderItems = \App\Models\SampleOrderItem::with('variations')
+            $sampleOrderItems = \App\Models\SampleOrderItem::with(['variations', 'sampleOrder'])
                 ->where('sample_order_id', $orderId)
                 ->get();
 
@@ -104,90 +104,102 @@ class CustomerAdvanceInvoiceResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([
-            Tabs::make('Tabs')
-                ->columnSpanFull()
-                ->tabs([
-                    Tabs\Tab::make('Order Details')
-                        ->schema([
-                            Section::make('Order Details')
-                                ->schema([
-                                    Grid::make(2)
-                                        ->schema([
-                                            Select::make('order_type')
-                                                ->label('Order Type')
-                                                ->options([
-                                                    'customer_order' => 'Customer Order',
-                                                    'sample_order' => 'Sample Order',
-                                                ])
-                                                ->required()
-                                                ->reactive()
-                                                ->disabled(fn ($get, $record) => $record !== null)
-                                                ->dehydrated()
-                                                ->afterStateUpdated(function ($state, $set) {
-                                                    $set('order_id', null);
-                                                    $set('customer_id', null);
-                                                    $set('wanted_date', null);
-                                                    $set('invoice_items', []);
-                                                }),
+    return $form->schema([
+        Tabs::make('Tabs')
+            ->columnSpanFull()
+            ->tabs([
+                Tabs\Tab::make('Order Details')
+                    ->schema([
+                        Section::make('Order Details')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        Select::make('order_type')
+                                            ->label('Order Type')
+                                            ->options([
+                                                'customer_order' => 'Customer Order',
+                                                'sample_order' => 'Sample Order',
+                                            ])
+                                            ->required()
+                                            ->reactive()
+                                            ->disabled(fn ($get, $record) => $record !== null)
+                                            ->dehydrated()
+                                            ->afterStateUpdated(function ($state, $set) {
+                                                $set('order_id', null);
+                                                $set('customer_id', null);
+                                                $set('wanted_date', null);
+                                                $set('invoice_items', []);
+                                            }),
 
-                                            Select::make('order_id')
-                                                ->label('Order')
-                                                ->required()
-                                                ->searchable()
-                                                ->disabled(fn ($get, $record) => $record !== null)
-                                                ->dehydrated()
-                                                ->options(function ($get) {
-                                                    $orderType = $get('order_type');
+                                        Select::make('order_id')
+                                            ->label('Order')
+                                            ->required()
+                                            ->searchable()
+                                            ->disabled(fn ($get, $record) => $record !== null)
+                                            ->dehydrated()
+                                            ->options(function ($get) {
+                                                $orderType = $get('order_type');
+                                                if ($orderType === 'customer_order') {
+                                                    return \App\Models\CustomerOrder::query()
+                                                        ->with('customer')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($order) => [
+                                                            $order->id => 'ID=' . $order->order_id . ' | Customer=' . ($order->customer->name ?? 'N/A') . ' | Name=' . $order->name
+                                                        ]);
+                                                } elseif ($orderType === 'sample_order') {
+                                                    return \App\Models\SampleOrder::query()
+                                                        ->with('customer')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($order) => [
+                                                            $order->id => 'ID=' . $order->order_id . ' | Customer=' . ($order->customer->name ?? 'N/A') . ' | Name=' . $order->name
+                                                        ]);
+                                                }
+                                                return [];
+                                            })
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, $set, $get) {
+                                                $set('customer_id', null);
+                                                $set('wanted_date', null);
+
+                                                $orderType = $get('order_type');
+                                                if ($orderType && $state) {
                                                     if ($orderType === 'customer_order') {
-                                                        return \App\Models\CustomerOrder::pluck('name', 'order_id');
+                                                        $order = \App\Models\CustomerOrder::with('customer')->find($state);
                                                     } elseif ($orderType === 'sample_order') {
-                                                        return \App\Models\SampleOrder::pluck('name', 'order_id');
+                                                        $order = \App\Models\SampleOrder::with('customer')->find($state);
                                                     }
-                                                    return [];
-                                                })
-                                                ->reactive()
-                                                ->afterStateUpdated(function ($state, $set, $get) {
-                                                    $set('customer_id', null);
-                                                    $set('wanted_date', null);
 
-                                                    $orderType = $get('order_type');
-                                                    if ($orderType && $state) {
-                                                        if ($orderType === 'customer_order') {
-                                                            $order = \App\Models\CustomerOrder::find($state);
-                                                        } elseif ($orderType === 'sample_order') {
-                                                            $order = \App\Models\SampleOrder::find($state);
-                                                        }
-
-                                                        if ($order) {
-                                                            $set('customer_id', $order->customer_id ?? 'N/A');
-                                                            $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
-                                                        } else {
-                                                            $set('customer_id', 'N/A');
-                                                            $set('wanted_date', 'N/A');
-                                                        }
-
+                                                    if ($order) {
+                                                        $set('customer_id', $order->customer_id ?? 'N/A');
+                                                        $set('customer_name', $order->customer->name ?? 'N/A');
+                                                        $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
                                                     } else {
                                                         $set('customer_id', 'N/A');
+                                                        $set('customer_name', 'N/A');
                                                         $set('wanted_date', 'N/A');
                                                     }
+                                                } else {
+                                                    $set('customer_id', 'N/A');
+                                                    $set('customer_name', 'N/A');
+                                                    $set('wanted_date', 'N/A');
+                                                }
 
-                                                    if (!$state) {
-                                                        $set('invoice_items', []);
-                                                        return;
-                                                    }
+                                                if (!$state) {
+                                                    $set('invoice_items', []);
+                                                    return;
+                                                }
 
-                                                    $orderType = $get('order_type');
-                                                    static::loadInvoiceItems($orderType, $state, $set);
-                                                }),
+                                                $orderType = $get('order_type');
+                                                static::loadInvoiceItems($orderType, $state, $set);
+                                            }),
 
-                                            TextInput::make('customer_id')
-                                                ->label('Customer ID')
-                                                ->disabled(),
+                                        TextInput::make('customer_name')
+                                            ->label('Customer Name')
+                                            ->disabled(),
 
-                                            TextInput::make('wanted_date')
-                                                ->label('Wanted Date')
-                                                ->disabled(),
+                                        TextInput::make('wanted_date')
+                                            ->label('Wanted Date')
+                                            ->disabled(),
                                         ]),
                                 ]),     
                         ]),

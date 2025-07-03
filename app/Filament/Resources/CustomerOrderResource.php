@@ -227,7 +227,8 @@ class CustomerOrderResource extends Resource
                     ->color('primary')
                     ->url(fn (CustomerOrder $record): string => static::getUrl('handle', ['record' => $record])),
                 EditAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('edit customer orders')),
+                    ->visible(fn ($record) => auth()->user()->can('edit customer orders') &&
+                        $record->status === 'planned'),
 
                 DeleteAction::make()
                     ->visible(fn ($record) =>

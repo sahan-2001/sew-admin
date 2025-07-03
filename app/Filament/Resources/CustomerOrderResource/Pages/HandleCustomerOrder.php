@@ -220,7 +220,7 @@ class HandleCustomerOrder extends Page
                 ->icon('heroicon-o-printer')
                 ->color('secondary')
                 ->url(fn () => route('customer-orders.pdf', ['customer_order' => $this->record->order_id]))
-                ->openUrlInNewTab(true);
+                ->openUrlInNewTab();
         }
 
         return $actions;

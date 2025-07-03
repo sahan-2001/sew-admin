@@ -23,6 +23,7 @@ use App\Http\Controllers\PerformanceRecordViewController;
 use App\Http\Controllers\SupplierAdvanceInvoiceController;
 use App\Http\Controllers\EndOfDayReportPdfController;
 use App\Http\Controllers\ReleaseMaterialPrintController;
+use App\Http\Controllers\CustomerOrderPdfController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -131,12 +132,6 @@ Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, '
 Route::get('/sample-orders/{id}/{random_code}', [SOFrontendController::class, 'showSampleOrder'])
     ->name('sample-orders.show');
 
-
-Route::get('/customer-orders/{customer_order}/pdf', function (CustomerOrder $customer_order) {
-    // Implement your PDF generation logic here
-    // For example using DomPDF or another PDF library
-    
-    // This is just a placeholder implementation
-    $pdf = PDF::loadView('pdf.customer-order', ['order' => $customer_order]);
-    return $pdf->stream("order-{$customer_order->order_id}.pdf");
-})->name('customer-orders.pdf');
+// Customer Order report route 
+Route::get('/customer-orders/{customer_order}/pdf', [CustomerOrderPdfController::class, 'show'])
+    ->name('customer-orders.pdf');

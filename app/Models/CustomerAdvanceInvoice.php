@@ -39,6 +39,16 @@ class CustomerAdvanceInvoice extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
+    public function customerOrder()
+    {
+        return $this->belongsTo(\App\Models\CustomerOrder::class, 'order_id');
+    }
+
+    public function sampleOrder()
+    {
+        return $this->belongsTo(\App\Models\SampleOrder::class, 'order_id');
+    }
+
     protected static function booted()
     {
         parent::boot();
