@@ -15,6 +15,7 @@ class EndOfDayReport extends Model
     protected $fillable = [
         'operated_date',
         'recorded_operations_count',
+        'status',
         'created_by',
         'updated_by',
     ];
@@ -68,12 +69,6 @@ class EndOfDayReport extends Model
                 $description = "End of Day Report #{$this->id} was {$eventName}";
 
                 if ($eventName === 'updated' && !empty($changes)) {
-                    $description .= ". Changes: " . json_encode($changes);
-                }
-
-                $user = auth()->user();
-                if ($user) {
-                    $description .= " by {$user->name} (ID: {$user->id})";
                 }
 
                 return $description;

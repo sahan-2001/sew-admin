@@ -18,10 +18,12 @@ return new class extends Migration
             $table->string('related_table')->nullable();
             $table->unsignedBigInteger('related_record_id')->nullable();
             $table->string('unit_of_measurement');
-            $table->decimal('amount', 10, 2);
+            $table->decimal('amount', 10, 2); 
+            $table->decimal('used_amount', 10, 2)->default(0); 
+            $table->decimal('remaining_amount', 10, 2)->storedAs('amount - used_amount');
             $table->decimal('unit_rate', 10, 2);
             $table->decimal('total', 10, 2)->storedAs('amount * unit_rate');
-            $table->decimal('outstanding_balance', 10, 2)->storedAs('amount * unit_rate');
+            $table->decimal('payable_balance', 10, 2)->storedAs('used_amount * unit_rate');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->timestamps();

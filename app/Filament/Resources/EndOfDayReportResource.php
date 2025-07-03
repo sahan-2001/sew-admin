@@ -157,7 +157,7 @@ class EndOfDayReportResource extends Resource
                                                     ->label('Created By (Employee ID)')
                                                     ->disabled(),
                                             ])
-                                            ->columns(5)
+                                            ->columns(3)
                                             ->disableItemDeletion() 
                                             ->disableItemCreation()
                                             ->reorderable(false),
@@ -208,7 +208,46 @@ class EndOfDayReportResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (EndOfDayReport $record) => route('end-of-day-reports.pdf', $record))
                     ->openUrlInNewTab(),
-                Tables\Actions\DeleteAction::make(),
+
+                Tables\Actions\DeleteAction::make()
+                    ->before(function (EndOfDayReport $record) {
+                        $operations = $record->operations()->get(); 
+
+                        $enterPerformanceRecordIds = [];
+                        $assignDailyOperationLineIds = [];
+                        $assignDailyOperationIds = [];
+
+                        foreach ($operations as $operation) {
+                            if ($operation->enter_performance_record_id) {
+                                $enterPerformanceRecordIds[] = $operation->enter_performance_record_id;
+                            }
+                            if ($operation->operation_line_id) {
+                                $assignDailyOperationLineIds[] = $operation->operation_line_id;
+                            }
+                            if ($operation->assign_daily_operation_id) {
+                                $assignDailyOperationIds[] = $operation->assign_daily_operation_id;
+                            }
+                        }
+
+                        if (!empty($enterPerformanceRecordIds)) {
+                            \App\Models\EnterPerformanceRecord::whereIn('id', $enterPerformanceRecordIds)
+                                ->update(['status' => 'pending']);
+                        }
+
+                        if (!empty($assignDailyOperationLineIds)) {
+                            \App\Models\AssignDailyOperationLine::whereIn('id', $assignDailyOperationLineIds)
+                                ->update(['status' => 'on going']);
+                        }
+
+                        if (!empty($assignDailyOperationIds)) {
+                            \App\Models\AssignDailyOperation::whereIn('id', array_unique($assignDailyOperationIds))
+                                ->update(['status' => 'created']);
+                        }
+
+                        $record->operations()->delete();
+                    })
+                    ->visible(fn (EndOfDayReport $record) => $record->status === 'created'),
+
             ])->defaultSort('id', 'desc');
     }
 

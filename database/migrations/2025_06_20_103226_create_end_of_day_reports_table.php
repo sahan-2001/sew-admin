@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->date('operated_date');
             $table->unsignedInteger('recorded_operations_count')->default(0);
-
+            $table->string('status')->default('created'); 
+            
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             

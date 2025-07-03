@@ -16,9 +16,11 @@ class ThirdPartyServiceProcess extends Model
         'related_record_id',
         'unit_of_measurement',
         'amount',
+        'remaining_amount',
+        'used_amount',
         'unit_rate',
         'total',
-        'outstanding_balance',
+        'payable_balance',
         'created_by',
         'updated_by',
     ];

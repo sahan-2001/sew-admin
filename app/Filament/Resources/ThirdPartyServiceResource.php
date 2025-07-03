@@ -69,7 +69,12 @@ class ThirdPartyServiceResource extends Resource
                 ->schema([
                     Select::make('supplier_id')
                         ->label('Supplier')
-                        ->relationship('supplier', 'name')
+                        ->options(function () {
+                            return \App\Models\Supplier::all()->pluck('name', 'supplier_id')->mapWithKeys(function ($name, $id) {
+                                return [$id => "ID:{$id} | Name:{$name}"];
+                            });
+                        })
+                        ->searchable()
                         ->required()
                         ->reactive()
                         ->afterStateUpdated(function ($state, callable $set) {
@@ -338,12 +343,14 @@ class ThirdPartyServiceResource extends Resource
             ->actions([
                 EditAction::make()
                     ->visible(fn ($record) =>
-                        auth()->user()->can('edit third party services')
+                        auth()->user()->can('edit third party services') &&
+                        ($record->used_amount ?? 0) <= 0
                     ),
 
                 DeleteAction::make()
                     ->visible(fn ($record) =>
-                        auth()->user()->can('delete third party services')
+                        auth()->user()->can('delete third party services') &&
+                        ($record->used_amount ?? 0) <= 0
                     ),
             ])
             ->recordUrl(null);

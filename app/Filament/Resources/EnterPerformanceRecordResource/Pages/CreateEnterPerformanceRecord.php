@@ -113,6 +113,13 @@ class CreateEnterPerformanceRecord extends CreateRecord
                             'unit_rate' => $process['unit_rate'],
                             'total_cost' => $process['total'],
                         ]);
+
+                        // Deduct used amount from remaining
+                        $serviceProcess = \App\Models\ThirdPartyServiceProcess::find($process['process_id']);
+                        if ($serviceProcess) {
+                            $serviceProcess->used_amount += $process['used_amount'];
+                            $serviceProcess->save(); // remaining_amount and outstanding_balance update automatically
+                        }
                     }
                 }
             }
@@ -205,6 +212,20 @@ class CreateEnterPerformanceRecord extends CreateRecord
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
+
+
+            $assignOp = \App\Models\AssignDailyOperation::find($performanceRecord->assign_daily_operation_id);
+
+            if ($assignOp) {
+                $orderType = $assignOp->order_type;
+                $orderId = $assignOp->order_id;
+
+                if ($orderType === 'customer_order') {
+                    \App\Models\CustomerOrder::where('order_id', $orderId)->update(['status' => 'started']);
+                } elseif ($orderType === 'sample_order') {
+                    \App\Models\SampleOrder::where('order_id', $orderId)->update(['status' => 'started']);
+                }
+            }
         }
 
 

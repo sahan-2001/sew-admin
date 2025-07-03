@@ -143,15 +143,18 @@ class EnterPerformanceRecordResource extends Resource
                                                 if (!$operatedDate) return [];
 
                                                 return \App\Models\AssignDailyOperationLine::with(['assignDailyOperation'])
-                                                    ->whereHas('assignDailyOperation', fn($q) => $q->whereDate('operation_date', $operatedDate))
+                                                    ->whereHas('assignDailyOperation', function ($q) use ($operatedDate) {
+                                                        $q->whereDate('operation_date', $operatedDate)
+                                                        ->where('status', 'created');   // <-- Filter by status = 'created'
+                                                    })
                                                     ->get()
                                                     ->mapWithKeys(fn($line) => [
-                                                        $line->id => "Assigned Operation Line - {$line->id} | " . 
-                                                                    ($line->assignDailyOperation ? 
-                                                                        "{$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id}" : 
-                                                                        'No Parent Operation')
+                                                        $line->id => "Assigned Operation Line - {$line->id} | " .
+                                                            ($line->assignDailyOperation
+                                                                ? "{$line->assignDailyOperation->order_type} - {$line->assignDailyOperation->order_id}"
+                                                                : 'No Parent Operation')
                                                     ]);
-                                                })
+                                            })
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                                 if (!$state) return;
 
@@ -353,7 +356,7 @@ class EnterPerformanceRecordResource extends Resource
                                                                     'related_table' => $process->related_table,
                                                                     'related_record_id' => $process->related_record_id,
                                                                     'unit_of_measurement' => $process->unit_of_measurement,
-                                                                    'amount' => $process->amount,
+                                                                    'amount' => $process->remaining_amount,
                                                                     'unit_rate' => $process->unit_rate,
                                                                     'used_amount' => 0,
                                                                     'total' => 0,
@@ -766,7 +769,6 @@ class EnterPerformanceRecordResource extends Resource
                                                                 ->searchable()
                                                                 ->live()
                                                                 ->reactive()
-                                                                ->required()
                                                                 ->default([])
                                                                 ->dehydrated()
                                                                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
@@ -958,7 +960,6 @@ class EnterPerformanceRecordResource extends Resource
                                                                     ->columns(4)
                                                                     ->searchable()
                                                                     ->live()
-                                                                    ->required()
                                                                     ->reactive()
                                                                     ->default([])
                                                                     ->dehydrated()
