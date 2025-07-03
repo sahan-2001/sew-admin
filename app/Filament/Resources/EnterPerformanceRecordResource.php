@@ -1893,7 +1893,9 @@ class EnterPerformanceRecordResource extends Resource
                 
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn ($record) => $record->status !== 'reported'),
-            ])->defaultSort('id', 'desc');
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

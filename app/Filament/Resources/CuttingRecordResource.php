@@ -981,7 +981,9 @@ class CuttingRecordResource extends Resource
                     }),
             ])
             ->bulkActions([
-            ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function recorrectCuttingRecord(CuttingRecord $record)

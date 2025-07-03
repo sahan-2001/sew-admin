@@ -85,7 +85,9 @@ class CuttingStationResource extends Resource
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
-            ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

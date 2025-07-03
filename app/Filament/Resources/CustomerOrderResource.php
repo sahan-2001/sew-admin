@@ -228,7 +228,8 @@ class CustomerOrderResource extends Resource
                 DeleteAction::make()
                     ->visible(fn ($record) => auth()->user()->can('delete customer orders')),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

@@ -483,7 +483,9 @@ class CustomerAdvanceInvoiceResource extends Resource
             ->actions([
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
-            ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

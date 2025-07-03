@@ -772,6 +772,14 @@ class PurchaseOrderInvoiceResource extends Resource
                         'paid_via' => $data['payment_method'],
                     ]);
 
+                    //  Update provider balance
+                    if ($record->provider_type === 'supplier') {
+                        \App\Models\Supplier::where('supplier_id', $record->provider_id)->decrement('outstanding_balance', $paymentAmount);
+                    } elseif ($record->provider_type === 'customer') {
+                        \App\Models\Customer::where('customer_id', $record->provider_id)->increment('remaining_balance', $paymentAmount);
+                    }
+
+                    //  Update purchase order
                     if ($remainingAfter <= 0 && $record->purchase_order_id) {
                         \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
                             ->update(['status' => 'closed']);
@@ -795,7 +803,9 @@ class PurchaseOrderInvoiceResource extends Resource
     
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
-            ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

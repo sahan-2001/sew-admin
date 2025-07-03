@@ -21,7 +21,6 @@ use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Illuminate\Support\Facades\Auth;
 
-
 class RegisterArrivalResource extends Resource
 {
     protected static ?string $model = RegisterArrival::class;
@@ -50,110 +49,126 @@ class RegisterArrivalResource extends Resource
                                 ->label('Provider ID')
                                 ->disabled()
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
-                            
                         ]),
                 ]),
 
             Section::make('Purchase Order Items')
-            ->schema([
-                Repeater::make('purchase_order_items')
-                    ->schema([
-                        TextInput::make('item_id')
-                            ->label('Item ID')
-                            ->required()
-                            ->dehydrated() ,
-                             
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('item_code')
-                                    ->label('Item Code')
-                                    ->disabled(),
-                            ]),
+                ->schema([
+                    Repeater::make('purchase_order_items')
+                        ->schema([   
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('item_id')
+                                        ->label('Item ID')
+                                        ->required()
+                                        ->disabled()
+                                        ->dehydrated(),
+                                    TextInput::make('item_code')
+                                        ->label('Item Code')
+                                        ->disabled(),
+                                ]),
 
-                        Grid::make(3)
-                            ->schema([
-                                TextInput::make('quantity')
-                                    ->label('Quantity')
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                        $price = $get('price');
-                                        $remainingQuantity = $get('remaining_quantity');
-                                        if ($state > $remainingQuantity) {
-                                            Notification::make()
-                                                ->title('Quantity Exceeded')
-                                                ->danger()
-                                                ->body('The entered quantity exceeds the remaining quantity.')
-                                                ->send();
+                            Grid::make(3)
+                                ->schema([
+                                    TextInput::make('quantity')
+                                        ->label('Quantity')
+                                        ->live()
+                                        ->required()
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            $price = $get('price');
+                                            $remainingQuantity = $get('remaining_quantity');
 
-                                            $set('quantity', $remainingQuantity);
-                                        } elseif ($price > 0) {
-                                            $set('total', $state * $price);
-                                        }
-                                    }),
+                                            if ($state > $remainingQuantity) {
+                                                Notification::make()
+                                                    ->title('Invalid Quantity')
+                                                    ->danger()
+                                                    ->body('Entered quantity exceeds the remaining quantity.')
+                                                    ->send();
 
-                                TextInput::make('price')
-                                    ->label('Price')
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                        $quantity = $get('quantity');
-                                        if ($quantity > 0) {
-                                            $set('total', $state * $quantity);
-                                        }
-                                    }),
+                                                $set('quantity', null);
+                                                $set('total', null);
+                                            } elseif ($price > 0) {
+                                                $set('total', $state * $price);
+                                            }
+                                            
+                                            // Update status based on quantity
+                                            if ($state == 0) {
+                                                $set('status', 'not arrived');
+                                            } else {
+                                                $set('status', 'to be inspected');
+                                            }
+                                        }),
 
-                                TextInput::make('total')
-                                    ->label('Total')
-                                    ->reactive()
-                                    ->disabled(),
-                            ]),
+                                    TextInput::make('price')
+                                        ->label('Price')
+                                        ->reactive()
+                                        ->required()
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            $quantity = $get('quantity');
+                                            if ($quantity > 0) {
+                                                $set('total', $state * $quantity);
+                                            }
+                                        }),
 
-                        TextInput::make('remaining_quantity')
-                            ->label('Remaining Quantity')
-                            ->reactive()
-                            ->required()
-                            ->disabled(),
-                    ])
-                    ->disableItemCreation()
-                    ->relationship('items')
-                    ->afterStateHydrated(function ($state, $get, $set) {
-                        $purchaseOrderId = $get('purchase_order_id');
+                                    TextInput::make('total')
+                                        ->label('Total')
+                                        ->reactive()
+                                        ->disabled(),
+                                ]),
 
-                        if ($purchaseOrderId) {
-                            $purchaseOrder = \App\Models\PurchaseOrder::find($purchaseOrderId);
+                            TextInput::make('remaining_quantity')
+                                ->label('Remaining Quantity')
+                                ->reactive()
+                                ->required()
+                                ->disabled(),
+                                
+                            Hidden::make('status')
+                                ->default('not arrived'),
+                        ])
+                        ->disableItemCreation()
+                        ->relationship('items')
+                        ->afterStateHydrated(function ($state, $get, $set) {
+                            $purchaseOrderId = $get('purchase_order_id');
 
-                            if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-                                $items = \App\Models\PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                                    ->with('inventoryItem')
-                                    ->get();
+                            if ($purchaseOrderId) {
+                                $purchaseOrder = \App\Models\PurchaseOrder::find($purchaseOrderId);
 
-                                $itemsData = $items->map(function ($item) {
-                                    return [
-                                        'item_id' => $item->inventory_item_id,
-                                        'item_code' => optional($item->inventoryItem)->item_code,
-                                        'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
-                                        'quantity' => 0,
-                                        'price' => $item->price,
-                                        'total' => 0,
-                                    ];
-                                })->toArray();
+                                if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
+                                    $items = \App\Models\PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                                        ->where(function($query) {
+                                            $query->where('remaining_quantity', '>', 0)
+                                                ->orWhereNull('remaining_quantity');
+                                        })
+                                        ->with('inventoryItem')
+                                        ->get();
 
-                                $set('purchase_order_items', $itemsData);
+                                    $itemsData = $items->map(function ($item) {
+                                        return [
+                                            'item_id' => $item->inventory_item_id,
+                                            'item_code' => optional($item->inventoryItem)->item_code,
+                                            'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
+                                            'quantity' => 0,
+                                            'price' => $item->price,
+                                            'total' => 0,
+                                            'status' => 'not arrived',
+                                        ];
+                                    })->toArray();
+
+                                    $set('purchase_order_items', $itemsData);
+                                } else {
+                                    Notification::make()
+                                        ->title('Invalid Purchase Order')
+                                        ->danger()
+                                        ->body('The selected purchase order is not in a released or partially arrived status.')
+                                        ->send();
+
+                                    $set('purchase_order_items', []);
+                                }
                             } else {
-                                Notification::make()
-                                    ->title('Invalid Purchase Order')
-                                    ->danger()
-                                    ->body('The selected purchase order is not in a released or partially arrived status.')
-                                    ->send();
-
                                 $set('purchase_order_items', []);
                             }
-                        } else {
-                            $set('purchase_order_items', []);
-                        }
-                    }),
-        ]),
+                        }),
+                ]),
         
             Section::make('Arrival Information and Invoice Data')
                 ->schema([
@@ -199,7 +214,6 @@ class RegisterArrivalResource extends Resource
                                 ->nullable(),
                         ]),
                 ]),
-            
         ]);     
     }
 
@@ -221,6 +235,10 @@ class RegisterArrivalResource extends Resource
             $set('due_date', $purchaseOrder->wanted_date);
 
             $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
+                ->where(function($query) {
+                    $query->where('remaining_quantity', '>', 0)
+                        ->orWhereNull('remaining_quantity');
+                })
                 ->with('inventoryItem')
                 ->get();
 
@@ -233,6 +251,7 @@ class RegisterArrivalResource extends Resource
                     'arrived_quantity' => $item->arrived_quantity ?? 0,
                     'price' => $item->price,
                     'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
+                    'status' => 'not arrived',
                 ];
             })->toArray();
 
@@ -268,24 +287,29 @@ class RegisterArrivalResource extends Resource
                     $purchaseOrderItem->arrived_quantity += $item->quantity;
                     $purchaseOrderItem->remaining_quantity = max(0, $purchaseOrderItem->remaining_quantity - $item->quantity);
 
-                    $purchaseOrderItem->save();
-                }
+                    // Set status based on quantity
+                    if ($item->quantity == 0) {
+                        $item->status = 'not arrived';
+                    } else {
+                        $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
+                        if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
+                            $item->status = 'QC passed';
+                            
+                            // Only create stock entry if quantity > 0 and location is picking
+                            \App\Models\Stock::create([
+                                'item_id' => $item->item_id,
+                                'location_id' => $registerArrival->location_id,
+                                'quantity' => $item->quantity,
+                                'cost' => $item->price,
+                                'purchase_order_id' => $purchaseOrderId,
+                            ]);
+                        } else {
+                            $item->status = 'to be inspected';
+                        }
+                    }
 
-                // Check if the selected location type is "picking"
-                $inventoryLocation = InventoryLocation::find($registerArrival->location_id);
-                if ($inventoryLocation && $inventoryLocation->location_type === 'picking') {
-                    // Update status of RegisterArrivalItem to "QC passed"
-                    $item->status = 'QC passed';
                     $item->save();
-
-                    // Always create a new stock entry
-                    \App\Models\Stock::create([
-                        'item_id' => $item->item_id,
-                        'location_id' => $registerArrival->location_id,
-                        'quantity' => $item->quantity,
-                        'cost' => $item->price, // Use the price from the creation form
-                        'purchase_order_id' => $purchaseOrderId, // Save purchase order ID
-                    ]);
+                    $purchaseOrderItem->save();
                 }
             }
 
@@ -300,7 +324,6 @@ class RegisterArrivalResource extends Resource
             }
         }
     }
-
 
     public static function table(Tables\Table $table): Tables\Table
     {
@@ -336,7 +359,7 @@ class RegisterArrivalResource extends Resource
                         TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
-                    ),
+                ),
             ])
             ->filters([
                 Tables\Filters\Filter::make('purchase_order_id')
@@ -381,8 +404,9 @@ class RegisterArrivalResource extends Resource
                     ->form([
                         Forms\Components\Select::make('status')
                             ->options([
-                                'qc passed' => 'QC Passed',
+                                'not arrived' => 'Not Arrived',
                                 'to be inspected' => 'To Be Inspected',
+                                'QC passed' => 'QC Passed',
                                 'inspected' => 'Inspected',
                             ])
                             ->placeholder('Select Status'),
@@ -395,7 +419,6 @@ class RegisterArrivalResource extends Resource
                         );
                     }),
             ])
-
             ->defaultSort('id', 'desc')
             ->recordUrl(null)
             ->actions([
@@ -441,22 +464,17 @@ class RegisterArrivalResource extends Resource
                             $inventoryItem = InventoryItem::find($item->item_id);
                             if ($inventoryItem) {
                                 $inventoryItem->available_quantity -= $item->quantity;
-
-                                // Ensure available quantity is not negative
                                 $inventoryItem->available_quantity = max(0, $inventoryItem->available_quantity);
-
                                 $inventoryItem->save();
                             }
 
-                            // Revert the stock entry if the location type is "picking"
+                            // Revert the stock entry if exists
                             $stock = \App\Models\Stock::where('item_id', $item->item_id)
                                 ->where('location_id', $record->location_id)
                                 ->first();
 
                             if ($stock) {
                                 $stock->quantity -= $item->quantity;
-
-                                // Delete the stock record if the quantity becomes zero
                                 if ($stock->quantity <= 0) {
                                     $stock->delete();
                                 } else {
@@ -487,9 +505,10 @@ class RegisterArrivalResource extends Resource
                         $livewire->redirect(request()->header('Referer'));
                     })
                     ->icon('heroicon-o-trash'),
-        ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
-
 
     public static function getPages(): array
     {

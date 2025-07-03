@@ -17,6 +17,6 @@ class CreatePurchaseOrder extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('index');
+        return $this->getResource()::getUrl('handle', ['record' => $this->record->getKey()]);
     }
 }

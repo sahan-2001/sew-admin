@@ -353,7 +353,8 @@ class ThirdPartyServiceResource extends Resource
                         ($record->used_amount ?? 0) <= 0
                     ),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

@@ -13,4 +13,9 @@ class EditPurchaseOrder extends EditRecord
     {
         return false;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('handle', ['record' => $this->record->getKey()]);
+    }
 }

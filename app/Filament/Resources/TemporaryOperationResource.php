@@ -267,7 +267,8 @@ class TemporaryOperationResource extends Resource
                 EditAction::make(),
                 DeleteAction::make(),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

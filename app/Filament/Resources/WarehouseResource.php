@@ -95,48 +95,48 @@ class WarehouseResource extends Resource
                     ),
             ])
             ->filters([
-    Filter::make('id')
-        ->label('Warehouse ID')
-        ->form([
-            Forms\Components\TextInput::make('id')
-                ->placeholder('Enter Warehouse ID'),
-        ])
-        ->query(fn ($query, array $data) =>
-            $query->when($data['id'],
-                fn ($query, $id) => $query->where('id', 'like', "%{$id}%")
-            )
-        ),
+                Filter::make('id')
+                    ->label('Warehouse ID')
+                    ->form([
+                        Forms\Components\TextInput::make('id')
+                            ->placeholder('Enter Warehouse ID'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['id'],
+                            fn ($query, $id) => $query->where('id', 'like', "%{$id}%")
+                        )
+                    ),
 
-    Filter::make('name')
-        ->label('Name')
-        ->form([
-            Forms\Components\TextInput::make('name')
-                ->placeholder('Enter Warehouse Name'),
-        ])
-        ->query(fn ($query, array $data) =>
-            $query->when($data['name'],
-                fn ($query, $name) => $query->where('name', 'like', "%{$name}%")
-            )
-        ),
+                Filter::make('name')
+                    ->label('Name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->placeholder('Enter Warehouse Name'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['name'],
+                            fn ($query, $name) => $query->where('name', 'like', "%{$name}%")
+                        )
+                    ),
 
-    Filter::make('measurement_unit')
-        ->label('Measurement Unit')
-        ->form([
-            Forms\Components\Select::make('measurement_unit')
-                ->options([
-                    'cm' => 'cm',
-                    'm' => 'm',
-                    'inch' => 'inch',
-                    // Add others as needed
-                ])
-                ->placeholder('Select Unit'),
-        ])
-        ->query(fn ($query, array $data) =>
-            $query->when($data['measurement_unit'],
-                fn ($query, $unit) => $query->where('measurement_unit', $unit)
-            )
-        ),
-])
+                Filter::make('measurement_unit')
+                    ->label('Measurement Unit')
+                    ->form([
+                        Forms\Components\Select::make('measurement_unit')
+                            ->options([
+                                'cm' => 'cm',
+                                'm' => 'm',
+                                'inch' => 'inch',
+                                // Add others as needed
+                            ])
+                            ->placeholder('Select Unit'),
+                    ])
+                    ->query(fn ($query, array $data) =>
+                        $query->when($data['measurement_unit'],
+                            fn ($query, $unit) => $query->where('measurement_unit', $unit)
+                        )
+                    ),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Warehouse $record) => auth()->user()->can('edit warehouses')),
@@ -147,7 +147,8 @@ class WarehouseResource extends Resource
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete warehouses')),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

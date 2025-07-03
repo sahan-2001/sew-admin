@@ -588,7 +588,8 @@ class AssignDailyOperationsResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->visible(fn ($record) => $record->status !== 'recorded'),
             ])
-            ->defaultSort('id', 'desc');
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

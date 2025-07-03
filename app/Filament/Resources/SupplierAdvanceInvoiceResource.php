@@ -28,6 +28,7 @@ use Filament\Support\Enums\Js;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
+use App\Models\PurchaseOrderInvoice;
 
 class SupplierAdvanceInvoiceResource extends Resource
 {
@@ -51,40 +52,39 @@ class SupplierAdvanceInvoiceResource extends Resource
                                 ->columns(2)
                                 ->schema([
                                     Select::make('purchase_order_id')
-                                        ->label('Purchase Order')
-                                        ->required()
-                                        ->dehydrated()
-                                        ->disabled(fn (?string $context) => $context === 'edit')
-                                        ->searchable()
-                                        ->options(function () {
-                                            return \App\Models\PurchaseOrder::all()->mapWithKeys(function ($order) {
-                                                return [
-                                                    $order->id => "ID:{$order->id} | Created at:{$order->created_at->format('Y-m-d')} | Provider:{$order->provider_name}",
-                                                ];
-                                            });
-                                        })                        
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, $set) {
-                                            $purchaseOrder = PurchaseOrder::find($state);
+    ->label('Purchase Order')
+    ->required()
+    ->dehydrated()
+    ->disabled(fn (?string $context) => $context === 'edit')
+    ->searchable()
+    ->options(function () {
+        return \App\Models\PurchaseOrder::whereDoesntHave('invoice') 
+            ->get()
+            ->mapWithKeys(function ($order) {
+                return [
+                    $order->id => "ID:{$order->id} | Created at:{$order->created_at->format('Y-m-d')} | Provider:{$order->provider_id}",
+                ];
+            });
+    })
+    ->reactive()
+    ->afterStateUpdated(function ($state, $set, $get) {
+        $purchaseOrder = \App\Models\PurchaseOrder::find($state);
 
-                                            if ($purchaseOrder) {
-                                                $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
-                                                $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
-                                                $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
-                                                $set('status', $purchaseOrder->status ?? 'N/A');
+        if ($purchaseOrder) {
+            $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
+            $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
+            $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
+            $set('status', $purchaseOrder->status ?? 'N/A');
+            $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
+        } else {
+            $set('provider_type', 'N/A');
+            $set('provider_email', 'N/A');
+            $set('wanted_date', 'N/A');
+            $set('status', 'N/A');
+            $set('purchase_order_items', []);
+        }
+    }),
 
-                                                if ($purchaseOrder->items) {
-                                                    $set('purchase_order_items', $purchaseOrder->items->toArray());
-                                                } else {
-                                                    $set('purchase_order_items', []);
-                                                }
-                                            } else {
-                                                $set('provider_type', 'N/A');
-                                                $set('provider_email', 'N/A');
-                                                $set('wanted_date', 'N/A');
-                                                $set('status', 'N/A');
-                                            }
-                                        }),
 
                                     TextInput::make('provider_type')
                                         ->label('Provider Type')
@@ -303,7 +303,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (SupplierAdvanceInvoice $record): bool =>
                         auth()->user()?->can('pay supp adv invoice') &&
-                        in_array($record->status, ['pending', 'partially_paid']) &&
+                        in_array($record->status, ['pending', 'partially_paid', 'paid']) && 
                         $record->remaining_amount > 0
                     )
                     ->form([
@@ -389,6 +389,13 @@ class SupplierAdvanceInvoiceResource extends Resource
                             'paid_via' => $data['payment_method'],
                         ]);
 
+                        //  Update provider balance
+                        if ($record->provider_type === 'supplier') {
+                            \App\Models\Supplier::where('supplier_id', $record->provider_id)->decrement('outstanding_balance', $paymentAmount);
+                        } elseif ($record->provider_type === 'customer') {
+                            \App\Models\Customer::where('customer_id', $record->provider_id)->increment('remaining_balance', $paymentAmount);
+                        }
+                        
                         Notification::make()
                             ->title('Payment Recorded Successfully')
                             ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
@@ -408,7 +415,9 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
-            ]);
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

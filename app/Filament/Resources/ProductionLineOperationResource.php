@@ -241,7 +241,8 @@ class ProductionLineOperationResource extends Resource
                 DeleteAction::make()
                     ->visible(fn ($record) => auth()->user()->can('delete workstations')),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
 

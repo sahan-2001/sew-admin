@@ -56,6 +56,12 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 'updated_by' => auth()->id(),
             ]);
 
+            if ($data['provider_type'] === 'supplier') {
+                \App\Models\Supplier::where('supplier_id', $data['provider_id'])->increment('outstanding_balance', $paymentDue);
+            } elseif ($data['provider_type'] === 'customer') {
+                \App\Models\Customer::where('customer_id', $data['provider_id'])->decrement('remaining_balance', $paymentDue);
+            }
+            
             // Get the purchase order ID (remove leading zeros)
             $purchaseOrderId = ltrim($data['purchase_order_id'], '0');
             

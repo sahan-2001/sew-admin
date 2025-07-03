@@ -412,7 +412,9 @@ class StockOverviewResource extends Resource
                             ->success()
                             ->send();
                     }),
-                ]);
+                ])
+            ->defaultSort('id', 'desc') 
+            ->recordUrl(null);
     }
 
 

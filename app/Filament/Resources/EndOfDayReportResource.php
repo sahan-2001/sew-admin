@@ -248,7 +248,9 @@ class EndOfDayReportResource extends Resource
                     })
                     ->visible(fn (EndOfDayReport $record) => $record->status === 'created'),
 
-            ])->defaultSort('id', 'desc');
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

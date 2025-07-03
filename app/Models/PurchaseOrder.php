@@ -108,4 +108,10 @@ class PurchaseOrder extends Model
         return $this->hasMany(SupplierAdvanceInvoice::class);
     }
 
+    public function invoice()
+    {
+        return $this->hasOne(\App\Models\PurchaseOrderInvoice::class, 'purchase_order_id');
+    }
+
+
 }

@@ -157,7 +157,8 @@ class InventoryItemResource extends Resource
                         }
                     }),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getRelations(): array

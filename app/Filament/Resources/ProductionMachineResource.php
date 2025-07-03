@@ -253,7 +253,8 @@ class ProductionMachineResource extends Resource
                         auth()->user()->can('delete production machines') 
                     ),
             ])
-            ->recordUrl(null);
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
     }
 
     public static function getPages(): array

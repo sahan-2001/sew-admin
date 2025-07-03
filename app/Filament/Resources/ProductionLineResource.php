@@ -115,7 +115,8 @@ class ProductionLineResource extends Resource
                             auth()->user()->can('delete production lines') 
                         ),
                 ])
-                ->recordUrl(null);
+            ->defaultSort('id', 'desc') 
+            ->recordUrl(null);
     }
 
 
