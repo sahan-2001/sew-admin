@@ -160,7 +160,7 @@ class SupplierResource extends Resource
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete suppliers')),
             ])
-        ->defaultSort('id', 'desc') 
+        ->defaultSort('supplier_id', 'desc') 
         ->recordUrl(null);
     }
 

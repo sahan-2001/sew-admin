@@ -245,7 +245,7 @@ class HandleSampleOrder extends Page
         }
             
         // Accept Sample Order (Convert)
-        if ($this->record->status === 'completed') {
+        if ($this->record->status === 'delivered') {
             $actions[] = Action::make('convert_to_customer_order')
                 ->label('Accept Sample Order')
                 ->color('success')
@@ -264,7 +264,7 @@ class HandleSampleOrder extends Page
         }
 
         // Reject Sample Order
-        if ($this->record->status === 'completed') {
+        if ($this->record->status === 'delivered') {
             $actions[] = Action::make('reject_sample_order')
                 ->label('Reject Sample Order')
                 ->color('danger')
@@ -297,6 +297,31 @@ class HandleSampleOrder extends Page
                 ->action(fn () => $this->planOrder())
                 ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
         }
+
+        // Deliver Sample Order
+        if ($this->record->status === 'completed') {
+            $actions[] = Action::make('deliver_order')
+                ->label('Deliver Sample Order')
+                ->color('success')
+                ->icon('heroicon-o-truck')
+                ->requiresConfirmation()
+                ->modalHeading('Deliver Sample Order')
+                ->modalDescription('Are you sure you want to mark this sample order as delivered? This action cannot be undone.')
+                ->modalButton('Yes, Deliver')
+                ->action(function () {
+                    $this->record->update([
+                        'status' => 'delivered',
+                    ]);
+
+                    Notification::make()
+                        ->title('Sample Order Delivered')
+                        ->success()
+                        ->body('The sample order has been successfully marked as delivered.')
+                        ->send();
+                })
+                ->after(fn () => redirect(request()->header('Referer', SampleOrderResource::getUrl('index'))));
+        }
+
 
         // Show "Print PDF" action
         if (in_array($this->record->status, ['planned', 'released', 'accepted', 'rejected', 'cut', 'started', 'paused', 'completed', 'delivered'])) {

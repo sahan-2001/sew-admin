@@ -146,7 +146,7 @@ class CustomerResource extends Resource
                 Tables\Actions\DeleteBulkAction::make()
                     ->visible(fn () => auth()->user()->can('delete customers')),
             ])
-        ->defaultSort('id', 'desc') 
+        ->defaultSort('customer_id', 'desc') 
         ->recordUrl(null);
     }
 

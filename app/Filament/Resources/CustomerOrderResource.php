@@ -194,7 +194,7 @@ class CustomerOrderResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('order_id')
-                    ->label('ID')
+                    ->label('Order ID')
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('customer.name')->label('Customer Name'),
                 TextColumn::make('name')->label('Order Name'),
@@ -212,23 +212,30 @@ class CustomerOrderResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable()->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable()->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable()->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable()->dateTime()->sortable(),
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
                     ),
             ])
             ->actions([
-                ViewAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('view customer orders')),
+                Action::make('handle')
+                    ->label('Handle')
+                    ->icon('heroicon-o-cog')
+                    ->color('primary')
+                    ->url(fn (CustomerOrder $record): string => static::getUrl('handle', ['record' => $record])),
                 EditAction::make()
                     ->visible(fn ($record) => auth()->user()->can('edit customer orders')),
+
                 DeleteAction::make()
-                    ->visible(fn ($record) => auth()->user()->can('delete customer orders')),
+                    ->visible(fn ($record) =>
+                        auth()->user()->can('delete customer orders') &&
+                        $record->status === 'planned'
+                    ),
             ])
-        ->defaultSort('id', 'desc') 
+        ->defaultSort('order_id', 'desc') 
         ->recordUrl(null);
     }
 
@@ -238,6 +245,7 @@ class CustomerOrderResource extends Resource
             'index' => Pages\ListCustomerOrders::route('/'),
             'create' => Pages\CreateCustomerOrder::route('/create'),
             'edit' => Pages\EditCustomerOrder::route('/{record}/edit'),
+            'handle' => Pages\HandleCustomerOrder::route('/{record}/handle'),
         ];
     }
 }

@@ -298,7 +298,7 @@ class SampleOrderResource extends Resource
                         ->url(fn ($record) => SampleOrderResource::getUrl('handle', ['record' => $record]))
                         ->openUrlInNewTab(false),
             ])
-        ->defaultSort('id', 'desc') 
+        ->defaultSort('order_id', 'desc') 
         ->recordUrl(null);
             
     }
