@@ -13,6 +13,7 @@ use EightyNine\ExcelImport\EnhancedDefaultImport;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Filament\Pages\Actions\Action;
 
 class ListCustomerOrders extends ListRecords
 {
@@ -55,6 +56,12 @@ class ListCustomerOrders extends ListRecords
                 ->modalButton('Start Export')
                 ->visible(fn () => auth()->user()->can('customer_orders.export')),
             
+            Action::make('goToCustomPage')
+                ->label('Convert from a Sample Order')
+                ->icon('heroicon-m-arrow-top-right-on-square') 
+                ->url(CustomPage::getUrl())
+                ->color('success'), 
+
             Actions\CreateAction::make()
                 ->visible(fn () => auth()->user()->can('create customer orders')),
 

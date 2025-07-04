@@ -284,6 +284,7 @@ class CustomerOrderResource extends Resource
             'create' => Pages\CreateCustomerOrder::route('/create'),
             'edit' => Pages\EditCustomerOrder::route('/{record}/edit'),
             'handle' => Pages\HandleCustomerOrder::route('/{record}/handle'),
+            'custom-page' => Pages\CustomPage::route('/custom-page'),
         ];
     }
 }
