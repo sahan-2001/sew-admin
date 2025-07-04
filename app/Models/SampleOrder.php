@@ -12,11 +12,11 @@ use App\Models\Action;
 
 class SampleOrder extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity; 
+    use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $primaryKey = 'order_id'; 
+    protected $primaryKey = 'order_id';
 
-    public $incrementing = true; 
+    public $incrementing = true;
 
     protected $keyType = 'int';
 
@@ -26,13 +26,14 @@ class SampleOrder extends Model
         'wanted_delivery_date',
         'special_notes',
         'status',
-        'added_by', 
+        'added_by',
         'accepted_by',
         'grand_total',
+        'remaining_balance',
         'confirmation_message',
         'rejected_by',
         'rejection_message',
-        'random_code', 
+        'random_code',
         'created_by',
         'updated_by',
     ];
@@ -44,23 +45,47 @@ class SampleOrder extends Model
             for ($i = 0; $i < 16; $i++) {
                 $sampleOrder->random_code .= mt_rand(0, 9);
             }
-        });
 
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            $sampleOrder->created_by = auth()->id();
+            $sampleOrder->updated_by = auth()->id();
+
+            $sampleOrder->remaining_balance = $sampleOrder->grand_total ?? 0;
         });
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::saved(function ($model) {
+            $model->recalculateGrandTotal();
+        });
     }
-    
+
+    public function setRemainingBalanceAttribute($value)
+    {
+        if (is_null($value) && !is_null($this->grand_total)) {
+            $this->attributes['remaining_balance'] = $this->grand_total;
+        } else {
+            $this->attributes['remaining_balance'] = $value;
+        }
+    }
+
+    public function setGrandTotalAttribute($value)
+    {
+        $this->attributes['grand_total'] = $value;
+        
+
+        if (!isset($this->attributes['remaining_balance']) || 
+            $this->attributes['remaining_balance'] == $this->getOriginal('grand_total')) {
+            $this->attributes['remaining_balance'] = $value;
+        }
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
-    
+
     public function items()
     {
         return $this->hasMany(SampleOrderItem::class, 'sample_order_id', 'order_id');
@@ -71,7 +96,6 @@ class SampleOrder extends Model
         return $this->hasManyThrough(SampleOrderVariation::class, SampleOrderItem::class, 'sample_order_id', 'sample_order_item_id');
     }
 
-    // Relationship to track the user who created the order (added_by)
     public function addedBy()
     {
         return $this->belongsTo(User::class, 'added_by');
@@ -82,7 +106,6 @@ class SampleOrder extends Model
         return $this->morphMany(Action::class, 'model');
     }
 
-    // Configure activity log options
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -103,7 +126,29 @@ class SampleOrder extends Model
     public function recalculateGrandTotal()
     {
         $this->load('items');
+        $oldGrandTotal = $this->grand_total;
         $this->grand_total = $this->items->sum('total');
+        
+        if (is_null($this->remaining_balance) || $this->remaining_balance == $oldGrandTotal) {
+            $this->remaining_balance = $this->grand_total;
+        }
+        
         $this->saveQuietly();
+    }
+
+    public function resetRemainingBalance()
+    {
+        $this->remaining_balance = $this->grand_total;
+        $this->saveQuietly();
+    }
+
+    public function isFullyPaid()
+    {
+        return $this->remaining_balance <= 0;
+    }
+
+    public function getPaidAmount()
+    {
+        return $this->grand_total - $this->remaining_balance;
     }
 }

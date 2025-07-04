@@ -16,6 +16,7 @@ return new class extends Migration
             $table->text('special_notes')->nullable(); 
             $table->string('status')->default('planned'); 
             $table->decimal('grand_total', 12, 2)->default(0);
+            $table->decimal('remaining_balance', 12, 2)->default(0);
             $table->unsignedBigInteger('added_by');
             $table->unsignedBigInteger('accepted_by')->nullable();
             $table->text('confirmation_message')->nullable(); 

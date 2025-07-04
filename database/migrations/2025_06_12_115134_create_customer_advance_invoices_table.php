@@ -20,6 +20,7 @@ class CreateCustomerAdvanceInvoicesTable extends Migration
             $table->decimal('received_amount', 10, 2)->default(0);
             $table->date('paid_date')->nullable();
             $table->string('paid_via')->nullable();
+            $table->string('payment_reference')->nullable();
             $table->string('cus_invoice_number')->nullable();
             $table->string('invoice_image')->nullable();
 

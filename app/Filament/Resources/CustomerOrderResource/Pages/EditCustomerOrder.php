@@ -173,4 +173,9 @@ class EditCustomerOrder extends EditRecord
         }
         return $data;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('handle', ['record' => $this->record->getKey()]);
+    }
 }

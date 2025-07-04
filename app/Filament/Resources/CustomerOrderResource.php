@@ -25,6 +25,9 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\DateFilter;
+use Filament\Tables\Filters\Filter;
 
 class CustomerOrderResource extends Resource
 {
@@ -195,9 +198,10 @@ class CustomerOrderResource extends Resource
             ->columns([
                 TextColumn::make('order_id')
                     ->label('Order ID')
+                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('customer.name')->label('Customer Name'),
-                TextColumn::make('name')->label('Order Name'),
+                TextColumn::make('customer.name')->label('Customer Name')->searchable(),
+                TextColumn::make('name')->label('Order Name')->searchable(),
                 TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
                 BadgeColumn::make('status')
                     ->label('Status')
@@ -218,7 +222,41 @@ class CustomerOrderResource extends Resource
                         TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
-                    ),
+                ),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'planned' => 'Planned',
+                        'released' => 'Released',
+                        'cut' => 'Cut',
+                        'started' => 'Started',
+                        'paused' => 'Paused',
+                        'completed' => 'Completed',
+                        'invoiced' => 'Invoiced',
+                        'closed' => 'Closed',
+                    ]),
+
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('created_at')->label('Created Date')->maxDate(now()),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['created_at'], fn ($q, $date) => $q->whereDate('created_at', $date));
+                    }),
+
+                Filter::make('wanted_delivery_date')
+                    ->label('Wanted Delivery Date')
+                    ->form([
+                        DatePicker::make('wanted_delivery_date')->label('Wanted Delivery Date'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['wanted_delivery_date'], fn ($q, $date) => $q->whereDate('wanted_delivery_date', $date));
+                    }),
             ])
             ->actions([
                 Action::make('handle')
@@ -229,15 +267,14 @@ class CustomerOrderResource extends Resource
                 EditAction::make()
                     ->visible(fn ($record) => auth()->user()->can('edit customer orders') &&
                         $record->status === 'planned'),
-
                 DeleteAction::make()
                     ->visible(fn ($record) =>
                         auth()->user()->can('delete customer orders') &&
                         $record->status === 'planned'
                     ),
             ])
-        ->defaultSort('order_id', 'desc') 
-        ->recordUrl(null);
+            ->defaultSort('order_id', 'desc') 
+            ->recordUrl(null);
     }
 
     public static function getPages(): array

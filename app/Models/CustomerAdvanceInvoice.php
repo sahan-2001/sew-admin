@@ -25,6 +25,7 @@ class CustomerAdvanceInvoice extends Model
         'received_amount',
         'paid_date',
         'paid_via',
+        'payment_reference',
         'cus_invoice_number',
         'invoice_image',
     ];
