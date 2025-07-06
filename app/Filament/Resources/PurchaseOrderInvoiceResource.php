@@ -58,6 +58,17 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->label('Purchase Order ID')
                                         ->required()
                                         ->reactive()
+                                        ->rules([
+                                            function () {  
+                                                return function (string $attribute, $value, \Closure $fail) {
+                                                    $exists = \App\Models\PurchaseOrderInvoice::where('purchase_order_id', $value)->exists();
+
+                                                    if ($exists) {
+                                                        $fail('An invoice for this Purchase Order already exists.');
+                                                    }
+                                                };
+                                            },
+                                        ])
                                         ->afterStateUpdated(function ($state, callable $set) {
                                             $numericId = ltrim($state, '0');
                                             $purchaseOrder = \App\Models\PurchaseOrder::find($numericId);
@@ -84,7 +95,9 @@ class PurchaseOrderInvoiceResource extends Resource
                                             $hasToBeInspected = false;
 
                                             foreach ($registerArrivals as $arrival) {
-                                                $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)->get();
+                                                $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)
+                                                    ->where('status', '!=', 'invoiced')
+                                                    ->get();
 
                                                 foreach ($items as $item) {
                                                     if ($item->status === 'to be inspected') {
@@ -372,6 +385,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->columnSpanFull()
                                         ->minItems(0)
                                         ->disableItemCreation()
+                                        ->disableItemDeletion()
                                         ->dehydrated(true),
 
                                     Placeholder::make('total_paid_amount')
@@ -584,7 +598,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->label('Total Calculation Method')
                                         ->options([
                                             'invoice_items' => 'Invoiced / Stored Items Total',
-                                            'material_qc' => 'Material QC Items Total',
+                                            'material_qc' => 'Arrived Items Total',
                                         ])
                                         ->default('invoice_items')
                                         ->required()
@@ -711,12 +725,14 @@ class PurchaseOrderInvoiceResource extends Resource
                                     ->suffix('Rs.')
                                     ->live()
                                     ->rules([
-                                        fn (PurchaseOrderInvoice $record) => function ($attribute, $value, $fail) use ($record) {
-                                            if ($value > $record->due_payment_for_now) {
-                                                $fail('Payment amount cannot exceed the due payment amount of Rs. ' . number_format($record->due_payment_for_now, 2));
-                                            }
-                                            if ($value <= 0) {
+                                        fn (PurchaseOrderInvoice $record) => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                            $amount = (float) $value;
+                                            if ($amount <= 0) {
                                                 $fail('Payment amount must be greater than zero.');
+                                                return;
+                                            }
+                                            if ($amount > (float) $record->due_payment_for_now) {
+                                                $fail('Payment amount cannot exceed the due payment amount of Rs. ' . number_format($record->due_payment_for_now, 2));
                                             }
                                         },
                                     ]),
@@ -779,10 +795,17 @@ class PurchaseOrderInvoiceResource extends Resource
                         \App\Models\Customer::where('customer_id', $record->provider_id)->increment('remaining_balance', $paymentAmount);
                     }
 
-                    //  Update purchase order
-                    if ($remainingAfter <= 0 && $record->purchase_order_id) {
-                        \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
-                            ->update(['status' => 'closed']);
+                    // Update purchase order's remaining balance if it exists
+                    if ($record->purchase_order_id) {
+                        $purchaseOrder = \App\Models\PurchaseOrder::find($record->purchase_order_id);
+                        if ($purchaseOrder) {
+                            $purchaseOrder->decrement('remaining_balance', $paymentAmount);
+                            
+                            // Update status to closed if fully paid
+                            if ($remainingAfter <= 0) {
+                                $purchaseOrder->update(['status' => 'closed']);
+                            }
+                        }
                     }
 
                     Notification::make()

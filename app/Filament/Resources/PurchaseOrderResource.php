@@ -247,7 +247,7 @@ class PurchaseOrderResource extends Resource
                     ),
                 
             ])
-            ->defaultSort('wanted_date', 'desc')
+            ->defaultSort('id', 'desc')
             ->recordUrl(null);
     }
 

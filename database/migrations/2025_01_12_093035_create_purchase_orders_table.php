@@ -16,6 +16,7 @@ class CreatePurchaseOrdersTable extends Migration
             $table->text('special_note')->nullable();
             $table->string('status')->default('planned'); 
             $table->decimal('grand_total', 12, 2)->default(0);
+            $table->decimal('remaining_balance', 12, 2)->default(0);
             $table->string('random_code')->nullable(); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

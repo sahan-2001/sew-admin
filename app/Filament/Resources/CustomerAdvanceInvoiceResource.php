@@ -24,13 +24,13 @@ use Filament\Forms\Set;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderDescription;
 use App\Models\VariationItem;
 use App\Models\SampleOrder;
 use App\Models\SampleOrderItem;
 use App\Models\SampleOrderVariation;
-use App\Models\Customer;
 use Filament\Forms\Components\DatePicker;
 
 
@@ -40,6 +40,9 @@ class CustomerAdvanceInvoiceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Invoices';
+    protected static ?string $label = 'Customer Invoice';
+    protected static ?string $pluralLabel = 'Customer Invoices';
+    protected static ?string $navigationLabel = 'Customer Invoices';
 
 
     public static function form(Form $form): Form
@@ -68,6 +71,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                             $set('special_notes', null);
                                             $set('status', null);
                                             $set('grand_total', null);
+                                            $set('remaining_balance', null);
                                             $set('items', []);
                                         }),
 
@@ -101,6 +105,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                                 $set('special_notes', null);
                                                 $set('status', null);
                                                 $set('grand_total', null);
+                                                $set('remaining_balance', null);
                                                 $set('items', []);
                                                 return;
                                             }
@@ -118,14 +123,33 @@ class CustomerAdvanceInvoiceResource extends Resource
                                             }
 
                                             if ($order) {
+                                                if (floatval($order->remaining_balance) === 0.0) {
+                                                    $set('order_id', null);
+                                                    $set('customer_id', null);
+                                                    $set('wanted_delivery_date', null);
+                                                    $set('special_notes', null);
+                                                    $set('status', null);
+                                                    $set('grand_total', null);
+                                                    $set('remaining_balance', null);
+                                                    $set('items', []);
+
+                                                    Notification::make()
+                                                        ->title('This order has already been fully paid.')
+                                                        ->body('Please select a different order.')
+                                                        ->danger()
+                                                        ->send();
+
+                                                    return;
+                                                }
+
                                                 $set('customer_id', $order->customer_id ?? null);
                                                 $set('wanted_delivery_date', $order->wanted_delivery_date ?? null);
                                                 $set('special_notes', $order->special_notes ?? null);
                                                 $set('status', $order->status ?? null);
                                                 $set('grand_total', $order->grand_total ?? null);
+                                                $set('remaining_balance', $order->remaining_balance ?? null);
 
                                                 $items = [];
-
                                                 $orderItems = $type === 'customer' ? $order->orderItems : $order->items;
 
                                                 if (!is_iterable($orderItems)) {
@@ -133,13 +157,8 @@ class CustomerAdvanceInvoiceResource extends Resource
                                                 }
 
                                                 foreach ($orderItems as $item) {
-                                                    $hasVariations = $type === 'customer'
-                                                        ? ($item->is_variation ?? false)
-                                                        : ($item->is_variation ?? false);
-
-                                                    $variations = $type === 'customer'
-                                                        ? ($item->variationItems ?? [])
-                                                        : ($item->variations ?? []);
+                                                    $hasVariations = $item->is_variation ?? false;
+                                                    $variations = $type === 'customer' ? ($item->variationItems ?? []) : ($item->variations ?? []);
 
                                                     if ($hasVariations && is_iterable($variations) && count($variations) > 0) {
                                                         foreach ($variations as $variation) {
@@ -171,6 +190,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                                 $set('special_notes', null);
                                                 $set('status', null);
                                                 $set('grand_total', null);
+                                                $set('remaining_balance', null);
                                                 $set('items', []);
                                             }
                                         }),
@@ -245,6 +265,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                 Tab::make('Invoice Details')
                     ->schema([
                         Section::make('Grand Total Order Items')
+                                ->columns(3)
                                 ->schema([
                                     TextInput::make('grand_total')
                                         ->label('Grand Total')
@@ -253,90 +274,74 @@ class CustomerAdvanceInvoiceResource extends Resource
                                         ->dehydrated()
                                         ->prefix('Rs.')
                                         ->placeholder(fn (Get $get) => $get('grand_total') ?? ''),
+
+                                    TextInput::make('remaining_balance')
+                                        ->label('Remaining Balance')
+                                        ->numeric()
+                                        ->readonly()
+                                        ->dehydrated()
+                                        ->prefix('Rs.'),
+
+                                    TextInput::make('customer_id')
+                                        ->label('Customer ID')
+                                        ->readonly()
+                                        ->dehydrated()
                                 ]),
 
                             Section::make('Record the Payment')
                                 ->columns(3)
                                 ->schema([
-                                    Select::make('payment_type')
-                                        ->label('Paid Payment Type')
-                                        ->dehydrated()
-                                        ->options([
-                                            'fixed' => 'Fixed Amount',
-                                            'percentage' => 'Percentage',
-                                        ])
+                                    TextInput::make('amount')
+                                        ->label('Payment Amount (Rs)')
+                                        ->numeric()
                                         ->required()
-                                        ->default('fixed') 
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, $set) {
-                                            $set('fix_payment_amount', null);
-                                            $set('payment_percentage', null);
-                                            $set('calculated_payment', null);
-                                            $set('percent_calculated_payment', null);
-                                        }),
-
-                                    TextInput::make('fix_payment_amount')
-                                        ->label('Enter Received Amount')
-                                        ->dehydrated()
-                                        ->suffix('Rs.')
-                                        ->required(fn (Get $get) => $get('payment_type') === 'fixed')
-                                        ->visible(fn (Get $get) => $get('payment_type') === 'fixed')
+                                        ->live(debounce: 300)
                                         ->afterStateUpdated(function ($state, $set, Get $get) {
-                                            $grandTotal = $get('grand_total') ?? 0;
+                                            $grandTotal = (float)($get('grand_total') ?? 1);
+                                            $remainingBalance = (float)($get('remaining_balance') ?? $grandTotal);
 
-                                            if ($state > $grandTotal) {
-                                                $set('fix_payment_amount', null);
-                                                Notification::make()
-                                                    ->title('Invalid Payment')
-                                                    ->body('The entered amount exceeds the Grand Total.')
-                                                    ->danger()
-                                                    ->send();
+                                            if (!is_numeric($state) || $state <= 0) {
+                                                $set('paid_percentage', 0);
+                                                $set('remaining_percentage', 100);
                                                 return;
                                             }
 
-                                            $set('calculated_payment', $state);
+                                            $paymentAmount = min((float)$state, $remainingBalance);
+                                            
+                                            // Calculate paid percentage with proper rounding
+                                            $rawPercentage = ($paymentAmount / $grandTotal) * 100;
+                                            $paidPercentage = self::cleanRounding($rawPercentage);
+                                            
+                                            // Calculate remaining percentage (100 - paid percentage)
+                                            $remainingPercentage = 100 - $paidPercentage;
+
+                                            // Update display fields
+                                            $set('paid_percentage', $paidPercentage);
+                                            $set('remaining_percentage', $remainingPercentage);
                                         }),
 
-                                    TextInput::make('payment_percentage')
-                                        ->label('Enter Received Percentage')
-                                        ->dehydrated()
-                                        ->suffix('%')
-                                        ->required(fn (Get $get) => $get('payment_type') === 'percentage')
-                                        ->visible(fn (Get $get) => $get('payment_type') === 'percentage')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, $set, Get $get) {
-                                            $grandTotal = $get('grand_total') ?? 0;  
-                                            $calculated = $grandTotal * ($state / 100);
-
-                                            if ($calculated > $grandTotal) {
-                                                $set('payment_percentage', null);
-                                                $set('percent_calculated_payment', null);
-                                                Notification::make()
-                                                    ->title('Invalid Percentage')
-                                                    ->body('Calculated payment exceeds the Grand Total.')
-                                                    ->danger()
-                                                    ->send();
-                                                return;
-                                            }
-
-                                            $set('percent_calculated_payment', $calculated);
+                                    // Paid Percentage Display
+                                    Placeholder::make('paid_percentage_display')
+                                        ->label('Paid Percentage')
+                                        ->content(function (Get $get) {
+                                            $percentage = self::cleanRounding($get('paid_percentage', 0));
+                                            return "{$percentage}%";
                                         }),
 
-                                    TextInput::make('percent_calculated_payment')
-                                        ->label('Calculated Paid Payment')
-                                        ->suffix('Rs.')
-                                        ->disabled()
-                                        ->live()
-                                        ->dehydrated()
-                                        ->visible(fn (Get $get) => $get('payment_type') === 'percentage')
-                                        ->default(function (Get $get) {
-                                            $grandTotal = $get('grand_total') ?? 0;
-                                            $paymentPercentage = $get('payment_percentage');
-                                            $calculated = $paymentPercentage ? $grandTotal * ($paymentPercentage / 100) : null;
-
-                                            return $calculated && $calculated <= $grandTotal ? $calculated : null;
+                                    // Remaining Percentage Display
+                                    Placeholder::make('remaining_percentage_display')
+                                        ->label('Remaining Percentage')
+                                        ->content(function (Get $get) {
+                                            $paid = self::cleanRounding($get('paid_percentage', 0));
+                                            $remaining = 100 - $paid;
+                                            return "{$remaining}%";
                                         }),
-                                ]),
+
+                                    // Hidden fields to store calculations
+                                    Hidden::make('paid_percentage'),
+                                    Hidden::make('remaining_percentage')
+                                        ->default(100)
+                                    ]),
 
                             Section::make('Payment Info')
                                 ->columns(3)
@@ -387,16 +392,41 @@ class CustomerAdvanceInvoiceResource extends Resource
         ]);
     }
 
+    public static function cleanRounding(?float $value): float
+    {
+        if ($value === null) {
+            return 0.0; // Or handle as needed
+        }
+
+        // Handle values very close to 0
+        if (abs($value) < 0.0001) {
+            return 0;
+        }
+
+        // Handle values very close to whole numbers
+        $rounded = round($value, 2);
+        $difference = abs($rounded - round($rounded));
+
+        if ($difference < 0.0001) {
+            return round($rounded);
+        }
+
+        return $rounded;
+    }
+
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Cus ADV. Invoice ID')->sortable()->searchable()
+                TextColumn::make('id')->label('Cus Invoice ID')->sortable()->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('order_type')->label('Order Type')->sortable(),
                 TextColumn::make('order_id')->label('Order ID')->sortable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('received_amount')->label('Received Amount')->sortable()
+                TextColumn::make('customer_id')->label('Customer ID')->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('amount')->label('Received Amount')->sortable()
                     ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
                 ...(
                 Auth::user()->can('view audit columns')

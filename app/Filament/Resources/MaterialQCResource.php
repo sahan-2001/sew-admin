@@ -457,9 +457,7 @@ class MaterialQCResource extends Resource
                             ]),
                     ])
                     ->columnspanFull(),
-        ])
-        ->defaultSort('id', 'desc') 
-        ->recordUrl(null);
+        ]);
     }
 
 
@@ -597,7 +595,9 @@ class MaterialQCResource extends Resource
                     ->requiresConfirmation()
                     ->color('danger')
                     ->visible(fn ($record) => $record->status !== 'invoiced'),  
-            ]);
+            ])
+            ->defaultSort('id', 'desc') 
+            ->recordUrl(null);
     }
 
     public static function getRelations(): array

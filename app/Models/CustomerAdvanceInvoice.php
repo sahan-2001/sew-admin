@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\Customer;
+
 
 class CustomerAdvanceInvoice extends Model
 {
@@ -15,19 +17,19 @@ class CustomerAdvanceInvoice extends Model
     protected $fillable = [
         'order_type',
         'order_id',
+        'customer_id',
         'grand_total',
-        'payment_type',
-        'fix_payment_amount',
-        'payment_percentage',
-        'percent_calculated_payment',
+        'amount',
         'created_by',
         'updated_by',
-        'received_amount',
         'paid_date',
         'paid_via',
         'payment_reference',
         'cus_invoice_number',
         'invoice_image',
+        'status',
+        'created_by',
+        'updated_by',
     ];
 
     protected static $logFillable = true;
@@ -57,19 +59,34 @@ class CustomerAdvanceInvoice extends Model
         static::creating(function ($model) {
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
-
-            if ($model->fix_payment_amount) {
-                $model->received_amount = $model->fix_payment_amount;
-            } elseif ($model->percent_calculated_payment) {
-                $model->received_amount = $model->percent_calculated_payment;
-            } else {
-                $model->received_amount = 0; 
-            }
         });
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::created(function ($model) {
+            if ($model->customer) {
+                $amount = is_numeric($model->amount) ? $model->amount : 0;
+                $currentBalance = is_numeric($model->customer->remaining_balance) ? $model->customer->remaining_balance : 0;
+                
+                $newBalance = max($currentBalance - $amount, 0);
+                
+                $model->customer->update([
+                    'remaining_balance' => $newBalance
+                ]);
+                
+                activity()
+                    ->performedOn($model->customer)
+                    ->causedBy(auth()->user())
+                    ->log("Advance payment of Rs. {$amount} recorded. Remaining balance updated from {$currentBalance} to {$newBalance}");
+            }
+        });
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function getActivitylogOptions(): LogOptions

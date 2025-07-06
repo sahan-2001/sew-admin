@@ -11,18 +11,15 @@ class CreateCustomerAdvanceInvoicesTable extends Migration
             $table->id();
             $table->string('order_type'); 
             $table->unsignedBigInteger('order_id');
+            $table->unsignedBigInteger('customer_id');
             $table->decimal('grand_total', 10, 2);
-            $table->string('payment_type');
-            $table->decimal('fix_payment_amount', 10, 2)->nullable();
-            $table->decimal('payment_percentage', 5, 2)->nullable();
-            $table->decimal('percent_calculated_payment', 10, 2)->nullable();
-
-            $table->decimal('received_amount', 10, 2)->default(0);
+            $table->decimal('amount', 10, 2)->nullable();
             $table->date('paid_date')->nullable();
             $table->string('paid_via')->nullable();
             $table->string('payment_reference')->nullable();
             $table->string('cus_invoice_number')->nullable();
             $table->string('invoice_image')->nullable();
+            $table->string('status')->default('received'); 
 
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();

@@ -52,39 +52,42 @@ class SupplierAdvanceInvoiceResource extends Resource
                                 ->columns(2)
                                 ->schema([
                                     Select::make('purchase_order_id')
-    ->label('Purchase Order')
-    ->required()
-    ->dehydrated()
-    ->disabled(fn (?string $context) => $context === 'edit')
-    ->searchable()
-    ->options(function () {
-        return \App\Models\PurchaseOrder::whereDoesntHave('invoice') 
-            ->get()
-            ->mapWithKeys(function ($order) {
-                return [
-                    $order->id => "ID:{$order->id} | Created at:{$order->created_at->format('Y-m-d')} | Provider:{$order->provider_id}",
-                ];
-            });
-    })
-    ->reactive()
-    ->afterStateUpdated(function ($state, $set, $get) {
-        $purchaseOrder = \App\Models\PurchaseOrder::find($state);
+                                        ->label('Purchase Order')
+                                        ->required()
+                                        ->dehydrated()
+                                        ->disabled(fn (?string $context) => $context === 'edit')
+                                        ->searchable()
+                                        ->options(function () {
+                                            return \App\Models\PurchaseOrder::query()
+                                                ->where('status', '!=', 'closed') 
+                                                ->get()
+                                                ->mapWithKeys(function ($order) {
+                                                    return [
+                                                        $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
+                                                                    " | Remaining: Rs. " . number_format($order->remaining_balance, 2) 
+                                                    ];
+                                                });
+                                        })
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            $purchaseOrder = \App\Models\PurchaseOrder::find($state);
 
-        if ($purchaseOrder) {
-            $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
-            $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
-            $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
-            $set('status', $purchaseOrder->status ?? 'N/A');
-            $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
-        } else {
-            $set('provider_type', 'N/A');
-            $set('provider_email', 'N/A');
-            $set('wanted_date', 'N/A');
-            $set('status', 'N/A');
-            $set('purchase_order_items', []);
-        }
-    }),
-
+                                            if ($purchaseOrder) {
+                                                $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
+                                                $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
+                                                $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
+                                                $set('remaining_balance', $purchaseOrder->remaining_balance);
+                                                $set('status', $purchaseOrder->status ?? 'N/A');
+                                                $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
+                                            } else {
+                                                $set('provider_type', 'N/A');
+                                                $set('provider_email', 'N/A');
+                                                $set('wanted_date', 'N/A');
+                                                $set('remaining_balance', 'N/A');
+                                                $set('status', 'N/A');
+                                                $set('purchase_order_items', []);
+                                            }
+                                        }),
 
                                     TextInput::make('provider_type')
                                         ->label('Provider Type')
@@ -125,13 +128,14 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             }),
 
                                         Hidden::make('grand_total')
-                                        ->dehydrated(),
+                                            ->dehydrated(),
                                 ]),
                         ]),
 
                     Tabs\Tab::make('Payment for Purchase Order Items')
                         ->schema([
                             Section::make('Grand Total of Purchase Order Items')
+                                ->columns(2)
                                 ->schema([
                                     Placeholder::make('grand_total')
                                         ->label('Grand Total')
@@ -140,6 +144,14 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $items = $get('purchase_order_items') ?? [];
                                             $sum = collect($items)->sum('total_sale');
                                             return 'Rs. ' . number_format((float) $sum, 2);
+                                        }),
+
+                                    Placeholder::make('remaining_balance')
+                                        ->label('Remaining Balance')
+                                        ->disabled()
+                                        ->content(function (Get $get) {
+                                            $remaining = $get('remaining_balance') ?? 0;
+                                            return 'Rs. ' . number_format((float) $remaining, 2);
                                         }),
                                 ]),
 
@@ -170,25 +182,23 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->required(fn ($get) => $get('payment_type') === 'fixed')
                                         ->visible(fn ($get) => $get('payment_type') === 'fixed')
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $grandTotal = collect($get('purchase_order_items') ?? [])->sum('total_sale');
+                                            $remainingBalance = (float) ($get('remaining_balance') ?? 0);
 
-                                            if ($state > $grandTotal) {
-                                                // Clear the field and calculated payment
+                                            if ($state > $remainingBalance) {
                                                 $set('fix_payment_amount', null);
                                                 $set('calculated_payment', null);
 
-                                                // Show notification
                                                 Notification::make()
                                                     ->title('Invalid Payment')
-                                                    ->body('The entered amount exceeds the Grand Total.')
+                                                    ->body('The entered amount exceeds the remaining balance.')
                                                     ->danger()
                                                     ->send();
                                                 return;
                                             }
 
-                                            // Set calculated payment to the entered amount
                                             $set('calculated_payment', $state);
                                         }),
+
 
                                     // Percentage input for percentage-based payment
                                     TextInput::make('payment_percentage')
@@ -199,16 +209,16 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->visible(fn ($get) => $get('payment_type') === 'percentage')
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $grandTotal = collect($get('purchase_order_items') ?? [])->sum('total_sale');
-                                            $calculated = $grandTotal * ($state / 100);
+                                            $remainingBalance = (float) ($get('remaining_balance') ?? 0);
+                                            $calculated = $remainingBalance * ($state / 100);
 
-                                            if ($calculated > $grandTotal) {
+                                            if ($calculated > $remainingBalance) {
                                                 $set('payment_percentage', null);
                                                 $set('percent_calculated_payment', null);
 
                                                 Notification::make()
                                                     ->title('Invalid Percentage')
-                                                    ->body('Calculated payment exceeds the Grand Total.')
+                                                    ->body('Calculated payment exceeds the remaining balance.')
                                                     ->danger()
                                                     ->send();
                                                 return;
@@ -216,6 +226,7 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                                             $set('percent_calculated_payment', $calculated); 
                                         }),
+
                                     // Common display field for calculated amount
                                     TextInput::make('percent_calculated_payment')
                                         ->label('Calculated Payment')
@@ -225,14 +236,13 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->dehydrated()
                                         ->visible(fn ($get) => $get('payment_type') === 'percentage')
                                         ->default(function ($get) {
-                                            $grandTotal = collect($get('purchase_order_items') ?? [])->sum('total_sale');
-                                            $paymentPercentage = $get('payment_percentage');
+                                            $remainingBalance = (float) ($get('remaining_balance') ?? 0);
+                                            $percentage = (float) ($get('payment_percentage') ?? 0);
 
-                                            $calculated = $paymentPercentage ? $grandTotal * ($paymentPercentage / 100) : null;
+                                            $calculated = $remainingBalance * ($percentage / 100);
 
-                                            return $calculated && $calculated <= $grandTotal ? $calculated : null;
+                                            return $calculated && $calculated <= $remainingBalance ? $calculated : null;
                                         }),
-
                                 ]),
                             ]),
                 ])
@@ -330,15 +340,27 @@ class SupplierAdvanceInvoiceResource extends Resource
                                     ->live()
                                     ->rules([
                                         fn (SupplierAdvanceInvoice $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record) {
-                                            if ($value > $record->remaining_amount) {
-                                                $fail('Payment amount cannot exceed the remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
-                                            }
-                                            if ($value <= 0) {
+                                            $amount = (float) $value;
+
+                                            if ($amount <= 0) {
                                                 $fail('Payment amount must be greater than zero.');
+                                                return;
+                                            }
+
+                                            if ($amount > $record->remaining_amount) {
+                                                $fail('Payment amount cannot exceed the invoice remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
+                                            }
+
+                                            if ($record->purchase_order_id) {
+                                                $poRemaining = \App\Models\PurchaseOrder::find($record->purchase_order_id)?->remaining_balance ?? 0;
+
+                                                if ($amount > $poRemaining) {
+                                                    $fail('Payment amount cannot exceed the Purchase Order remaining balance of Rs. ' . number_format($poRemaining, 2));
+                                                }
                                             }
                                         },
                                     ]),
-                                
+
                                 Select::make('payment_method')
                                     ->label('Payment Method')
                                     ->options([
@@ -388,6 +410,11 @@ class SupplierAdvanceInvoiceResource extends Resource
                             'paid_date' => today(),
                             'paid_via' => $data['payment_method'],
                         ]);
+
+                        if ($record->purchase_order_id) {
+                            \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
+                                ->decrement('remaining_balance', $paymentAmount);
+                        }
 
                         //  Update provider balance
                         if ($record->provider_type === 'supplier') {

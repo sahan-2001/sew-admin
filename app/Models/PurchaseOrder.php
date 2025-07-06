@@ -11,7 +11,6 @@ use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-
 class PurchaseOrder extends Model
 {
     use HasFactory, LogsActivity;
@@ -23,6 +22,7 @@ class PurchaseOrder extends Model
         'special_note',
         'status', 
         'grand_total',
+        'remaining_balance', 
         'random_code', 
         'created_by',
         'updated_by',
@@ -35,32 +35,65 @@ class PurchaseOrder extends Model
             for ($i = 0; $i < 16; $i++) {
                 $purchaseOrder->random_code .= mt_rand(0, 9);
             }
-        });
 
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            $purchaseOrder->created_by = auth()->id();
+            $purchaseOrder->updated_by = auth()->id();
         });
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
+
+            if ($model->isDirty('status') && $model->status === 'closed') {
+                $model->remaining_balance = 0;
+            }
+        });
+
+        static::saved(function ($model) {
+            $model->recalculateGrandTotal();
         });
     }
 
     public function recalculateGrandTotal()
     {
+        $oldGrandTotal = $this->grand_total;
         $this->grand_total = $this->items()->sum('total_sale');
+        
+        if (is_null($this->remaining_balance) || $this->remaining_balance == $oldGrandTotal) {
+            $this->remaining_balance = $this->grand_total;
+        }
+        
         $this->saveQuietly(); 
     }
 
+    public function setRemainingBalanceToGrandTotal()
+    {
+        $this->remaining_balance = $this->grand_total;
+        $this->saveQuietly();
+    }
+
+    public function setRemainingBalanceAttribute($value)
+    {
+        if (is_null($value) && !is_null($this->grand_total)) {
+            $this->attributes['remaining_balance'] = $this->grand_total;
+        } else {
+            $this->attributes['remaining_balance'] = $value;
+        }
+    }
+
+    public function setGrandTotalAttribute($value)
+    {
+        $this->attributes['grand_total'] = $value;
+        
+        if (!isset($this->attributes['remaining_balance'])) {
+            $this->attributes['remaining_balance'] = $value;
+        } elseif (isset($this->attributes['remaining_balance']) && 
+                 $this->attributes['remaining_balance'] == $this->getOriginal('grand_total')) {
+            $this->attributes['remaining_balance'] = $value;
+        }
+    }
 
     protected static $logName = 'purchase_order';
 
-    /**
-     * Get the options for activity logging.
-     *
-     * @return \Spatie\Activitylog\LogOptions
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -70,14 +103,14 @@ class PurchaseOrder extends Model
                 'wanted_date',
                 'special_note',
                 'status', 
-                'grand_total'
+                'grand_total',
+                'remaining_balance' 
             ])
             ->useLogName('purchase_order')
             ->setDescriptionForEvent(function (string $eventName) {
                 $userEmail = $this->user ? $this->user->email : 'unknown';
                 $description = "Purchase Order {$this->id} has been {$eventName} by User {$this->user_id}";
 
-                // Add updated status to the description if status is changed
                 if ($this->isDirty('status')) {
                     $description .= ". New status: {$this->status}";
                 }
@@ -86,18 +119,11 @@ class PurchaseOrder extends Model
             });
     }
     
-
-    /**
-     * Get the user that owns the purchase order.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the items for the purchase order.
-     */
     public function items()
     {
         return $this->hasMany(PurchaseOrderItem::class);
@@ -112,6 +138,4 @@ class PurchaseOrder extends Model
     {
         return $this->hasOne(\App\Models\PurchaseOrderInvoice::class, 'purchase_order_id');
     }
-
-
 }
