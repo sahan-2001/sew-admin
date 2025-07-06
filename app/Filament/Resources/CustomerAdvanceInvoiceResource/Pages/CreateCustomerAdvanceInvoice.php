@@ -32,41 +32,32 @@ class CreateCustomerAdvanceInvoice extends CreateRecord
         if ($data['order_type'] === 'customer') {
             $order = CustomerOrder::find($data['order_id']);
             if ($order) {
-                // Update order's remaining balance
                 $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
-                $order->save();
-
-                // Update customer's balance if customer_id exists
-                if ($order->customer_id) {
-                    $customer = Customer::find($order->customer_id);
-                    if ($customer) {
-                        // Reduce customer's remaining balance by the amount paid
-                        $customer->remaining_balance -= $amountPaid;
-                        $customer->save();
-                    }
+                
+                // If remaining balance is 0 or less, close the order
+                if ($order->remaining_balance <= 0) {
+                    $order->status = 'closed';
                 }
+                
+                $order->save();
             }
         } elseif ($data['order_type'] === 'sample') {
             $order = SampleOrder::find($data['order_id']);
             if ($order) {
-                // Update order's remaining balance
                 $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
-                $order->save();
-
-                // Update customer's balance if customer_id exists
-                if ($order->customer_id) {
-                    $customer = Customer::find($order->customer_id);
-                    if ($customer) {
-                        // Reduce customer's remaining balance by the amount paid
-                        $customer->remaining_balance -= $amountPaid;
-                        $customer->save();
-                    }
+                
+                // If remaining balance is 0 or less, close the order
+                if ($order->remaining_balance <= 0) {
+                    $order->status = 'closed';
                 }
+                
+                $order->save();
             }
         }
 
         return $data;
     }
+
 
     protected function getRedirectUrl(): string
     {

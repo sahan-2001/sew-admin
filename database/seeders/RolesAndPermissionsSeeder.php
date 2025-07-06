@@ -211,6 +211,14 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'create temporary operations']);
         Permission::firstOrCreate(['name' => 'temporary operations.export']);
 
+        // Change dates for CO/SO expences/discounts
+        Permission::firstOrCreate(['name' => 'backdate order discount']);
+        Permission::firstOrCreate(['name' => 'future order discount']);
+
+        // Change dates for payments
+        Permission::firstOrCreate(['name' => 'Allow Backdated Payments']);
+        Permission::firstOrCreate(['name' => 'Allow Future Payments']);
+
 
 
         // Roles

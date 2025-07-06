@@ -268,7 +268,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                 ->columns(3)
                                 ->schema([
                                     TextInput::make('grand_total')
-                                        ->label('Grand Total')
+                                        ->label('Item Grand Total')
                                         ->numeric()
                                         ->readonly()
                                         ->dehydrated()
@@ -276,7 +276,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                         ->placeholder(fn (Get $get) => $get('grand_total') ?? ''),
 
                                     TextInput::make('remaining_balance')
-                                        ->label('Remaining Balance')
+                                        ->label('Remaining Balance of Order')
                                         ->numeric()
                                         ->readonly()
                                         ->dehydrated()
@@ -306,16 +306,26 @@ class CustomerAdvanceInvoiceResource extends Resource
                                                 return;
                                             }
 
-                                            $paymentAmount = min((float)$state, $remainingBalance);
-                                            
-                                            // Calculate paid percentage with proper rounding
-                                            $rawPercentage = ($paymentAmount / $grandTotal) * 100;
+                                            if ((float) $state > $remainingBalance) {
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Invalid Payment Amount')
+                                                    ->body('Payment amount cannot exceed the remaining balance of Rs. ' . number_format($remainingBalance, 2))
+                                                    ->danger()
+                                                    ->send();
+
+                                                $set('amount', null);
+                                                $set('paid_percentage', 0);
+                                                $set('remaining_percentage', 100);
+                                                return;
+                                            }
+
+                                            $paymentAmount = (float)$state;
+
+                                            // Corrected: % paid from remaining balance
+                                            $rawPercentage = ($paymentAmount / $remainingBalance) * 100;
                                             $paidPercentage = self::cleanRounding($rawPercentage);
-                                            
-                                            // Calculate remaining percentage (100 - paid percentage)
                                             $remainingPercentage = 100 - $paidPercentage;
 
-                                            // Update display fields
                                             $set('paid_percentage', $paidPercentage);
                                             $set('remaining_percentage', $remainingPercentage);
                                         }),
@@ -349,8 +359,31 @@ class CustomerAdvanceInvoiceResource extends Resource
                                     DatePicker::make('paid_date')
                                         ->label('Paid Date')
                                         ->required()
-                                        ->maxDate(now())
-                                        ->default(now()),
+                                        ->default(now())
+                                        ->minDate(function () {
+                                            return auth()->user()->can('Allow Backdated Payments') ? null : now();
+                                        })
+                                        ->maxDate(function () {
+                                            return auth()->user()->can('Allow Future Payments') ? null : now();
+                                        })
+                                        ->disabled(function () {
+                                            return !auth()->user()->can('Allow Backdated Payments') && !auth()->user()->can('Allow Future Payments');
+                                        })
+                                        ->helperText(function () {
+                                            if (!auth()->user()->can('Allow Backdated Payments') && !auth()->user()->can('Allow Future Payments')) {
+                                                return 'You are restricted to select only today\'s date.';
+                                            }
+
+                                            if (!auth()->user()->can('Allow Future Payments')) {
+                                                return 'You can select today and past dates only.';
+                                            }
+
+                                            if (!auth()->user()->can('Allow Backdated Payments')) {
+                                                return 'You can select today and future dates only.';
+                                            }
+
+                                            return 'You can select any date.';
+                                        }),
 
                                     Select::make('paid_via')
                                         ->label('Paid Via')
