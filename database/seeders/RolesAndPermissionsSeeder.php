@@ -109,6 +109,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'edit third party services']);
         Permission::firstOrCreate(['name' => 'delete third party services']);
         Permission::firstOrCreate(['name' => 'third party services.export']);
+        Permission::firstOrCreate(['name' => 'create third party service payments']);
 
         // Production Machines permissions
         Permission::firstOrCreate(['name' => 'view production machines']);

@@ -24,6 +24,11 @@ class ThirdPartyService extends Model
         return $this->hasMany(ThirdPartyServiceProcess::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(ThirdPartyServicePayment::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
@@ -40,6 +45,11 @@ class ThirdPartyService extends Model
     {
         $total = $this->processes()->sum('total');
         $this->update(['service_total' => $total]);
+    }
+
+    public function getRemainingBalanceAttribute()
+    {
+        return $this->service_total - $this->paid;
     }
 
     public function getActivitylogOptions(): LogOptions

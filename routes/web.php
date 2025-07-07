@@ -24,6 +24,8 @@ use App\Http\Controllers\SupplierAdvanceInvoiceController;
 use App\Http\Controllers\EndOfDayReportPdfController;
 use App\Http\Controllers\ReleaseMaterialPrintController;
 use App\Http\Controllers\CustomerOrderPdfController;
+use App\Http\Controllers\ProductionMachinePdfController;
+use App\Http\Controllers\ThirdPartyServicePdfController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -135,3 +137,11 @@ Route::get('/sample-orders/{id}/{random_code}', [SOFrontendController::class, 's
 // Customer Order report route 
 Route::get('/customer-orders/{customer_order}/pdf', [CustomerOrderPdfController::class, 'show'])
     ->name('customer-orders.pdf');
+
+// Production Machine report route 
+Route::get('/production-machines/{production_machine}/pdf', [\App\Http\Controllers\ProductionMachinePdfController::class, 'show'])
+    ->name('production-machines.pdf');
+
+// Third party service route 
+Route::get('/third-party-service/{thirdPartyService}/pdf', [ThirdPartyServicePdfController::class, 'show'])
+    ->name('third-party-service.pdf');

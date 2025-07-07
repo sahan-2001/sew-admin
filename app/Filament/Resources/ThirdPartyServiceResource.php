@@ -51,6 +51,11 @@ use Filament\Tables\Filters\Layout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TextFilter;
 use Illuminate\Support\Carbon;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextArea;
+use Illuminate\Support\HtmlString;
+
 
 class ThirdPartyServiceResource extends Resource
 {
@@ -272,9 +277,10 @@ class ThirdPartyServiceResource extends Resource
             ->columns([
                 TextColumn::make('id')
                     ->label('Service ID')
+                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('name')->label('Service Name'),
-                TextColumn::make('supplier.name')->label('Supplier'),
+                TextColumn::make('name')->label('Service Name')->searchable(),
+                TextColumn::make('supplier.name')->label('Supplier')->searchable(),
                 TextColumn::make('service_total')->label('Service Total'),
                 TextColumn::make('remaining_balance')->label('Remaining Balance'),
                 TextColumn::make('status')->label('Status'),
@@ -341,16 +347,131 @@ class ThirdPartyServiceResource extends Resource
                     }),
             ])
             ->actions([
+                Action::make('pay')
+                    ->label('Pay')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->visible(fn ($record) =>
+                        auth()->user()->can('create third party service payments') &&
+                        $record->remaining_balance > 0
+                    )
+                    ->form(fn ($record) => [
+                        Placeholder::make('summary')
+                            ->content(new HtmlString(
+                                '<strong>Suplier ID:</strong>' . number_format($record->supplier_id) . '<br>' .
+                                '<strong>Service Total:</strong> LKR ' . number_format($record->service_total, 2) . '<br>' .
+                                '<strong>Paid:</strong> LKR ' . number_format($record->paid, 2) . '<br>' .
+                                '<strong>Remaining Balance:</strong> LKR ' . number_format($record->remaining_balance, 2) . '<br>' .
+                                '<strong>Total Payable from Processes:</strong> LKR ' .
+                                number_format(collect($record->processes)->sum('payable_balance'), 2)
+                            ))
+                            ->disableLabel()
+                            ->extraAttributes(['class' => 'text-sm']),
+
+                        Repeater::make('processes')
+                            ->label('Service Processes')
+                            ->schema([
+                                TextInput::make('id')
+                                    ->label('ID')
+                                    ->disabled(),
+                                TextInput::make('used_amount')
+                                    ->label('Used Amount (LKR)')
+                                    ->disabled(),
+                                TextInput::make('payable_balance')
+                                    ->label('Payable (LKR)')
+                                    ->disabled(),
+                            ])
+                            ->columns(3)
+                            ->default(
+                                $record->processes
+                                    ->map(fn ($process) => [
+                                        'id' => $process->id,
+                                        'used_amount' => number_format($process->used_amount, 2),
+                                        'payable_balance' => number_format($process->payable_balance, 2),
+                                    ])
+                                    ->toArray()
+                            )
+                            ->disabled(),
+
+                        TextInput::make('payment_amount')
+                            ->label('Payment Amount (LKR)')
+                            ->required()
+                            ->numeric()
+                            ->rules(['lte:' . $record->remaining_balance]),
+
+                        Select::make('paid_via')
+                            ->label('Paid Via')
+                            ->options([
+                                'cash' => 'Cash',
+                                'card' => 'Card',
+                                'cheque' => 'Cheque',
+                            ])
+                            ->required(),
+
+                        TextInput::make('reference')
+                            ->label('Reference')
+                            ->maxLength(255),
+
+                        Textarea::make('remarks')
+                            ->label('Remarks')
+                            ->maxLength(1000),
+                            ])
+                    ->action(function (array $data, $record, Action $action) {
+                        $paymentAmount = $data['payment_amount'];
+
+                        if ($paymentAmount > $record->remaining_balance) {
+                            $action->failureNotificationTitle('Payment exceeds remaining balance.');
+                            return;
+                        }
+
+                        // Store payment record
+                        \App\Models\ThirdPartyServicePayment::create([
+                            'third_party_service_id' => $record->id,
+                            'supplier_id' => $record->supplier_id,
+                            'remaining_balance' => $record->remaining_balance,
+                            'payable_balance_old' => collect($record->processes)->sum('payable_balance'),
+                            'paid_amount' => $paymentAmount,
+                            'paid_via' => $data['paid_via'],
+                            'reference' => $data['reference'] ?? null,
+                            'remarks' => $data['remarks'] ?? null,
+                        ]);
+
+                        // Calculate new balance and status
+                        $newRemaining = $record->remaining_balance - $paymentAmount;
+                        $newStatus = $newRemaining <= 0 ? 'paid' : 'partially paid';
+
+                        // Update ThirdPartyService
+                        $record->update([
+                            'paid' => $record->paid + $paymentAmount,
+                            'status' => $newStatus,
+                        ]);
+
+                        $action->successNotificationTitle('Payment recorded successfully.');
+                    })
+
+                    ->modalHeading('Third Party Service Payment')
+                    ->modalWidth('2xl'),
+
+                
+                Action::make('export_pdf')
+                    ->label('Report')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn ($record) => route('third-party-service.pdf', $record))
+                    ->openUrlInNewTab(),
+                
                 EditAction::make()
                     ->visible(fn ($record) =>
                         auth()->user()->can('edit third party services') &&
-                        ($record->used_amount ?? 0) <= 0
+                        ($record->used_amount ?? 0) <= 0 &&
+                        !in_array($record->status, ['paid', 'partially paid']) &&
+                        $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
                     ),
 
                 DeleteAction::make()
                     ->visible(fn ($record) =>
                         auth()->user()->can('delete third party services') &&
-                        ($record->used_amount ?? 0) <= 0
+                        ($record->used_amount ?? 0) <= 0 &&
+                        !in_array($record->status, ['paid', 'partially paid']) &&
+                        $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
                     ),
             ])
         ->defaultSort('id', 'desc') 

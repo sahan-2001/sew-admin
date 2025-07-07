@@ -20,6 +20,7 @@ use Filament\Tables\Actions\ViewAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Actions\Action;
 
 class ProductionMachineResource extends Resource
 {
@@ -243,6 +244,13 @@ class ProductionMachineResource extends Resource
                             ]),
                         ]),
                     
+                Action::make('export_pdf')
+                    ->label('Report')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn ($record) => route('production-machines.pdf', ['production_machine' => $record->id]))
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()->can('view production machines')),
+
                 EditAction::make()
                     ->visible(fn ($record) => 
                         auth()->user()->can('edit production machines') 
