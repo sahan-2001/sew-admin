@@ -13,6 +13,8 @@ class SupplierAdvanceInvoice extends Model
 
     protected $fillable = [
         'purchase_order_id',
+        'provider_type',
+        'provider_id',
         'status',
         'grand_total',
         'payment_type',

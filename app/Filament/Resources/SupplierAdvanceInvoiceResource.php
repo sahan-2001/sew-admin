@@ -74,6 +74,7 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                                             if ($purchaseOrder) {
                                                 $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
+                                                $set('provider_id', $purchaseOrder->provider_id ?? 'N/A');
                                                 $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
                                                 $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
                                                 $set('remaining_balance', $purchaseOrder->remaining_balance);
@@ -81,6 +82,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
                                             } else {
                                                 $set('provider_type', 'N/A');
+                                                $set('provider_id', 'N/A');
                                                 $set('provider_email', 'N/A');
                                                 $set('wanted_date', 'N/A');
                                                 $set('remaining_balance', 'N/A');
@@ -89,9 +91,6 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             }
                                         }),
 
-                                    TextInput::make('provider_type')
-                                        ->label('Provider Type')
-                                        ->disabled(),
 
                                     TextInput::make('provider_email')
                                         ->label('Provider Email')
@@ -104,6 +103,16 @@ class SupplierAdvanceInvoiceResource extends Resource
                                     TextInput::make('status')
                                         ->label('Status')
                                         ->disabled(),
+
+                                    TextInput::make('provider_type')
+                                        ->label('Provider Type')
+                                        ->disabled()
+                                        ->dehydrated(), 
+
+                                    TextInput::make('provider_id')
+                                        ->label('Provider ID')
+                                        ->disabled()
+                                        ->dehydrated(),
                                 ]),
 
                             Section::make('Purchase Order Items')

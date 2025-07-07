@@ -10,6 +10,8 @@ class CreateSupplierAdvanceInvoicesTable extends Migration
         Schema::create('supplier_advance_invoices', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('purchase_order_id');
+            $table->string('provider_type')->nullable();
+            $table->string('provider_id')->nullable();
             $table->string('status')->default('pending'); 
             $table->decimal('grand_total', 10, 2);
             $table->string('payment_type');
