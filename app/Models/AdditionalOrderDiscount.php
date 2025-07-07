@@ -16,6 +16,7 @@ class AdditionalOrderDiscount extends Model
         'description',
         'recorded_date',
         'remarks',
+        'status',
         'created_by',
         'updated_by',
     ];
@@ -31,4 +32,15 @@ class AdditionalOrderDiscount extends Model
             $model->updated_by = auth()->id();
         });
     }
+
+    public function customerOrder()
+    {
+        return $this->belongsTo(CustomerOrder::class, 'order_id');
+    }
+
+    public function sampleOrder()
+    {
+        return $this->belongsTo(SampleOrder::class, 'order_id');
+    }
+
 }

@@ -8,12 +8,13 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('additional_order_expenses', function (Blueprint $table) {
             $table->id();
-            $table->string('order_type'); // e.g., 'customer' or 'sample'
+            $table->string('order_type'); 
             $table->unsignedBigInteger('order_id');
             $table->decimal('amount', 12, 2);
             $table->string('description');
             $table->date('recorded_date');
             $table->text('remarks')->nullable();
+            $table->string('status')->default('created'); 
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();

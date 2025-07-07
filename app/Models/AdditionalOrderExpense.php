@@ -16,6 +16,7 @@ class AdditionalOrderExpense extends Model
         'description',
         'recorded_date',
         'remarks',
+        'status',
         'created_by',
         'updated_by',
     ];

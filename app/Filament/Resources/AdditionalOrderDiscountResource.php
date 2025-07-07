@@ -13,6 +13,14 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Section;
+use Illuminate\Database\Eloquent\Builder; 
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\Layout;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 
 class AdditionalOrderDiscountResource extends Resource
 {
@@ -180,21 +188,71 @@ class AdditionalOrderDiscountResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
+            Tables\Columns\TextColumn::make('id')->label('Record ID')->sortable()->searchable()
+                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
             Tables\Columns\TextColumn::make('order_type')->sortable(),
-            Tables\Columns\TextColumn::make('order_id')->sortable(),
+            Tables\Columns\TextColumn::make('order_id')->sortable()->searchable()
+                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
             Tables\Columns\TextColumn::make('amount')->money('LKR'),
-            Tables\Columns\TextColumn::make('description')->limit(30),
             Tables\Columns\TextColumn::make('recorded_date')->date(),
-            Tables\Columns\TextColumn::make('created_by')->label('Created By'),
+            Tables\Columns\TextColumn::make('status'),
+            ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        Tables\Columns\TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        Tables\Columns\TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        Tables\Columns\TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        Tables\Columns\TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
+        ])
+        ->filters([
+            Filter::make('recorded_date')
+                ->label('Recorded Date')
+                ->form([
+                    Forms\Components\DatePicker::make('date')->label('Recorded On'),
+                ])
+                ->query(function ($query, array $data) {
+                    return $query->when($data['date'], fn ($q) => $q->whereDate('recorded_date', $data['date']));
+                }),
+
+            Filter::make('amount_range')
+                ->label('Amount Range')
+                ->form([
+                    Forms\Components\TextInput::make('min')->numeric()->label('Min Amount'),
+                    Forms\Components\TextInput::make('max')->numeric()->label('Max Amount'),
+                ])
+                ->query(function ($query, array $data) {
+                    return $query
+                        ->when($data['min'], fn ($q) => $q->where('amount', '>=', $data['min']))
+                        ->when($data['max'], fn ($q) => $q->where('amount', '<=', $data['max']));
+                }),
+
+            SelectFilter::make('order_type')
+                ->options([
+                    'customer' => 'Customer',
+                    'sample' => 'Sample',
+                ])
+                ->label('Order Type'),
         ])
         ->actions([
-            Tables\Actions\EditAction::make(),
-            Tables\Actions\DeleteAction::make(),
+            Tables\Actions\EditAction::make()
+                ->hidden(fn ($record) => $record->status === 'closed' || $record->status === 'approved'),
+
+            Tables\Actions\DeleteAction::make()
+                ->hidden(fn ($record) => $record->status === 'closed'),
         ])
         ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
         ]);
     }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['customerOrder', 'sampleOrder']);
+    }
+
 
     public static function getPages(): array
     {

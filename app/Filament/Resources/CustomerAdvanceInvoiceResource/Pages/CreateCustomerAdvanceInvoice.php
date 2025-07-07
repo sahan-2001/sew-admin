@@ -35,8 +35,23 @@ class CreateCustomerAdvanceInvoice extends CreateRecord
                 $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
                 
                 // If remaining balance is 0 or less, close the order
-                if ($order->remaining_balance <= 0) {
-                    $order->status = 'closed';
+                if ($order) {
+                    $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
+
+                    if ($order->remaining_balance <= 0) {
+                        $order->status = 'closed';
+
+                        // Update related discounts and expenses as closed
+                        \App\Models\AdditionalOrderDiscount::where('order_type', $data['order_type'])
+                            ->where('order_id', $data['order_id'])
+                            ->update(['status' => 'closed']);
+
+                        \App\Models\AdditionalOrderExpense::where('order_type', $data['order_type'])
+                            ->where('order_id', $data['order_id'])
+                            ->update(['status' => 'closed']);
+                    }
+
+                    $order->save();
                 }
                 
                 $order->save();
@@ -47,10 +62,24 @@ class CreateCustomerAdvanceInvoice extends CreateRecord
                 $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
                 
                 // If remaining balance is 0 or less, close the order
-                if ($order->remaining_balance <= 0) {
-                    $order->status = 'closed';
+                if ($order) {
+                    $order->remaining_balance = max(0, $order->remaining_balance - $amountPaid);
+
+                    if ($order->remaining_balance <= 0) {
+                        $order->status = 'closed';
+
+                        // Update related discounts and expenses as closed
+                        \App\Models\AdditionalOrderDiscount::where('order_type', $data['order_type'])
+                            ->where('order_id', $data['order_id'])
+                            ->update(['status' => 'closed']);
+
+                        \App\Models\AdditionalOrderExpense::where('order_type', $data['order_type'])
+                            ->where('order_id', $data['order_id'])
+                            ->update(['status' => 'closed']);
+                    }
+
+                    $order->save();
                 }
-                
                 $order->save();
             }
         }
