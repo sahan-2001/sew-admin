@@ -26,6 +26,7 @@ use App\Http\Controllers\ReleaseMaterialPrintController;
 use App\Http\Controllers\CustomerOrderPdfController;
 use App\Http\Controllers\ProductionMachinePdfController;
 use App\Http\Controllers\ThirdPartyServicePdfController;
+use App\Http\Controllers\SupplierExportController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -145,3 +146,8 @@ Route::get('/production-machines/{production_machine}/pdf', [\App\Http\Controlle
 // Third party service route 
 Route::get('/third-party-service/{thirdPartyService}/pdf', [ThirdPartyServicePdfController::class, 'show'])
     ->name('third-party-service.pdf');
+
+
+Route::get('/supplier/{supplier}/export-pdf', [SupplierExportController::class, 'exportPdf'])
+    ->name('supplier.export.pdf')
+    ->middleware(['auth']);

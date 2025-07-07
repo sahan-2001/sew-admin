@@ -462,16 +462,16 @@ class ThirdPartyServiceResource extends Resource
                     ->visible(fn ($record) =>
                         auth()->user()->can('edit third party services') &&
                         ($record->used_amount ?? 0) <= 0 &&
-                        !in_array($record->status, ['paid', 'partially paid']) &&
-                        $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
+                        !in_array($record->status, ['paid', 'partially paid']) 
+                     #   $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
                     ),
 
                 DeleteAction::make()
                     ->visible(fn ($record) =>
                         auth()->user()->can('delete third party services') &&
                         ($record->used_amount ?? 0) <= 0 &&
-                        !in_array($record->status, ['paid', 'partially paid']) &&
-                        $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
+                        !in_array($record->status, ['paid', 'partially paid']) 
+                   #     $record->serviceProcesses()->where('used_amount', '>', 0)->doesntExist()
                     ),
             ])
         ->defaultSort('id', 'desc') 

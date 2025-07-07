@@ -15,7 +15,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Carbon;
 use Filament\Forms\Components\Section;
-
+use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\URL;
 
 class SupplierResource extends Resource
 {
@@ -151,6 +152,13 @@ class SupplierResource extends Resource
                         Forms\Components\TextInput::make('phone_2')->label('Phone 2')->disabled()->default($record->phone_2),
                         Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->disabled()->default($record->outstanding_balance),
                     ]),
+
+                Action::make('export_pdf')
+                    ->label('Export PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn (Supplier $record) => route('supplier.export.pdf', $record)) 
+                    ->openUrlInNewTab(),
+
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Supplier $record) => auth()->user()->can('edit suppliers')),
                 Tables\Actions\DeleteAction::make()

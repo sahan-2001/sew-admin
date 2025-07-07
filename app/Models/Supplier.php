@@ -51,6 +51,23 @@ class Supplier extends Model
         'approved_by',
     ];
 
+    public function supplierAdvanceInvoices()
+    {
+        return $this->hasMany(SupplierAdvanceInvoice::class, 'provider_id')
+            ->where('provider_type', 'supplier');
+    }
+
+    public function purchaseOrderInvoices()
+    {
+        return $this->hasMany(\App\Models\PurchaseOrderInvoice::class, 'provider_id')
+                    ->where('provider_type', 'supplier');
+    }
+
+    public function thirdPartyServices()
+    {
+        return $this->hasMany(\App\Models\ThirdPartyService::class, 'supplier_id');
+    }
+
     protected static $logName = 'supplier';
 
     /**
