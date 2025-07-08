@@ -65,7 +65,25 @@ class Customer extends Model
             $model->updated_by = auth()->id();
         });
     }
-    
+
+    public function supplierAdvanceInvoices()
+    {
+        return $this->hasMany(\App\Models\SupplierAdvanceInvoice::class, 'provider_id', 'customer_id')
+            ->where('provider_type', 'customer');
+    }
+
+    public function purchaseOrderInvoices()
+    {
+        return $this->hasMany(\App\Models\PurchaseOrderInvoice::class, 'provider_id', 'customer_id')
+            ->where('provider_type', 'customer');
+    }
+
+    public function customerAdvanceInvoices()
+    {
+        return $this->hasMany(\App\Models\CustomerAdvanceInvoice::class, 'customer_id');
+    }
+
+
     protected static $logName = 'customer';
 
     /**

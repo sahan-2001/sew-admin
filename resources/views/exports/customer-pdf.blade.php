@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Supplier Details PDF</title>
+    <meta charset="utf-8">
+    <title>Customer Details PDF</title>
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -45,28 +45,65 @@
     </style>
 </head>
 <body>
+    <h3>Customer Summary Report</h3>
 
-    <h2>{{ $companyDetails['name'] }}</h2>
-    <p>{{ $companyDetails['address'] }}</p>
-    <p>Phone: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
+    <h4>Company Information</h4>
+    <p>
+        <strong>Name:</strong> {{ $companyDetails['name'] }}<br>
+        <strong>Address:</strong> {{ $companyDetails['address'] }}<br>
+        <strong>Phone:</strong> {{ $companyDetails['phone'] }}<br>
+        <strong>Email:</strong> {{ $companyDetails['email'] }}
+    </p>
 
-    <hr>
-
-    <div class="section">
-        <h3>Supplier Information</h3>
+    <h4>Customer Information</h4>
         <table>
-            <tr><th>Supplier ID</th><td>{{ $supplierDetails['id'] }}</td></tr>
-            <tr><th>Name</th><td>{{ $supplierDetails['name'] }}</td></tr>
-            <tr><th>Shop Name</th><td>{{ $supplierDetails['shop_name'] }}</td></tr>
-            <tr><th>Address Line 1</th><td>{{ $supplierDetails['address_line_1'] }}</td></tr>
-            <tr><th>Address Line 2</th><td>{{ $supplierDetails['address_line_2'] }}</td></tr>
-            <tr><th>City</th><td>{{ $supplierDetails['city'] }}</td></tr>
-            <tr><th>Phone 1</th><td>{{ $supplierDetails['phone_1'] }}</td></tr>
-            <tr><th>Phone 2</th><td>{{ $supplierDetails['phone_2'] }}</td></tr>
-            <tr><th>Email</th><td>{{ $supplierDetails['email'] }}</td></tr>
-            <tr><th>Created At</th><td>{{ $supplierDetails['created_at'] }}</td></tr>
+            <tbody>
+                <tr>
+                    <th>ID</th>
+                    <td>{{ $customerDetails['id'] }}</td>
+                </tr>
+                <tr>
+                    <th>Name</th>
+                    <td>{{ $customerDetails['name'] }}</td>
+                </tr>
+                <tr>
+                    <th>Shop Name</th>
+                    <td>{{ $customerDetails['shop_name'] }}</td>
+                </tr>
+                <tr>
+                    <th>Address Line 1</th>
+                    <td>{{ $customerDetails['address_line_1'] }}</td>
+                </tr>
+                <tr>
+                    <th>Address Line 2</th>
+                    <td>{{ $customerDetails['address_line_2'] }}</td>
+                </tr>
+                <tr>
+                    <th>City</th>
+                    <td>{{ $customerDetails['city'] }}</td>
+                </tr>
+                <tr>
+                    <th>Phone 1</th>
+                    <td>{{ $customerDetails['phone_1'] }}</td>
+                </tr>
+                <tr>
+                    <th>Phone 2</th>
+                    <td>{{ $customerDetails['phone_2'] }}</td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td>{{ $customerDetails['email'] }}</td>
+                </tr>
+                <tr>
+                    <th>Outstanding Balance</th>
+                    <td>{{ number_format($customerDetails['outstanding_balance'], 2) }}</td>
+                </tr>
+                <tr>
+                    <th>Created At</th>
+                    <td>{{ $customerDetails['created_at'] }}</td>
+                </tr>
+            </tbody>
         </table>
-    </div>
 
 
     <br>
@@ -114,7 +151,6 @@
             </tbody>
         </table>
     @endif
-
 
     <br>
     <h3>Purchase Order Final Invoices</h3>
@@ -180,62 +216,71 @@
         </table>
     @endif
 
-
-
     <br>
-    <h3>Third Party Services</h3>
+    <h3>Customer Order/ Sample Order Invoices</h3>
 
-    @php
-        $totalServiceAmount = 0;
-        $totalPaidAmount = 0;
-        $totalRemainingBalance = 0;
-    @endphp
-
-    <table border="1" cellpadding="5" cellspacing="0">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Service Name</th>
-                <th>Service Total</th>
-                <th>Paid</th>
-                <th>Remaining Balance</th>
-                <th>Status</th>
-                <th>Created At</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($thirdPartyServices as $service)
-                @php
-                    $totalServiceAmount += $service->service_total;
-                    $totalPaidAmount += $service->paid;
-                    $totalRemainingBalance += $service->remaining_balance;
-                @endphp
+    @if ($customerInvoices->isEmpty())
+        <p>No customer advance invoices found.</p>
+    @else
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ $service->id }}</td>
-                    <td>{{ $service->name }}</td>
-                    <td>{{ number_format($service->service_total, 2) }}</td>
-                    <td>{{ number_format($service->paid, 2) }}</td>
-                    <td>{{ number_format($service->remaining_balance, 2) }}</td>
-                    <td>{{ ucfirst($service->status) }}</td>
-                    <td>{{ $service->created_at->format('Y-m-d') }}</td>
+                    <th>ID</th>
+                    <th>Order Type</th>
+                    <th>Order ID</th>
+                    <th>Invoice No</th>
+                    <th>Amount</th>
+                    <th>Paid Date</th>
+                    <th>Paid Via</th>
+                    <th>Status</th>
+                    <th>Created At</th>
                 </tr>
-            @endforeach
+            </thead>
+            <tbody>
+                @php
+                    $totalCustomerAdvance = 0;
+                @endphp
 
-            <tr>
-                <td colspan="2"><strong>Totals</strong></td>
-                <td><strong>{{ number_format($totalServiceAmount, 2) }}</strong></td>
-                <td><strong>{{ number_format($totalPaidAmount, 2) }}</strong></td>
-                <td><strong>{{ number_format($totalRemainingBalance, 2) }}</strong></td>
-                <td colspan="2"></td>
-            </tr>
-        </tbody>
-    </table>
+                @foreach ($customerInvoices as $invoice)
+                    @php
+                        $totalCustomerAdvance += $invoice->amount;
+                    @endphp
+                    <tr>
+                        <td>{{ $invoice->id }}</td>
+                        <td>{{ ucfirst($invoice->order_type) }}</td>
+                        <td>{{ $invoice->order_id }}</td>
+                        <td>{{ $invoice->cus_invoice_number ?? 'N/A' }}</td>
+                        <td>{{ number_format($invoice->amount, 2) }}</td>
+                        <td>{{ $invoice->paid_date ? \Carbon\Carbon::parse($invoice->paid_date)->format('Y-m-d') : 'N/A' }}</td>
+                        <td>{{ $invoice->paid_via ?? 'N/A' }}</td>
+                        <td>{{ ucfirst($invoice->status) }}</td>
+                        <td>{{ $invoice->created_at->format('Y-m-d') }}</td>
+                    </tr>
+                @endforeach
 
+                <tr style="font-weight: bold; background-color: #f0f0f0;">
+                    <td colspan="4" align="right">Total</td>
+                    <td>{{ number_format($totalCustomerAdvance, 2) }}</td>
+                    <td colspan="4"></td>
+                </tr>
+            </tbody>
+        </table>
+    @endif
 
     @php
-        // Calculate combined totals
-        $totalPaidOverall = $advanceInvoices->sum('paid_amount') + $poInvoices->sum('paid') + $thirdPartyServices->sum('paid');
-        $totalRemainingOverall = $advanceInvoices->sum('remaining_amount') + $poInvoices->sum('due_payment_for_now') + $thirdPartyServices->sum('remaining_balance');
+        // Calculate combined totals:
+        $combinedTotalPaid = $advanceInvoices->sum('paid_amount')
+                            + $poInvoices->sum('adv_paid')  // assuming 'adv_paid' is amount paid in PO final invoices
+                            + $customerInvoices->sum('amount');
+
+        // For remaining, sum remaining_amount in advanceInvoices and
+        // due_payment in PO invoices minus adv_paid (or use relevant fields)
+
+        // You might need to customize this depending on your logic.
+        // Here's an example approximation:
+        $combinedTotalRemaining = $advanceInvoices->sum('remaining_amount')
+                                + ($poInvoices->sum('due_payment') - $poInvoices->sum('adv_paid'))
+                                + 0; // no remaining for customer invoices assumed
     @endphp
 
     <br>
@@ -244,18 +289,14 @@
         <tbody>
             <tr>
                 <th style="text-align: left;">Total Paid</th>
-                <td style="text-align: right;">{{ number_format($totalPaidOverall, 2) }}</td>
+                <td style="text-align: right;">{{ number_format($combinedTotalPaid, 2) }}</td>
             </tr>
             <tr>
                 <th style="text-align: left;">Total Remaining</th>
-                <td style="text-align: right;">{{ number_format($totalRemainingOverall, 2) }}</td>
+                <td style="text-align: right;">{{ number_format($combinedTotalRemaining, 2) }}</td>
             </tr>
         </tbody>
     </table>
-
-
-
-
 
     <div class="footer">
         <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>

@@ -150,7 +150,6 @@ class SupplierResource extends Resource
                         Forms\Components\TextInput::make('shop_name')->label('Shop Name')->disabled()->default($record->shop_name),
                         Forms\Components\TextInput::make('phone_1')->label('Phone 1')->disabled()->default($record->phone_1),
                         Forms\Components\TextInput::make('phone_2')->label('Phone 2')->disabled()->default($record->phone_2),
-                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->disabled()->default($record->outstanding_balance),
                     ]),
 
                 Action::make('export_pdf')

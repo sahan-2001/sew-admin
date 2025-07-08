@@ -29,11 +29,12 @@ class SupplierExportController extends Controller
             'id' => str_pad($supplier->supplier_id, 5, '0', STR_PAD_LEFT),
             'name' => $supplier->name ?? 'N/A',
             'shop_name' => $supplier->shop_name ?? 'N/A',
-            'address' => $supplier->address ?? 'N/A',
+            'address_line_1' => $supplier->address_line_1 ?? 'N/A',
+            'address_line_2' => $supplier->address_line_2 ?? 'N/A',
+            'city' => $supplier->city ?? 'N/A',
             'phone_1' => $supplier->phone_1 ?? 'N/A',
             'phone_2' => $supplier->phone_2 ?? 'N/A',
             'email' => $supplier->email ?? 'N/A',
-            'outstanding_balance' => $supplier->outstanding_balance ?? 0,
             'created_at' => $supplier->created_at?->format('Y-m-d H:i:s') ?? 'N/A',
         ];
 

@@ -14,6 +14,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Support\Carbon;
+use Filament\Tables\Actions\Action;
 
 
 class CustomerResource extends Resource
@@ -81,7 +82,6 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('remaining_balance')->sortable(),
                 
                 ...(
                 Auth::user()->can('view audit columns')
@@ -137,6 +137,12 @@ class CustomerResource extends Resource
                     }),
             ])
             ->actions([
+                Action::make('export_pdf')
+                    ->label('Export PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn ($record) => route('export.customer.pdf', $record))
+                    ->openUrlInNewTab(),
+
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Customer $record) => auth()->user()->can('edit customers')),
                 Tables\Actions\DeleteAction::make()
