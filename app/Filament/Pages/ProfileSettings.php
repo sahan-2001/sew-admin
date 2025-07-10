@@ -6,6 +6,8 @@ use Filament\Pages\Page;
 use Filament\Forms;
 use Filament\Forms\Components\{TextInput, DatePicker, Select, Textarea, FileUpload, Grid, Section, Repeater};
 use Illuminate\Support\Facades\Hash;
+use Filament\Notifications\Notification;
+
 
 class ProfileSettings extends Page implements Forms\Contracts\HasForms
 {
@@ -14,6 +16,7 @@ class ProfileSettings extends Page implements Forms\Contracts\HasForms
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     protected static string $view = 'filament.pages.profile-settings';
     protected static ?string $title = 'Profile Settings';
+    protected static ?int $navigationSort = 10;
 
     public $name;
     public $email;
@@ -44,23 +47,23 @@ class ProfileSettings extends Page implements Forms\Contracts\HasForms
                 ->columns(2)
                 ->schema([
                     TextInput::make('name')->required(),
-                    TextInput::make('nic')->label('NIC'),
+                    TextInput::make('nic')->label('NIC') ->required(),
                 ]),
 
                 Section::make('Contact Details')
                 ->columns(3)
                 ->schema([
                     TextInput::make('email')->email()->required(),
-                    TextInput::make('phone_1')->label('Phone 1'),
+                    TextInput::make('phone_1')->label('Phone 1')->required(),
                     TextInput::make('phone_2')->label('Phone 2'),
                 ]),
                 
                 Section::make('Address Details')
                 ->columns(2)
                 ->schema([
-                    TextInput::make('address_line_1')->label('Address Line 1'),
+                    TextInput::make('address_line_1')->label('Address Line 1')->required(),
                     TextInput::make('address_loine_2')->label('Address Line 2'),
-                    TextInput::make('city')->label('City'),
+                    TextInput::make('city')->label('City')->required(),
                     TextInput::make('zip_code')->label('Zip Code'),
                 ]),
 
@@ -106,7 +109,12 @@ class ProfileSettings extends Page implements Forms\Contracts\HasForms
 
         $user->save();
 
-        $this->notify('success', 'Profile updated successfully!');
+        Notification::make()
+            ->title('Profile updated successfully!')
+            ->success()
+            ->send();
+
+        redirect(request()->header('Referer'));
     }
 
     protected function getFormActions(): array
