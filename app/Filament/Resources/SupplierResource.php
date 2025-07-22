@@ -84,7 +84,6 @@ class SupplierResource extends Resource
                 Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('outstanding_balance')->sortable()->searchable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [

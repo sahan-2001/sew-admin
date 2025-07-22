@@ -43,4 +43,9 @@ class EditUser extends EditRecord
         $this->record->password = bcrypt('12345678');
         $this->record->save();
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

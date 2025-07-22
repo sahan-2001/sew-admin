@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\DateFilter;
 use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Carbon;
+
 
 class CustomerOrderResource extends Resource
 {
@@ -41,56 +43,71 @@ class CustomerOrderResource extends Resource
     {
         return $form
             ->schema([
-                // Customer Selection
-                Select::make('customer_id')
-                    ->label('Customer')
-                    ->options(fn () => Customer::pluck('name', 'customer_id')->toArray()) // Lazy loading for performance
-                    ->searchable()
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, $state) {
-                        $customer = Customer::find($state);
+                Section::make('Customer Details')
+                    ->columns(2)
+                    ->schema([
+                        // Customer Selection
+                        Select::make('customer_id')
+                            ->label('Customer')
+                            ->options(fn () =>
+                                \App\Models\Customer::all()
+                                    ->mapWithKeys(fn ($customer) => [
+                                        $customer->customer_id => "id={$customer->customer_id} | name={$customer->name}"
+                                    ])
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function (callable $set, $state) {
+                                $customer = \App\Models\Customer::find($state);
 
-                        if ($customer) {
-                            $set('customer_name', $customer->name);
-                            $set('phone_1', $customer->phone_1);
-                            $set('phone_2', $customer->phone_2);
-                            $set('email', $customer->email);
-                        }
-                    }),
+                                if ($customer) {
+                                    $set('customer_name', $customer->name);
+                                    $set('phone_1', $customer->phone_1);
+                                    $set('phone_2', $customer->phone_2);
+                                    $set('email', $customer->email);
+                                }
+                            }),
 
-                // Customer Details (Readonly Fields)
-                TextInput::make('customer_name')
-                    ->label('Customer Name')
-                    ->disabled(),
+                            // Customer Details (Readonly Fields)
+                            TextInput::make('customer_name')
+                                ->label('Customer Name')
+                                ->disabled(),
 
-                TextInput::make('phone_1')
-                    ->label('Phone 1')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('phone_1')
+                                ->label('Phone 1')
+                                ->nullable()
+                                ->disabled(),
 
-                TextInput::make('phone_2')
-                    ->label('Phone 2')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('phone_2')
+                                ->label('Phone 2')
+                                ->nullable()
+                                ->disabled(),
 
-                TextInput::make('email')
-                    ->label('Email')
-                    ->nullable()
-                    ->disabled(),
+                            TextInput::make('email')
+                                ->label('Email')
+                                ->nullable()
+                                ->disabled(),
+                    ]),
 
                 // Order Details
-                TextInput::make('name')
-                    ->label('Order Name')
-                    ->required(),
+                Section::make('Order Details')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Order Name')
+                            ->required(),
 
-                DatePicker::make('wanted_delivery_date')
-                    ->label('Wanted Delivery Date')
-                    ->required(),
+                        DatePicker::make('wanted_delivery_date')
+                            ->label('Wanted Delivery Date')
+                            ->required()
+                            ->minDate(Carbon::today()),
 
-                Textarea::make('special_notes')
-                    ->label('Special Notes')
-                    ->nullable(),
+                        Textarea::make('special_notes')
+                            ->label('Special Notes')
+                            ->nullable(),
+                    ]),
 
                 Hidden::make('added_by')
                     ->default(fn () => auth()->user()->id)

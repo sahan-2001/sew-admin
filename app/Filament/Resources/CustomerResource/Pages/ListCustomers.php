@@ -26,7 +26,8 @@ class ListCustomers extends ListRecords
                 ->validateUsing([
                     'name' => ['required'],
                     'shop_name' => ['required'],
-                    'address' => ['required'],
+                    'address_line_1' => ['required'],
+                    'city' => ['required'],
                     'email' => ['required', 'email'],
                     'phone_1' => ['required'],
                 ])
@@ -47,7 +48,8 @@ class ListCustomers extends ListRecords
                             Column::make('customer_id')->heading('ID'),
                             Column::make('name')->heading('Customer Name'),
                             Column::make('shop_name')->heading('Shop Name'),
-                            Column::make('address')->heading('Address'),
+                            Column::make('addres_line_1')->heading('Address'),
+                            Column::make('city')->heading('City'),
                             Column::make('email')->heading('Email'),
                             Column::make('phone_1')->heading('Primary Phone'),
                             Column::make('phone_2')->heading('Secondary Phone'),

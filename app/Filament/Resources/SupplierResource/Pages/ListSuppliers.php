@@ -26,7 +26,7 @@ class ListSuppliers extends ListRecords
                 ->validateUsing([
                     'name' => ['required'],
                     'shop_name' => ['required'],
-                    'address' => ['required'],
+                    'address_line_1' => ['required'],
                     'email' => ['required', 'email'],
                     'phone_1' => ['required'],
                 ])
@@ -47,7 +47,7 @@ class ListSuppliers extends ListRecords
                             Column::make('supplier_id')->heading('Supplier ID'),
                             Column::make('name')->heading('Name'),
                             Column::make('shop_name')->heading('Shop Name'),
-                            Column::make('address')->heading('Address'),
+                            Column::make('address_line_1')->heading('Address Line 1'),
                             Column::make('email')->heading('Email'),
                             Column::make('phone_1')->heading('Phone 1'),
                             Column::make('phone_2')->heading('Phone 2'),
@@ -90,7 +90,7 @@ class ListSuppliers extends ListRecords
 
     protected function beforeCollection(Collection $collection): void
     {
-        $requiredHeaders = ['name', 'shop_name', 'address', 'email', 'phone_1'];
+        $requiredHeaders = ['name', 'shop_name', 'address_line_1', 'email', 'phone_1'];
 
         $firstRow = $collection->first();
         if ($firstRow) {
