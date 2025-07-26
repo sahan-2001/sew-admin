@@ -181,14 +181,15 @@ class RegisterArrivalResource extends Resource
                                 ->preload()
                                 ->options(function () {
                                     return \App\Models\InventoryLocation::with('warehouse')
+                                        ->where('location_type', '!=', 'shipment')
                                         ->orderByRaw("CASE WHEN location_type = 'arrival' THEN 1 ELSE 2 END")
                                         ->get()
                                         ->mapWithKeys(function ($location) {
-                                            $warehouseId = $location->warehouse?->id ?? 'N/A';
+                                            $locationType = $location->location_type;
                                             $locationId = $location->id;
                                             $locationName = $location->name;
 
-                                            $label = "ID: {$locationId} | Warehouse: {$warehouseId} | Name: {$locationName}";
+                                            $label = "ID: {$locationId} | Type: {$locationType} | Name: {$locationName}";
 
                                             return [$locationId => $label];
                                         });

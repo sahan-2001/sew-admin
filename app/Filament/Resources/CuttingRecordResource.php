@@ -186,19 +186,19 @@ class CuttingRecordResource extends Resource
 
                                                 if ($orderType === 'customer_order') {
                                                     return \App\Models\CustomerOrder::with('customer')
-                                                        ->whereNotIn('status', ['planned', 'paused', 'completed'])
+                                                        ->whereNotIn('status', ['planned', 'paused', 'completed', 'released', 'completed', 'deliverd', 'closed', 'invoiced'])
                                                         ->get()
                                                         ->mapWithKeys(function ($order) {
                                                             $customerName = $order->customer->name ?? 'Unknown Customer';
-                                                            return [$order->order_id => "order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}"];
+                                                            return [$order->order_id => "order ID - {$order->order_id} | Customer - {$customerName} | Status - {$order->status}"];
                                                         });
                                                 } elseif ($orderType === 'sample_order') {
                                                     return \App\Models\SampleOrder::with('customer')
-                                                        ->whereNotIn('status', ['planned', 'paused', 'completed'])
+                                                        ->whereNotIn('status', ['planned', 'paused', 'completed', 'released', 'completed', 'deliverd', 'closed', 'invoiced', 'accepted', 'rejected'])
                                                         ->get()
                                                         ->mapWithKeys(function ($order) {
                                                             $customerName = $order->customer->name ?? 'Unknown Customer';
-                                                            return [$order->order_id => "Order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}"];
+                                                            return [$order->order_id => "Order ID - {$order->order_id} | Customer - {$customerName} | Status - {$order->status}"];
                                                         });
                                                 }
 
@@ -684,7 +684,10 @@ class CuttingRecordResource extends Resource
 
                                                         return \App\Models\User::role('employee')
                                                             ->whereNotIn('id', $selectedUserIds)
-                                                            ->pluck('name', 'id');
+                                                            ->get()
+                                                            ->mapWithKeys(function ($user) {
+                                                                return [$user->id => "{$user->id} | {$user->name}"];
+                                                            });
                                                     }),
                                                     
                                                 TextInput::make('pieces_cut')
@@ -698,9 +701,11 @@ class CuttingRecordResource extends Resource
                                                     ->label('Supervisor')
                                                     ->searchable()
                                                     ->options(
-                                                        \App\Models\User::role('supervisor')->pluck('name', 'id')
+                                                        \App\Models\User::role('supervisor')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($user) => [$user->id => "{$user->id} | {$user->name}"])
                                                     ),
-                                                    
+     
                                                 Textarea::make('notes')
                                                     ->label('Notes')
                                                     ->columnSpanFull(),
@@ -750,30 +755,39 @@ class CuttingRecordResource extends Resource
                                             ->schema([
                                                 Select::make('inv_item_id')
                                                     ->label('Waste Item')
-                                                    ->options(InventoryItem::where('category', 'Waste Item')->pluck('name', 'id'))
+                                                    ->options(
+                                                        \App\Models\InventoryItem::where('category', 'Waste Item')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($item) => [$item->id => "{$item->id} | {$item->name}"])
+                                                    )
                                                     ->searchable()
-                                                    ->live(),
+                                                    ->live()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function (callable $set, $state) {
+                                                        $uom = \App\Models\InventoryItem::find($state)?->uom;
+                                                        $set('inv_unit', $uom);
+                                                    }),
+
+                                                TextInput::make('inv_unit')
+                                                    ->dehydrated() 
+                                                    ->disabled()
+                                                    ->default(fn (callable $get) => \App\Models\InventoryItem::find($get('inv_item_id'))?->uom),
 
                                                 TextInput::make('inv_amount')
                                                     ->label('Amount')
                                                     ->numeric()
                                                     ->required(fn (callable $get) => filled($get('inv_item_id'))),
                                                     
-                                                Select::make('inv_unit')
-                                                    ->label('Unit')
-                                                    ->options([
-                                                        'pcs' => 'Pieces',
-                                                        'kgs' => 'Kilograms',
-                                                        'liters' => 'Liters',
-                                                        'meters' => 'Meters',
-                                                    ])
-                                                    ->required(fn (callable $get) => filled($get('inv_item_idd'))),
-                                                    
                                                 Select::make('inv_location_id')
                                                     ->label('Location')
-                                                    ->options(InventoryLocation::where('location_type', 'picking')->pluck('name', 'id'))
+                                                    ->options(
+                                                        \App\Models\InventoryLocation::where('location_type', 'picking')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($location) => [$location->id => "{$location->id} | {$location->name}"])
+                                                    )
                                                     ->searchable()
                                                     ->required(fn (callable $get) => filled($get('inv_item_id'))),
+
                                             ])
                                             ->columns(4),
                                             
@@ -782,7 +796,10 @@ class CuttingRecordResource extends Resource
                                             ->schema([
                                                 Select::make('non_i_item_id')
                                                     ->label('Item')
-                                                    ->options(NonInventoryItem::pluck('name', 'id'))
+                                                    ->options(
+                                                        \App\Models\NonInventoryItem::get()
+                                                            ->mapWithKeys(fn($item) => [$item->id => "{$item->id} | {$item->name}"])
+                                                    )
                                                     ->searchable()
                                                     ->live(),
 
@@ -808,34 +825,38 @@ class CuttingRecordResource extends Resource
                                                     ->label('By Product Item')
                                                     ->options(
                                                         \App\Models\InventoryItem::where('category', 'By Products')
-                                                            ->pluck('name', 'id')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($item) => [$item->id => "{$item->id} | {$item->name}"])
                                                     )
                                                     ->searchable()
-                                                    ->live(),
+                                                    ->live()
+                                                    ->reactive()
+                                                    ->afterStateUpdated(function (callable $set, $state) {
+                                                        $uom = \App\Models\InventoryItem::find($state)?->uom;
+                                                        $set('by_unit', $uom);
+                                                    }),
+
+                                                TextInput::make('by_unit')
+                                                    ->dehydrated()  
+                                                    ->disabled()
+                                                    ->default(fn (callable $get) => \App\Models\InventoryItem::find($get('by_item_id'))?->uom),
+
 
                                                 TextInput::make('by_amount')
                                                     ->label('Amount')
                                                     ->numeric()
                                                     ->required(fn (callable $get) => filled($get('inv_item_id'))),
 
-                                                Select::make('by_unit')
-                                                    ->label('Unit')
-                                                    ->options([
-                                                        'pcs' => 'Pieces',
-                                                        'kgs' => 'Kilograms',
-                                                        'liters' => 'Liters',
-                                                        'meters' => 'Meters',
-                                                    ])
-                                                    ->required(fn (callable $get) => filled($get('inv_item_id'))),
-
                                                 Select::make('by_location_id')
                                                     ->label('Location')
                                                     ->options(
                                                         \App\Models\InventoryLocation::where('location_type', 'picking')
-                                                            ->pluck('name', 'id')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($location) => [$location->id => "{$location->id} | {$location->name}"])
                                                     )
                                                     ->searchable()
                                                     ->required(fn (callable $get) => filled($get('inv_item_id'))),
+
                                             ])
                                             ->columns(4)
                                             ->columnSpanFull(),
@@ -853,16 +874,18 @@ class CuttingRecordResource extends Resource
                                                 Select::make('qc_user_id')
                                                     ->label('Quality Control Officer')
                                                     ->searchable()
+                                                    ->required()
                                                     ->options(function (callable $get, $state) {
                                                         $selectedUserIds = collect($get('../../qualityControls'))
                                                             ->pluck('qc_user_id')
                                                             ->filter()
-                                                            ->reject(fn ($id) => $id === $state) 
+                                                            ->reject(fn ($id) => $id === $state)
                                                             ->unique();
 
                                                         return \App\Models\User::role('quality control')
                                                             ->whereNotIn('id', $selectedUserIds)
-                                                            ->pluck('name', 'id');
+                                                            ->get()
+                                                            ->mapWithKeys(fn($user) => [$user->id => "{$user->id} | {$user->name}"]);
                                                     }),
 
                                                 TextInput::make('inspected_quantity')

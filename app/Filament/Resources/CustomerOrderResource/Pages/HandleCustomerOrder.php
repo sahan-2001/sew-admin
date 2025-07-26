@@ -212,7 +212,7 @@ class HandleCustomerOrder extends Page
         }
 
         if (in_array($this->record->status, [
-            'pending', 'planned', 'released',
+            'pending', 'released',
             'completed', 'delivered', 'cancelled', 'paused', 'cut', 'started'
         ])) {
             $actions[] = Action::make('print_pdf')

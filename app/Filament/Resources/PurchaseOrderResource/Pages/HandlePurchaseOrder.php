@@ -186,7 +186,7 @@ class HandlePurchaseOrder extends Page
         }
 
         // Show "Print PDF" action
-        if (in_array($this->record->status, ['planned', 'released', 'partially arrived', 'arrived', 'paused', 'invoiced', 'inspected', 'closed'])) {
+        if (in_array($this->record->status, ['released', 'partially arrived', 'arrived', 'paused', 'invoiced', 'inspected', 'closed'])) {
             $actions[] = Action::make('printPdf')
                 ->label('Print PDF')
                 ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))

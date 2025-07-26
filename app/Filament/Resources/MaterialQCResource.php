@@ -325,9 +325,17 @@ class MaterialQCResource extends Resource
                                                     }),
 
 
-                                                Select::make('inspected_by')
+                                               Select::make('inspected_by')
                                                     ->label('QC Officer')
-                                                    ->options(User::whereHas('roles', fn ($query) => $query->where('name', 'Quality Control'))->pluck('name', 'id'))
+                                                    ->options(
+                                                        User::whereHas('roles', fn ($query) =>
+                                                            $query->where('name', 'Quality Control')
+                                                        )
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($user) => [
+                                                            $user->id => "{$user->id} | {$user->name}"
+                                                        ])
+                                                    )
                                                     ->required(),
                                             ]),
                                     ]),

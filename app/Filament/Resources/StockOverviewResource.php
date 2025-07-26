@@ -124,8 +124,8 @@ class StockOverviewResource extends Resource
         return $table
             ->query(Stock::query()->where('quantity', '>', 0)) 
             ->columns([
-                TextColumn::make('location.warehouse.name')
-                    ->label('Warehouse')
+                TextColumn::make('location.warehouse.id')
+                    ->label('Warehouse ID')
                     ->sortable(),
 
                 TextColumn::make('location.name')

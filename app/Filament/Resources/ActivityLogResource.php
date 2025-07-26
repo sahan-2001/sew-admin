@@ -38,6 +38,7 @@ class ActivityLogResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('id')->label('Log ID')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('log_name')->label('Log Name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('description')->label('Description')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('causer.name')->label('Caused By')->sortable()->searchable(),

@@ -45,12 +45,12 @@ class ProductionMachineResource extends Resource
                     ->columns(3)
                     ->schema([
                         DatePicker::make('purchased_date')->required()->maxDate(Carbon::now()),
-                        DatePicker::make('start_working_date')->required()->maxDate(Carbon::now()),
+                        DatePicker::make('start_working_date')->required(),
                         TextInput::make('expected_lifetime')->label('Expected Lifetime (Years)')->numeric()->required(),
                     ]),
 
                     
-                Section::make('Supplier Details')
+                Section::make('Financial Details')
                     ->columns(3)
                     ->schema([
                         TextInput::make('purchased_cost')->numeric()->prefix('Rs.')->required(),
@@ -103,12 +103,12 @@ class ProductionMachineResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Machine ID'),
-                TextColumn::make('name')->label('Machine Name')->searchable(),
-                TextColumn::make('expected_lifetime'),
-                TextColumn::make('purchased_cost')->money('LKR'),
+                TextColumn::make('id')->label('Machine ID')->sortable()->searchable(),
+                TextColumn::make('name')->label('Name')->searchable(),
+                TextColumn::make('expected_lifetime')->label('Life Time')->sortable(),
+                TextColumn::make('purchased_cost')->money('LKR')->sortable(),
                 TextColumn::make('cumulative_depreciation')->money('LKR'),
-                TextColumn::make('net_present_value')->money('LKR'),
+                TextColumn::make('net_present_value')->label('NPV')->money('LKR')->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [

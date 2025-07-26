@@ -73,7 +73,7 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-o-receipt-refund')
                 ->color('warning'),
 
-            Stat::make('🛒 Purchase Revenue (30 Days)', Number::currency($purchaseRevenue30Days, 'LKR'))
+            Stat::make('🛒 Purchase Order Cost (30 Days)', Number::currency($purchaseRevenue30Days, 'LKR'))
                 ->description('From purchase orders in last 30 days')
                 ->descriptionIcon('heroicon-o-shopping-cart')
                 ->color('danger'),

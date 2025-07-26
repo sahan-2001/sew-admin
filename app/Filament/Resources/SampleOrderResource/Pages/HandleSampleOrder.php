@@ -324,7 +324,7 @@ class HandleSampleOrder extends Page
 
 
         // Show "Print PDF" action
-        if (in_array($this->record->status, ['planned', 'released', 'accepted', 'rejected', 'cut', 'started', 'paused', 'completed', 'delivered'])) {
+        if (in_array($this->record->status, ['released', 'accepted', 'rejected', 'cut', 'started', 'paused', 'completed', 'delivered'])) {
             $actions[] = Action::make('printPdf')
             ->label('Print PDF')
             ->url(fn () => route('sample-orders.pdf', ['sample_order' => $this->record->order_id]))
