@@ -230,6 +230,7 @@ class CustomerOrderResource extends Resource
                     ->getStateUsing(fn ($record) => $record->status),
                 TextColumn::make('grand_total')->label('Order Total')
                     ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
+                TextColumn::make('remaining_balance')->label('Remaining Balance')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [

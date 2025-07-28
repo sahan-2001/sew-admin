@@ -23,6 +23,7 @@ return new class extends Migration
             $table->integer('machine_run_time')->default(0);
             $table->integer('labor_setup_time')->default(0);
             $table->integer('labor_run_time')->default(0);
+            $table->string('status')->default('created'); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

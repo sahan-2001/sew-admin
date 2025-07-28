@@ -28,6 +28,14 @@ class CreateMaterialQC extends CreateRecord
 
             $cost = $item['cost_of_item'] ?? 0;
 
+            $scrappedQty = $item['scrapped_qty'] ?? 0;
+            $addScrap = $item['add_scrap'] ?? 0;
+            $totalScrap = $scrappedQty + $addScrap;
+
+            $returnedQty = $item['returned_qty'] ?? 0;
+            $addReturned = $item['add_returned'] ?? 0;
+            $totalReturned = $returnedQty + $addReturned;
+
             // Create the MaterialQC record for each item
             $createdRecord = MaterialQC::create([
                 'purchase_order_id' => $data['purchase_order_id'],
@@ -35,20 +43,20 @@ class CreateMaterialQC extends CreateRecord
                 'cost_of_item' => $cost,
                 'inspected_quantity' => $item['inspected_quantity'],
                 'approved_qty' => $item['approved_qty'],
-                'returned_qty' => $item['returned_qty'] ?? 0,
-                'scrapped_qty' => $item['scrapped_qty'] ?? 0,
-                'add_returned' => $item['add_returned'] ?? 0,
-                'add_scrap' => $item['add_scrap'] ?? 0,
-                'total__returned' => $item['total_returned'] ?? 0,
-                'total_scrap' => $item['total_scrap'] ?? 0,
+                'returned_qty' => $returnedQty,
+                'scrapped_qty' => $scrappedQty,
+                'add_returned' => $addReturned,
+                'add_scrap' => $addScrap,
+                'total_returned' => $totalReturned,
+                'total_scrap' => $totalScrap,
                 'available_to_store' => $item['available_to_store'],
                 'store_location_id' => $item['store_location_id'] ?? null,
-                'register_arrival_id' => $data['register_arrival_id'], 
-                'inspected_by' => $item['inspected_by'],               
+                'register_arrival_id' => $data['register_arrival_id'],
+                'inspected_by' => $item['inspected_by'],
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
-            
+                        
             $createdRecords[] = $createdRecord;
             
             // Update RegisterArrivalItem status from 'To be inspected' to 'inspected'

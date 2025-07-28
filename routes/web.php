@@ -29,6 +29,8 @@ use App\Http\Controllers\ThirdPartyServicePdfController;
 use App\Http\Controllers\SupplierExportController;
 use App\Http\Controllers\CustomerExportController;
 use App\Http\Controllers\CustomerAdvanceInvoiceController;
+use App\Http\Controllers\TemporaryOperationController;
+use App\Http\Controllers\MaterialQCPrintController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -159,3 +161,9 @@ Route::get('/export-customer/{customer}', [CustomerExportController::class, 'exp
 
 // Customer Advance Invoice route
 Route::get('/customer-advance-invoice/{invoice}/pdf', [CustomerAdvanceInvoiceController::class, 'show'])->name('customer-advance-invoice.pdf');
+
+// Temporary Operation PDF route
+Route::get('/temporary-operation/{operation}/print', [TemporaryOperationController::class, 'print'])->name('temporary-operation.print');
+
+// Material QC Print route
+Route::get('/material-qc/{materialQC}/print', [MaterialQCPrintController::class, 'print'])->name('material-qc.print');

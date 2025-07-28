@@ -25,6 +25,7 @@ class TemporaryOperation extends Model
         'machine_run_time',
         'labor_setup_time',
         'labor_run_time',
+        'status',
         'created_by',
         'updated_by',
     ];

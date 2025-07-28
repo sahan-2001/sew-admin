@@ -20,7 +20,9 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Actions\ViewAction;
-
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TextInputFilter;
+use Filament\Tables\Actions\Action;
 
 class TemporaryOperationResource extends Resource
 {
@@ -59,13 +61,18 @@ class TemporaryOperationResource extends Resource
                                     ->required()
                                     ->searchable()
                                     ->options(function ($get) {
+                                        $excludedStatuses = ['closed', 'invoiced', 'accepted', 'rejected'];
+
                                         if ($get('order_type') === 'customer_order') {
-                                            return \App\Models\CustomerOrder::all()
+                                            return \App\Models\CustomerOrder::whereNotIn('status', $excludedStatuses)
+                                                ->get()
                                                 ->mapWithKeys(fn ($order) => [$order->order_id => "ID={$order->order_id} | Name={$order->name}"]);
                                         } elseif ($get('order_type') === 'sample_order') {
-                                            return \App\Models\SampleOrder::all()
+                                            return \App\Models\SampleOrder::whereNotIn('status', $excludedStatuses)
+                                                ->get()
                                                 ->mapWithKeys(fn ($order) => [$order->order_id => "ID={$order->order_id} | Name={$order->name}"]);
                                         }
+
                                         return [];
                                     })
                                     ->reactive()
@@ -213,10 +220,12 @@ class TemporaryOperationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('description')->sortable(),
-                TextColumn::make('order_type'),
-                TextColumn::make('order_id')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('id')->label('ID')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('description')->label("Description")->limit(50)->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                TextColumn::make('order_type')->label('Order Type'),
+                TextColumn::make('order_id')->label('Order ID')->sortable()->searchable()->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('status')->label('Status')->sortable(),
+                TextColumn::make('operation_date')->label('Operation Date')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
@@ -228,44 +237,61 @@ class TemporaryOperationResource extends Resource
                     : []
                     ),
             ])
+            ->filters([
+                SelectFilter::make('status')
+                ->options([
+                    'created' => 'Created',
+                    'approved' => 'Approved',
+                ])
+                ->label('Filter by Status'),
+            ])
             ->actions([
                 ViewAction::make()
-                ->label('View')
-                ->modalHeading(fn ($record) => "Temporary Operation #{$record->id}")
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Close')
-                ->form(fn ($record) => [
-                    Forms\Components\Section::make('Overview')
-                        ->columns(2)
-                        ->schema([
-                            TextInput::make('id')->default(str_pad($record->id, 5, '0', STR_PAD_LEFT))->label('Operation ID')->disabled(),
-                            TextInput::make('order_type')->default(ucwords(str_replace('_', ' ', $record->order_type)))->label('Order Type')->disabled(),
-                            TextInput::make('order_id')->default($record->order_id)->label('Order ID')->disabled(),
-                        ]),
+                    ->label('View')
+                    ->modalHeading(fn ($record) => "Temporary Operation #{$record->id}")
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->form(fn ($record) => [
+                        Forms\Components\Section::make('Overview')
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('id')->default(str_pad($record->id, 5, '0', STR_PAD_LEFT))->label('Operation ID')->disabled(),
+                                TextInput::make('order_type')->default(ucwords(str_replace('_', ' ', $record->order_type)))->label('Order Type')->disabled(),
+                                TextInput::make('order_id')->default($record->order_id)->label('Order ID')->disabled(),
+                            ]),
 
-                    Forms\Components\Section::make('Operation Details')
-                        ->columns(2)
-                        ->schema([
-                            DatePicker::make('operation_date')->default($record->operation_date)->label('Operation Date')->disabled(),
-                            Textarea::make('description')->default($record->description)->label('Operation Description')->disabled()->columnSpanFull(),
+                        Forms\Components\Section::make('Operation Details')
+                            ->columns(2)
+                            ->schema([
+                                DatePicker::make('operation_date')->default($record->operation_date)->label('Operation Date')->disabled(),
+                                Textarea::make('description')->default($record->description)->label('Operation Description')->disabled()->columnSpanFull(),
 
-                            TextInput::make('production_line_id')
-                                ->default(optional($record->productionLine)->name ?? 'N/A')
-                                ->label('Production Line ID')->disabled(),
+                                TextInput::make('production_line_id')
+                                    ->default(optional($record->productionLine)->name ?? 'N/A')
+                                    ->label('Production Line ID')->disabled(),
 
-                            TextInput::make('workstation_id')
-                                ->default(optional($record->workstation)->name ?? 'N/A')
-                                ->label('Workstation ID')->disabled(),
+                                TextInput::make('workstation_id')
+                                    ->default(optional($record->workstation)->name ?? 'N/A')
+                                    ->label('Workstation ID')->disabled(),
 
-                            TextInput::make('machine_setup_time')->default($record->machine_setup_time)->label('Machine Setup Time')->disabled(),
-                            TextInput::make('machine_run_time')->default($record->machine_run_time)->label('Machine Run Time')->disabled(),
-                            TextInput::make('labor_setup_time')->default($record->labor_setup_time)->label('Labor Setup Time')->disabled(),
-                            TextInput::make('labor_run_time')->default($record->labor_run_time)->label('Labor Run Time')->disabled(),
-                        ]),
-                ]),
+                                TextInput::make('machine_setup_time')->default($record->machine_setup_time)->label('Machine Setup Time')->disabled(),
+                                TextInput::make('machine_run_time')->default($record->machine_run_time)->label('Machine Run Time')->disabled(),
+                                TextInput::make('labor_setup_time')->default($record->labor_setup_time)->label('Labor Setup Time')->disabled(),
+                                TextInput::make('labor_run_time')->default($record->labor_run_time)->label('Labor Run Time')->disabled(),
+                            ]),
+                    ]),
 
-                EditAction::make(),
-                DeleteAction::make(),
+                    Action::make('Download PDF')
+                        ->label('Download PDF')
+                        ->icon('heroicon-m-arrow-down-tray')
+                        ->url(fn ($record) => route('temporary-operation.print', $record))
+                        ->openUrlInNewTab()
+                        ->color('success'),
+
+                    EditAction::make()
+                        ->visible(fn ($record) => $record->status === 'created'),
+                    DeleteAction::make()
+                        ->visible(fn ($record) => $record->status === 'created'),
             ])
         ->defaultSort('id', 'desc') 
         ->recordUrl(null);

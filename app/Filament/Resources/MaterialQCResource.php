@@ -468,7 +468,6 @@ class MaterialQCResource extends Resource
         ]);
     }
 
-
     
     public static function table(Table $table): Table
     {
@@ -491,9 +490,11 @@ class MaterialQCResource extends Resource
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
                 TextColumn::make('returned_qty')
                     ->label('Returned Quantity')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
                 TextColumn::make('scrapped_qty')
                     ->label('Scrapped Quantity')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state) => (is_numeric($state) && floor($state) != $state) ? number_format($state, 2) : number_format($state, 0)),
                 TextColumn::make('status')->label('Status'),
 
@@ -556,6 +557,12 @@ class MaterialQCResource extends Resource
                     ),
             ])
             ->actions([
+                Action::make('print')
+                    ->label('Print PDF')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn ($record) => route('material-qc.print', $record))
+                    ->openUrlInNewTab(),
+                
                 Action::make('reCorrection')
                     ->label('Re-Correction')
                     ->authorize(fn ($record) => 
