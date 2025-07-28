@@ -32,6 +32,7 @@ use App\Models\SampleOrder;
 use App\Models\SampleOrderItem;
 use App\Models\SampleOrderVariation;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Actions\Action;
 
 
 class CustomerAdvanceInvoiceResource extends Resource
@@ -476,6 +477,12 @@ class CustomerAdvanceInvoiceResource extends Resource
                 //
             ])
             ->actions([
+                Action::make('Download Invoice')
+                    ->icon('heroicon-o-arrow-down')
+                    ->url(fn (CustomerAdvanceInvoice $record): string => route('customer-advance-invoice.pdf', ['invoice' => $record->id]))
+                    ->openUrlInNewTab()
+                    ->color('primary'),
+
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
             ])

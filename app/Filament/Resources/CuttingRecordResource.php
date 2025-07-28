@@ -1017,22 +1017,32 @@ class CuttingRecordResource extends Resource
                 $releaseMaterialLines = ReleaseMaterialLine::where('release_material_id', $record->release_material_id)
                     ->get();
 
-                foreach ($releaseMaterialLines as $line) {
-                    $cutQuantity = $record->orderItems->sum(function ($item) use ($line) {
-                        // Access variations through the order item relationship
-                        $variations = $item->variations;
-                        
-                        $itemMatch = $item->item_id == $line->item_id;
-                        $variationMatch = $variations->contains('item_id', $line->item_id);
-                        
-                        return $itemMatch || $variationMatch 
-                            ? ($item->quantity + $variations->sum('quantity'))
-                            : 0;
-                    });
+                foreach ($record->orderItems as $item) {
+    // Update release material line by adding item quantity
+    $line = ReleaseMaterialLine::where('release_material_id', $record->release_material_id)
+        ->where('item_id', $item->item_id)
+        ->first();
 
-                    $line->update([
-                        'cut_quantity' => max(0, $line->cut_quantity - $cutQuantity)
-                    ]);
+    if ($line) {
+        $line->cut_quantity += $item->quantity;
+        $line->save();
+    }
+
+    // Add back all variation quantities too
+    foreach ($item->variations as $variation) {
+        $line = ReleaseMaterialLine::where('release_material_id', $record->release_material_id)
+            ->where('item_id', $variation->item_id)
+            ->first();
+
+        if ($line) {
+            $line->cut_quantity += $variation->quantity;
+            $line->save();
+        }
+    }
+}
+                foreach ($releaseMaterialLines as $line) {
+                    $line->cut_quantity += $line->quantity;
+                    $line->save();
                 }
             }
 

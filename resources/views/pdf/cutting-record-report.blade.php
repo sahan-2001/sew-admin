@@ -82,10 +82,6 @@
                 <td>#{{ str_pad($cuttingRecord->id, 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
-                <th>Cutting Station</th>
-                <td>{{ $cuttingRecord->cuttingStation->name ?? 'N/A' }}</td>
-            </tr>
-            <tr>
                 <th>Order Type</th>
                 <td>{{ $cuttingRecord->order_type }}</td>
             </tr>
@@ -94,8 +90,24 @@
                 <td>#{{ str_pad($cuttingRecord->order_id, 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
+                <th>Release Material ID</th>
+                <td>{{ $cuttingRecord->release_material_id }}</td>
+            </tr>
+            <tr>
+                <th>Cutting Station</th>
+                <td>{{ $cuttingRecord->cuttingStation->name ?? 'N/A' }}</td>
+            </tr>
+            <tr>
                 <th>Operation Date</th>
                 <td>{{ $cuttingRecord->operation_date }}</td>
+            </tr>
+            <tr>
+                <th>Operated Time From</th>
+                <td>{{ $cuttingRecord->operated_time_from }}</td>
+            </tr>
+            <tr>
+                <th>Operated Time To</th>
+                <td>{{ $cuttingRecord->operated_time_to }}</td>
             </tr>
             <tr>
                 <th>Created At</th>
@@ -104,7 +116,7 @@
         </table>
     </div>
 
-    
+
 
     <div class="section">
         <h2>Order Items</h2>

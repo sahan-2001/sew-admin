@@ -28,6 +28,7 @@ use App\Http\Controllers\ProductionMachinePdfController;
 use App\Http\Controllers\ThirdPartyServicePdfController;
 use App\Http\Controllers\SupplierExportController;
 use App\Http\Controllers\CustomerExportController;
+use App\Http\Controllers\CustomerAdvanceInvoiceController;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -154,3 +155,7 @@ Route::get('/supplier/{supplier}/export-pdf', [SupplierExportController::class, 
     ->middleware(['auth']);
 
 Route::get('/export-customer/{customer}', [CustomerExportController::class, 'exportPdf'])->name('export.customer.pdf');
+
+
+// Customer Advance Invoice route
+Route::get('/customer-advance-invoice/{invoice}/pdf', [CustomerAdvanceInvoiceController::class, 'show'])->name('customer-advance-invoice.pdf');
