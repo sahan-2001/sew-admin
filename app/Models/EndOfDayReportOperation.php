@@ -15,6 +15,7 @@ class EndOfDayReportOperation extends Model
         'enter_performance_record_id',
         'assign_daily_operation_id',
         'operation_line_id',
+        'temporary_operation_id',
         'created_by',
         'updated_by'
     ];
@@ -33,6 +34,12 @@ class EndOfDayReportOperation extends Model
     {
         return $this->belongsTo(AssignDailyOperation::class, 'assign_daily_operation_id');
     }
+
+    public function temporaryOperation()
+    {
+        return $this->belongsTo(TemporaryOperation::class, 'temporary_operation_id');
+    }
+
 
 
     protected static function booted()

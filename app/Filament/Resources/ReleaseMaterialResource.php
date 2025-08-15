@@ -59,7 +59,7 @@ class ReleaseMaterialResource extends Resource
 
                                     if ($orderType === 'customer_order') {
                                         $orders = \App\Models\CustomerOrder::with('customer')
-                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed'])
+                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed', 'delivered', 'closed', 'invoiced'])
                                             ->get();
 
                                         $options = $orders->mapWithKeys(function ($order) {
@@ -69,7 +69,7 @@ class ReleaseMaterialResource extends Resource
 
                                     } elseif ($orderType === 'sample_order') {
                                         $orders = \App\Models\SampleOrder::with('customer')
-                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed', 'accepted', 'rejected'])
+                                            ->whereNotIn('status', ['planned', 'paused', 'delivered', 'completed', 'delivered', 'accepted', 'rejected', 'invoiced', 'closed'])
                                             ->get();
 
                                         $options = $orders->mapWithKeys(function ($order) {

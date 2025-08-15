@@ -66,16 +66,19 @@
             border-top: 1px solid #ccc;
             padding-top: 8px;
         }
+        .header, .footer {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
     @if(isset($companyDetails))
-    <div class="company-info">
+    <div class="header">
         <h2>{{ $companyDetails['name'] }}</h2>
-        <div><strong>Address:</strong> {{ $companyDetails['address'] }}</div>
-        <div><strong>Phone:</strong> {{ $companyDetails['phone'] }}</div>
-        <div><strong>Email:</strong> {{ $companyDetails['email'] }}</div>
+        <div>{{ $companyDetails['address'] }}</div>
+        <div>{{ $companyDetails['phone'] }}</div>
+        <div>{{ $companyDetails['email'] }}</div>
     </div>
     @endif
 

@@ -26,10 +26,6 @@ class AssignDailyOperation extends Model
         return $this->hasMany(AssignDailyOperationLine::class);
     }
 
-    public function assignedWorkingHours()
-    {
-        return $this->hasMany(AssignedWorkingHour::class);
-    }
 
     public function labels(): BelongsToMany
     {

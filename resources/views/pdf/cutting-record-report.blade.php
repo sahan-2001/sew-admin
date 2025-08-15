@@ -125,7 +125,7 @@
                 <tr>
                     <th>Item Type</th>
                     <th>Item ID</th>
-                    <th>Quantity</th>
+                    <th>Pieces Cut (Labels)</th>
                 </tr>
             </thead>
             <tbody>
@@ -148,7 +148,7 @@
                     <th>Order Item ID</th>
                     <th>Variation Type</th>
                     <th>Variation ID</th>
-                    <th>Quantity</th>
+                    <th>Pieces Cut (Labels)</th>
                 </tr>
             </thead>
             <tbody>

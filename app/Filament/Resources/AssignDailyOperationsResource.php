@@ -141,9 +141,11 @@ class AssignDailyOperationsResource extends Resource
                                                 ->helperText('You can select only orders with "cut" or "started" status.')
                                                 ->options(function ($get) {
                                                     $orderType = $get('order_type');
+                                                    $allowedStatuses = ['released', 'material released', 'cut', 'started'];
 
                                                     if ($orderType === 'customer_order') {
-                                                        return \App\Models\CustomerOrder::with('customer') 
+                                                        return \App\Models\CustomerOrder::with('customer')
+                                                            ->whereIn('status', $allowedStatuses)
                                                             ->get()
                                                             ->mapWithKeys(function ($order) {
                                                                 $customerName = $order->customer->name ?? 'Unknown Customer';
@@ -152,16 +154,16 @@ class AssignDailyOperationsResource extends Resource
                                                             });
                                                     } elseif ($orderType === 'sample_order') {
                                                         return \App\Models\SampleOrder::with('customer')
+                                                            ->whereIn('status', $allowedStatuses)
                                                             ->get()
                                                             ->mapWithKeys(function ($order) {
                                                                 $customerName = $order->customer->name ?? 'Unknown Customer';
                                                                 $label = "Order ID - {$order->order_id} | Name - {$order->name} | Customer - {$customerName}";
-                                                                return [$order->order_id => $label]; 
+                                                                return [$order->order_id => $label];
                                                             });
                                                     }
 
                                                     return [];
-
                                                 })
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, $set, $get) {
@@ -291,7 +293,11 @@ class AssignDailyOperationsResource extends Resource
                                                     Grid::make(4)->schema([
                                                         Select::make('production_line_id')
                                                             ->label('Production Line')
-                                                            ->options(fn () => ProductionLine::pluck('name', 'id'))
+                                                            ->options(fn () => \App\Models\ProductionLine::all()
+                                                                ->mapWithKeys(fn ($line) => [
+                                                                    $line->id => "{$line->id} | Name - {$line->name}"
+                                                                ])
+                                                            )
                                                             ->reactive()
                                                             ->afterStateUpdated(fn ($set) => $set('workstation_id', null))
                                                             ->required()
@@ -299,8 +305,13 @@ class AssignDailyOperationsResource extends Resource
 
                                                         Select::make('workstation_id')
                                                             ->label('Workstation')
-                                                            ->options(fn (callable $get) => $get('production_line_id') ?
-                                                                Workstation::where('production_line_id', $get('production_line_id'))->pluck('name', 'id') : [])
+                                                            ->options(fn (callable $get) => $get('production_line_id')
+                                                                ? \App\Models\Workstation::where('production_line_id', $get('production_line_id'))
+                                                                    ->get()
+                                                                    ->mapWithKeys(fn ($workstation) => [
+                                                                        $workstation->id => "{$workstation->id} | Name - {$workstation->name}"
+                                                                    ])
+                                                                : [])
                                                             ->reactive()
                                                             ->afterStateUpdated(fn ($set) => $set('operation_id', null))
                                                             ->required()
@@ -311,7 +322,11 @@ class AssignDailyOperationsResource extends Resource
                                                             ->label('Operation')
                                                             ->options(fn (callable $get) =>
                                                                 $get('workstation_id')
-                                                                    ? Operation::where('workstation_id', $get('workstation_id'))->pluck('description', 'id')
+                                                                    ? \App\Models\Operation::where('workstation_id', $get('workstation_id'))
+                                                                        ->get()
+                                                                        ->mapWithKeys(fn ($operation) => [
+                                                                            $operation->id => "{$operation->id} | Description - {$operation->description}"
+                                                                        ])
                                                                     : []
                                                             )
                                                             ->required()
@@ -352,28 +367,50 @@ class AssignDailyOperationsResource extends Resource
 
                                                         Forms\Components\MultiSelect::make('employee_ids')
                                                             ->label('Employees')
-                                                            ->options(\App\Models\User::role('employee')->pluck('name', 'id'))
+                                                            ->options(
+                                                                \App\Models\User::role('employee')
+                                                                    ->get()
+                                                                    ->mapWithKeys(fn ($user) => [
+                                                                        $user->id => "ID - {$user->id} | Name - {$user->name}"
+                                                                    ])
+                                                            )                                                            
                                                             ->searchable()
                                                             ->columnSpanFull()
                                                             ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('supervisor_ids')
                                                             ->label('Supervisors')
-                                                            ->options(\App\Models\User::role('supervisor')->pluck('name', 'id'))
+                                                            ->options(
+                                                                \App\Models\User::role('supervisor')
+                                                                    ->get()
+                                                                    ->mapWithKeys(fn ($user) => [
+                                                                        $user->id => "ID - {$user->id} | Name - {$user->name}"
+                                                                    ])
+                                                            )
                                                             ->searchable()
                                                             ->columnSpanFull()
                                                             ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('machine_ids')
                                                             ->label('Automated Machines')
-                                                            ->options(\App\Models\ProductionMachine::pluck('name', 'id'))
+                                                            ->options(
+                                                                \App\Models\ProductionMachine::get()
+                                                                    ->mapWithKeys(fn ($machine) => [
+                                                                        $machine->id => "ID - {$machine->id} | Name - {$machine->name}"
+                                                                    ])
+                                                            )
                                                             ->searchable()
                                                             ->columnSpanFull()
                                                             ->disabled(fn ($get) => $get('disabled')),
 
                                                         Forms\Components\MultiSelect::make('third_party_service_ids')
                                                             ->label('Third Party Services')
-                                                            ->options(\App\Models\ThirdPartyService::pluck('name', 'id'))
+                                                            ->options(
+                                                                \App\Models\ThirdPartyService::get()
+                                                                    ->mapWithKeys(fn ($service) => [
+                                                                        $service->id => "ID - {$service->id} | Name - {$service->name}"
+                                                                    ])
+                                                            )
                                                             ->searchable()
                                                             ->columnSpanFull()
                                                             ->disabled(fn ($get) => $get('disabled')),
@@ -383,7 +420,8 @@ class AssignDailyOperationsResource extends Resource
                                                         TextInput::make('target_m')->label('Target per Machine')->numeric()->disabled(fn ($get) => $get('disabled')),
                                                         Select::make('measurement_unit')
                                                             ->label('Measurement Unit')
-                                                            ->options(['pcs' => 'Pieces', 'kgs' => 'Kilograms', 'liters' => 'Liters', 'minutes' => 'Minutes', 'hours' => 'Hours'])->disabled(fn ($get) => $get('disabled')),
+                                                            ->options(['pcs' => 'Pieces', 'kgs' => 'Kilograms', 'liters' => 'Liters', 'minutes' => 'Minutes', 'hours' => 'Hours'])->disabled(fn ($get) => $get('disabled'))
+                                                            ->default('pcs'),
                                                     ]),
                                                 ])
                                                 ->itemLabel(fn (array $state): ?string => ($state['workstation_name'] ?? '') . ' - ' . ($state['operation_description'] ?? ''))
@@ -508,6 +546,7 @@ class AssignDailyOperationsResource extends Resource
                                     ->schema([
                                         CheckboxList::make('selected_label_ids')
                                             ->label('Cutting Labels')
+                                            ->required()
                                             ->options(function (callable $get) {
                                                 $orderType = $get('order_type');
                                                 $orderId = $get('order_id');
@@ -585,6 +624,12 @@ class AssignDailyOperationsResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('print')
+                    ->label('Print Report')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn (AssignDailyOperation $record): string => route('assign-daily-operations.print', $record))
+                    ->openUrlInNewTab(),
+                
                 Tables\Actions\EditAction::make()
                     ->visible(fn ($record) => $record->status !== 'recorded'),
             ])

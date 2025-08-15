@@ -21,10 +21,23 @@ class EndOfDayReportPdfController extends Controller
             return abort(500, 'Company details not found.');
         }
 
-        // Load operations with their related performance records and assigned operations
+        // Load operations with their related records
         $operations = $endOfDayReport->operations()
-            ->with(['performanceRecord', 'assignedOperation'])
+            ->with([
+                'performanceRecord', 
+                'assignedOperation',
+                'temporaryOperation'
+            ])
             ->get();
+
+        // Separate performance records and temporary operations
+        $performanceRecords = $operations->filter(function($op) {
+            return $op->enter_performance_record_id !== null;
+        });
+        
+        $temporaryOperations = $operations->filter(function($op) {
+            return $op->temporary_operation_id !== null;
+        });
 
         // Generate and return the PDF
         return Pdf::loadView('pdf.end-of-day-report', [
@@ -43,8 +56,9 @@ class EndOfDayReportPdfController extends Controller
                     $company->email
                 ]))
             ],
-            'report' => $endOfDayReport, // Pass the entire model
-            'operations' => $operations,
+            'report' => $endOfDayReport,
+            'performanceRecords' => $performanceRecords,
+            'temporaryOperations' => $temporaryOperations,
         ])
         ->setPaper('a4', 'portrait')
         ->stream('end-of-day-report-' . $endOfDayReport->id . '.pdf');

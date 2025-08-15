@@ -14,9 +14,11 @@ return new class extends Migration
     $table->id();
     
     $table->foreignId('end_of_day_report_id');
-    $table->foreignId('enter_performance_record_id');
-    $table->foreignId('assign_daily_operation_id');
-    $table->foreignId('operation_line_id');
+    $table->foreignId('enter_performance_record_id')->nullable();
+    $table->foreignId('assign_daily_operation_id')->nullable();
+    $table->foreignId('operation_line_id')->nullable();
+
+    $table->foreignId('temporary_operation_id')->nullable();
 
     $table->unsignedBigInteger('created_by')->nullable();
     $table->unsignedBigInteger('updated_by')->nullable();

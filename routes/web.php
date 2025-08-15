@@ -31,6 +31,8 @@ use App\Http\Controllers\CustomerExportController;
 use App\Http\Controllers\CustomerAdvanceInvoiceController;
 use App\Http\Controllers\TemporaryOperationController;
 use App\Http\Controllers\MaterialQCPrintController;
+use App\Http\Controllers\AssignDailyOperationPrintController;
+use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
 use App\Models\SuppAdvInvoicePayment;
@@ -167,3 +169,9 @@ Route::get('/temporary-operation/{operation}/print', [TemporaryOperationControll
 
 // Material QC Print route
 Route::get('/material-qc/{materialQC}/print', [MaterialQCPrintController::class, 'print'])->name('material-qc.print');
+
+// Assign Daily Operation Print route
+Route::get('/assign-daily-operations/{assignDailyOperation}/print', 
+    [AssignDailyOperationPrintController::class, 'print'])
+    ->name('assign-daily-operations.print')
+    ->middleware('auth');
