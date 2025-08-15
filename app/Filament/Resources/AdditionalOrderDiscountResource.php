@@ -27,11 +27,11 @@ class AdditionalOrderDiscountResource extends Resource
     protected static ?string $model = AdditionalOrderDiscount::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Invoices';
-    protected static ?int $navigationSort = 51;
+     protected static ?string $navigationGroup = 'CO/ SO Invoices';
     protected static ?string $navigationLabel = 'CO/SO Order Discounts';
     protected static ?string $label = 'CO/SO Order Discount';
     protected static ?string $pluralLabel = 'CO/SO Order Discounts';
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {

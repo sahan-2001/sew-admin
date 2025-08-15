@@ -26,8 +26,8 @@ class AdditionalOrderExpenseResource extends Resource
     protected static ?string $model = AdditionalOrderExpense::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Invoices';
-    protected static ?int $navigationSort = 50;
+    protected static ?string $navigationGroup = 'CO/ SO Invoices';
+    protected static ?int $navigationSort = 6;
     protected static ?string $label = 'CO/SO Order Expence';
     protected static ?string $pluralLabel = 'CO/SO Order Expences';
     protected static ?string $navigationLabel = 'CO/SO Order Expences';

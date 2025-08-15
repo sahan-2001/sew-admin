@@ -26,9 +26,11 @@ class ProductionMachineResource extends Resource
 {
     protected static ?string $model = ProductionMachine::class;
 
-    protected static ?string $navigationGroup = 'Assets';
-    protected static ?string $navigationLabel = 'Production Machines';
+    protected static ?string $navigationGroup = 'Production Assets';
+    protected static ?string $navigationLabel = 'Automated Production Machines';
     protected static ?string $navigationIcon = 'heroicon-o-cog';
+    protected static ?int $navigationSort = 29;
+    
 
     public static function form(Form $form): Form
     {

@@ -24,8 +24,9 @@ use Illuminate\Support\Facades\Auth;
 class RegisterArrivalResource extends Resource
 {
     protected static ?string $model = RegisterArrival::class;
-    protected static ?string $navigationGroup = 'Inventory Management'; 
+    protected static ?string $navigationGroup = 'Inventory Operations'; 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
+    protected static ?int $navigationSort = 27;
 
     public static function form(Forms\Form $form): Forms\Form
     {

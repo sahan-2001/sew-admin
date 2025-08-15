@@ -32,7 +32,8 @@ class CompanySettingsResource extends Resource
     protected static ?string $navigationLabel = 'Company Settings';
     protected static ?string $modelLabel = 'System';
     protected static ?string $slug = 'company-settings';
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationGroup = 'System Settings';
+    protected static ?int $navigationSort = 35;
 
     public static function form(Form $form): Form
     {

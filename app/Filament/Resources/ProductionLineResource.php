@@ -26,6 +26,7 @@ class ProductionLineResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Production Lines';
     protected static ?string $navigationGroup = 'Production Management';
+    protected static ?int $navigationSort = 20;
 
     public static function form(Form $form): Form
     {

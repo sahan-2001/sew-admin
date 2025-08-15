@@ -40,10 +40,11 @@ class CustomerAdvanceInvoiceResource extends Resource
     protected static ?string $model = CustomerAdvanceInvoice::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Invoices';
-    protected static ?string $label = 'Customer Invoice';
-    protected static ?string $pluralLabel = 'Customer Invoices';
-    protected static ?string $navigationLabel = 'Customer Invoices';
+    protected static ?string $navigationGroup = 'CO/ SO Invoices';
+    protected static ?string $label = 'CO/SO Invoice';
+    protected static ?string $pluralLabel = 'CO/ SO Invoices';
+    protected static ?string $navigationLabel = 'CO/ SO Invoices';
+    protected static ?int $navigationSort = 4;
 
 
     public static function form(Form $form): Form

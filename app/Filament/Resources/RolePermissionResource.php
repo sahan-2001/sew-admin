@@ -15,7 +15,8 @@ class RolePermissionResource extends Resource
     protected static ?string $model = Role::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?string $navigationGroup = 'User Management';
+#    protected static ?string $navigationGroup = 'User Management';
+#    protected static ?int $navigationSort = 33;
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -80,6 +81,7 @@ class RolePermissionResource extends Resource
                 ->label('Roles & Permissions')
                 ->icon(static::$navigationIcon)
                 ->url(static::getUrl('index'))
+                ->group(static::$navigationGroup)
                 ->visible(fn () => auth()->user()->hasRole('admin')),
         ];
     }

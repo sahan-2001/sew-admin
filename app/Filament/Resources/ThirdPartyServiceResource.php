@@ -61,9 +61,10 @@ class ThirdPartyServiceResource extends Resource
 {
     protected static ?string $model = ThirdPartyService::class;
 
-    protected static ?string $navigationGroup = 'Services';
+    protected static ?string $navigationGroup = 'External Services';
     protected static ?string $navigationLabel = '3rd Party Services';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
+    protected static ?int $navigationSort = 30;
 
     public static function form(Form $form): Form
     {

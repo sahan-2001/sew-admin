@@ -32,6 +32,7 @@ class MaterialQCResource extends Resource
     protected static ?string $label = 'Material QC';
     protected static ?string $pluralLabel = 'Material QCs';
     protected static ?string $navigationLabel = 'Material QC';
+    protected static ?int $navigationSort = 21;
 
     public static function form(Form $form): Form
     {

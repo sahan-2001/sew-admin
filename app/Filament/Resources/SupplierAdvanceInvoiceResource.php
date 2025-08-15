@@ -35,10 +35,11 @@ class SupplierAdvanceInvoiceResource extends Resource
     protected static ?string $model = SupplierAdvanceInvoice::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Invoices';
+    protected static ?string $navigationGroup = 'PO Invoices';
     protected static ?string $label = 'PO Advance Invoice';
     protected static ?string $pluralLabel = 'PO Advance Invoices';
     protected static ?string $navigationLabel = 'PO Advance Invoices';
+    protected static ?int $navigationSort = 7;
 
     public static function form(Form $form): Form
     {

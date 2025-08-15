@@ -16,7 +16,8 @@ class ProfileSettings extends Page implements Forms\Contracts\HasForms
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     protected static string $view = 'filament.pages.profile-settings';
     protected static ?string $title = 'Profile Settings';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 31;
+    protected static ?string $navigationGroup = 'User Management';
 
     public $name;
     public $email;

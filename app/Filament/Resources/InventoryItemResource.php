@@ -20,7 +20,8 @@ class InventoryItemResource extends Resource
     protected static ?string $model = InventoryItem::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
-    protected static ?string $navigationGroup = 'Inventory Management'; 
+    protected static ?string $navigationGroup = 'Inventory Item Management'; 
+    protected static ?int $navigationSort = 23;
 
      static function form(Forms\Form $form): Forms\Form
     {

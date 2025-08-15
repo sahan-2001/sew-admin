@@ -25,8 +25,9 @@ class StockOverviewResource extends Resource
     protected static ?string $model = Stock::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-folder';
-    protected static ?string $navigationLabel = 'Stocks';
-    protected static ?string $navigationGroup = 'Inventory Management'; 
+    protected static ?string $navigationLabel = 'Stock Management';
+    protected static ?string $navigationGroup = 'Inventory Item Management'; 
+    protected static ?int $navigationSort = 22;
 
 
     public static function form(Forms\Form $form): Forms\Form

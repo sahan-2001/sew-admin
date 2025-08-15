@@ -52,6 +52,7 @@ class EnterPerformanceRecordResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Enter Daily Operation Performance';
     protected static ?string $navigationGroup = 'Daily Production';
+    protected static ?int $navigationSort = 14;
 
 
     public static function getAvailableLabels(int $modelId = null): array

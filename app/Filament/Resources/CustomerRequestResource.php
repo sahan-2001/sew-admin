@@ -18,6 +18,7 @@ class CustomerRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document';
     protected static ?string $navigationGroup = 'Customer Management';
+    protected static ?int $navigationSort = 10;
 
     public static function form(Forms\Form $form): Forms\Form
     {

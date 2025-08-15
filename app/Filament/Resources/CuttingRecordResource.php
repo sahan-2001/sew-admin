@@ -47,8 +47,9 @@ class CuttingRecordResource extends Resource
     protected static ?string $model = CuttingRecord::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Cutting Department';
+    protected static ?string $navigationGroup = 'Cutting Materials';
     protected static ?string $navigationLabel = 'Cutting Material Records';
+    protected static ?int $navigationSort = 16;
 
     // Helper method to get line ID
     protected static function getLineId($orderType, $orderId, $itemName)

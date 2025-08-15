@@ -23,7 +23,8 @@ class SupplierResource extends Resource
     protected static ?string $model = Supplier::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Procurement/Traders';
+    protected static ?string $navigationGroup = 'Supplier Management';
+    protected static ?int $navigationSort = 11;
 
     public static function form(Forms\Form $form): Forms\Form
     {

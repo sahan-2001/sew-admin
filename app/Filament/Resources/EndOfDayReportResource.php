@@ -48,6 +48,7 @@ class EndOfDayReportResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'End of Day Report';
     protected static ?string $navigationGroup = 'Daily Production';
+    protected static ?int $navigationSort = 15;
 
     public static function form(Form $form): Form
     {

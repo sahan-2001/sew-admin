@@ -26,10 +26,10 @@ class CuttingStationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-scissors';
     protected static ?string $navigationLabel = 'Cutting Stations';
-    protected static ?string $navigationGroup = 'Cutting Department';
+    protected static ?string $navigationGroup = 'Cutting Materials';
     protected static ?string $pluralLabel = 'Cutting Stations';
     protected static ?string $modelLabel = 'Cutting Station';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 17;
 
     public static function form(Form $form): Form
     {

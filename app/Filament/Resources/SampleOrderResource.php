@@ -35,6 +35,7 @@ class SampleOrderResource extends Resource
     protected static ?string $navigationGroup = 'Orders';
     protected static ?string $navigationLabel = 'Sample Customer Orders';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
