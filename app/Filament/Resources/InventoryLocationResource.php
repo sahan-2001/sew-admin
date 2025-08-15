@@ -18,7 +18,7 @@ class InventoryLocationResource extends Resource
 {
     protected static ?string $model = InventoryLocation::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document';
+    protected static ?string $navigationIcon = 'heroicon-o-map';
     protected static ?string $navigationGroup = 'Inventory Item Management'; 
     protected static ?int $navigationSort = 24;
 

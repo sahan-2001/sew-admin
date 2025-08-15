@@ -39,7 +39,7 @@ class CustomerAdvanceInvoiceResource extends Resource
 {
     protected static ?string $model = CustomerAdvanceInvoice::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-receipt-percent';
     protected static ?string $navigationGroup = 'CO/ SO Invoices';
     protected static ?string $label = 'CO/SO Invoice';
     protected static ?string $pluralLabel = 'CO/ SO Invoices';

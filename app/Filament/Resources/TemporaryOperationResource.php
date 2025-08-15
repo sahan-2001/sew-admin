@@ -30,7 +30,7 @@ class TemporaryOperationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-cog';
     protected static ?string $navigationLabel = 'Temporary Operations';
-    protected static ?string $navigationGroup = 'Production Management';
+    protected static ?string $navigationGroup = 'Daily Production';
     protected static ?int $navigationSort = 19;
 
     public static function form(Form $form): Form

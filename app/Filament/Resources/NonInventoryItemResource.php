@@ -17,7 +17,7 @@ class NonInventoryItemResource extends Resource
 {
     protected static ?string $model = NonInventoryItem::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-archive-box';
+    protected static ?string $navigationIcon = 'heroicon-o-document';
     protected static ?string $navigationGroup = 'Non Inventory Item Management'; 
     protected static ?int $navigationSort = 26;
 

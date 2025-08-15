@@ -37,7 +37,7 @@ class CustomerOrderResource extends Resource
 
     protected static ?string $navigationGroup = 'Orders';
     protected static ?string $navigationLabel = 'Customer Orders';
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

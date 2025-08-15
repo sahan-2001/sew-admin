@@ -27,7 +27,7 @@ use Filament\Tables\Filters\Filter;
 class MaterialQCResource extends Resource
 {
     protected static ?string $model = MaterialQC::class;
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-document-check';
     protected static ?string $navigationGroup = 'Quality Control';
     protected static ?string $label = 'Material QC';
     protected static ?string $pluralLabel = 'Material QCs';

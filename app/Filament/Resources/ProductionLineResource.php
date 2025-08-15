@@ -23,7 +23,7 @@ class ProductionLineResource extends Resource
 {
     protected static ?string $model = ProductionLine::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
     protected static ?string $navigationLabel = 'Production Lines';
     protected static ?string $navigationGroup = 'Production Management';
     protected static ?int $navigationSort = 20;

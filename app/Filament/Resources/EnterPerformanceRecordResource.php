@@ -49,8 +49,8 @@ class EnterPerformanceRecordResource extends Resource
 {
     protected static ?string $model = EnterPerformanceRecord::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationLabel = 'Enter Daily Operation Performance';
+    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static ?string $navigationLabel = 'Enter Operation Performance';
     protected static ?string $navigationGroup = 'Daily Production';
     protected static ?int $navigationSort = 14;
 

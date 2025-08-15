@@ -16,7 +16,7 @@ class CustomerRequestResource extends Resource
 {
     protected static ?string $model = CustomerRequest::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document';
+    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     protected static ?string $navigationGroup = 'Customer Management';
     protected static ?int $navigationSort = 10;
 

@@ -41,7 +41,7 @@ class AssignDailyOperationsResource extends Resource
 {
     protected static ?string $model = AssignDailyOperation::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-calendar';
     protected static ?string $navigationGroup = 'Daily Production';
     protected static ?string $navigationLabel = 'Assign Daily Operations';
     protected static ?int $navigationSort = 13;
