@@ -587,6 +587,7 @@ class AssignDailyOperationsResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('id'),
                 Tables\Columns\TextColumn::make('order_type'),
                 Tables\Columns\TextColumn::make('order_id')->sortable()->searchable()
                     ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
