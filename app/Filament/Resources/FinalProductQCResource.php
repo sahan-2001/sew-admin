@@ -26,6 +26,11 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
 
 class FinalProductQCResource extends Resource
 {
@@ -75,7 +80,7 @@ class FinalProductQCResource extends Resource
                                                 ->helperText('You can select only orders with "completed" or "Delivered" status.')
                                                 ->options(function ($get) {
                                                     $orderType = $get('order_type');
-                                                    $allowedStatuses = ['released', 'material released', 'cut', 'started'];
+                                                    $allowedStatuses = ['completed', 'delivered'];
 
                                                     if ($orderType === 'customer_order') {
                                                         return \App\Models\CustomerOrder::with('customer')
@@ -130,7 +135,7 @@ class FinalProductQCResource extends Resource
                                                         }
 
                                                         $set('customer_id', $order->customer_id ?? 'N/A');
-                                                        $set('customer_name', $order->customer->customer_id ?? 'N/A');
+                                                        $set('customer_name', $order->customer->name?? 'N/A');
                                                         $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
 
                                                         $cuttingRecordExists = \App\Models\CuttingRecord::where('order_type', $orderType)
@@ -167,7 +172,7 @@ class FinalProductQCResource extends Resource
 
                                                         if ($order) {
                                                             $set('customer_id', $order->customer_id ?? 'N/A');
-                                                            $set('customer_id', $order->customer->customer_id ?? 'N/A');
+                                                            $set('customer_id', $order->customer->name ?? 'N/A');
                                                             $set('wanted_date', $order->wanted_delivery_date ?? 'N/A');
                                                         } else {
                                                             $set('customer_id', 'N/A');
@@ -192,9 +197,34 @@ class FinalProductQCResource extends Resource
                                 ]),     
                         ]),
 
-                    Tabs\Tab::make('Quality Checking')
+                    Tabs\Tab::make('Quality Assurence Details')
                         ->schema([
-                            Section::make('Quality Check Labels')
+                            Section::make('Quality Checker Information')
+                                ->schema([
+                                    Grid::make(2)
+                                        ->schema([
+                                            Select::make('qc_officer_id')
+                                                ->label('QC Officer')
+                                                ->options(function () {
+                                                    return User::role('Quality Control')
+                                                        ->get()
+                                                        ->mapWithKeys(function ($user) {
+                                                            return [$user->id => "{$user->id} | {$user->name}"];
+                                                        })
+                                                        ->toArray();
+                                                })
+                                                ->searchable()
+                                                ->required(),
+
+                                            DatePicker::make('inspected_date')
+                                                ->label('Inspected Date')
+                                                ->default(now())
+                                                ->required()
+                                                ->maxDate(now()),
+                                     ]),
+                                ]),
+                                    
+                            Section::make('Quality Inspection Results')
                                 ->schema([
                                     // QC Passed Section
                                     Section::make('Select Labels QC Passed')
@@ -610,6 +640,65 @@ class FinalProductQCResource extends Resource
                 ])
                 ->columnSpanFull(),
         ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')->label('Record ID')->searchable()->sortable()->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('order_type')->label('Order Type'),
+                TextColumn::make('order_id')
+                    ->label('Order ID')
+                    ->sortable()
+                    ->formatStateUsing(fn (?string $state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('inspected_date')->label('Inspected Date')->date(),
+                TextColumn::make('qc_officer_id')->label('QC officer')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('status')->label('Status'),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('order_type')
+                    ->label('Order Type')
+                    ->options([
+                        'customer_order' => 'Customer Order',
+                        'sample_order' => 'Sample Order',
+                    ]),
+
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'reported' => 'Reported',
+                        'recorded' => 'Recorded',
+                    ]),
+        
+                Tables\Filters\Filter::make('inspected_date')
+                    ->label('Inspected Date')
+                    ->form([
+                        DatePicker::make('inspected_date')
+                            ->label('Select Inspected Date')
+                            ->maxDate(now()->toDateString())
+                            ->closeOnDateSelection(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query->when(
+                            $data['inspected_date'] ?? null,
+                            fn ($q, $date) => $q->whereDate('inspected_date', $date)
+                        );
+                    }),
+            ])
+            ->actions([
+            ]);
     }
 
     public static function getPages(): array

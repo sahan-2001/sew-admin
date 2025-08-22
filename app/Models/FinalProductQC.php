@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FinalProductQC extends Model
 {
@@ -12,8 +13,8 @@ class FinalProductQC extends Model
     protected $table = 'final_product_qcs'; 
 
     protected $fillable = [
-        'cutting_label_id',
-        'status',
+        'order_type',
+        'order_id',
         'qc_officer_id',
         'inspected_date',
         'result',
@@ -21,9 +22,19 @@ class FinalProductQC extends Model
         'updated_by',
     ];
 
-    public function cuttingLabel()
+    public function qcLabels(): HasMany
     {
-        return $this->belongsTo(CuttingLabel::class);
+        return $this->hasMany(FinalProductQCLabel::class);
+    }
+
+    public function passedLabels(): HasMany
+    {
+        return $this->hasMany(FinalProductQCLabel::class)->where('result', 'passed');
+    }
+
+    public function failedLabels(): HasMany
+    {
+        return $this->hasMany(FinalProductQCLabel::class)->where('result', 'failed');
     }
 
     public function qcOfficer()
@@ -42,4 +53,15 @@ class FinalProductQC extends Model
         return $query->whereIn('status', $statuses);
     }
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
 }

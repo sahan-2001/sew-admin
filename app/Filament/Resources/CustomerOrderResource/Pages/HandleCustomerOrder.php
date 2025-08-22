@@ -151,7 +151,7 @@ class HandleCustomerOrder extends Page
                 ->action(fn () => $this->completeOrder());
         }
 
-        if ($this->record->status === 'completed') {
+        if (in_array($this->record->status, ['final_qc_recorded', 'completed'])) {
             $actions[] = Action::make('deliver_order')
                 ->label('Mark as Delivered')
                 ->icon('heroicon-o-truck')

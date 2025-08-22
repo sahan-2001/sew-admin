@@ -299,7 +299,7 @@ class HandleSampleOrder extends Page
         }
 
         // Deliver Sample Order
-        if ($this->record->status === 'completed') {
+        if (in_array($this->record->status, ['final_qc_recorded', 'completed'])) {
             $actions[] = Action::make('deliver_order')
                 ->label('Deliver Sample Order')
                 ->color('success')

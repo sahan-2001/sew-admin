@@ -8,20 +8,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up()
     {
-        Schema::create('final_product_qcs', function (Blueprint $table) {
+        Schema::create('final_product_qc_labels', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('cutting_label_id');
-            $table->string('status')->default('pending');
-            $table->unsignedBigInteger('qc_officer_id');
-            $table->date('inspected_date')->nullable();
-            $table->boolean('result')->nullable();
-            $table->unsignedBigInteger('created_by');
-            $table->unsignedBigInteger('updated_by');
+            $table->foreignId('final_product_qc_id')->constrained()->onDelete('cascade');
+            $table->foreignId('cutting_label_id')->constrained()->onDelete('cascade');
+            $table->enum('result', ['passed', 'failed'])->default('passed');
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('cutting_label_id')->references('id')->on('cutting_labels')->onDelete('cascade');
-            $table->foreign('qc_officer_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
