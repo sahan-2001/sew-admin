@@ -3,8 +3,9 @@
 namespace App\Filament\Resources\CustomerResource\Pages;
 
 use App\Filament\Resources\CustomerResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\CustomerCreatedMail;
 
 class CreateCustomer extends CreateRecord
 {
@@ -13,5 +14,14 @@ class CreateCustomer extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    protected function afterCreate(): void
+    {
+        // Send welcome email if email exists
+        if ($this->record->email) {
+            Mail::to($this->record->email)
+                ->send(new CustomerCreatedMail($this->record));
+        }
     }
 }
