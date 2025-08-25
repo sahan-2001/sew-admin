@@ -82,6 +82,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Item Code</th>
                         <th>Item Name</th>
                         <th>Qty</th>
@@ -92,6 +93,7 @@
                 <tbody>
                     @foreach($items as $item)
                         <tr>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $item->inventoryItem->item_code ?? 'N/A' }}</td>
                             <td>{{ $item->inventoryItem->name ?? 'N/A' }}</td>
                             <td>{{ $item->quantity }}</td>
@@ -102,6 +104,7 @@
                 </tbody>
             </table>
         </div>
+
 
         <!-- CTA -->
         <div class="cta-section">

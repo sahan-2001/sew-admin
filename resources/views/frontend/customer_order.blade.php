@@ -118,7 +118,7 @@
             <div class="mb-4 md:mb-0">
                 <h3 class="text-lg font-medium mb-2">Track This Order</h3>
                 <div class="text-blue-600 text-sm break-all">
-                    {{ url("/customer-orders/{$customerOrder->order_id}/{$customerOrder->random_code}") }}
+                    {{ url("/customer-order/{$customerOrder->order_id}/{$customerOrder->random_code}") }}
                 </div>
             </div>
             <div class="bg-white p-3 rounded border">

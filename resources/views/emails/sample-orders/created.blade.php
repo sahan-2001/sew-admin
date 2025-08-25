@@ -81,6 +81,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Item</th>
                         <th>Variation</th>
                         <th>Qty</th>
@@ -91,10 +92,12 @@
                 <tbody>
                     @foreach($items as $item)
                         <tr>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $item->item_name }}</td>
                             <td>
                                 @if($item->variations->count())
-                                    @foreach($item->variations as $variation)
+                                    @foreach($item->variations as $vIndex => $variation)
+                                        {{ $loop->parent->iteration }}.{{ $loop->iteration }} 
                                         {{ $variation->variation_name }} ({{ $variation->quantity }}x{{ $variation->price }})<br>
                                     @endforeach
                                 @else
@@ -109,6 +112,7 @@
                 </tbody>
             </table>
         </div>
+
 
         <!-- CTA -->
         <div class="cta-section">
