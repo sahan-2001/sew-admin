@@ -211,17 +211,12 @@ class HandleCustomerOrder extends Page
                 ->action(fn () => $this->planOrder());
         }
 
-        if (in_array($this->record->status, [
-            'pending', 'released',
-            'completed', 'delivered', 'cancelled', 'paused', 'cut', 'started'
-        ])) {
-            $actions[] = Action::make('print_pdf')
-                ->label('Print PDF')
-                ->icon('heroicon-o-printer')
-                ->color('secondary')
-                ->url(fn () => route('customer-orders.pdf', ['customer_order' => $this->record->order_id]))
-                ->openUrlInNewTab();
-        }
+        $actions[] = Action::make('print_pdf')
+            ->label('Print PDF')
+            ->icon('heroicon-o-printer')
+            ->color('secondary')
+            ->url(fn () => route('customer-orders.pdf', ['customer_order' => $this->record->order_id]))
+            ->openUrlInNewTab();
 
         return $actions;
     }
