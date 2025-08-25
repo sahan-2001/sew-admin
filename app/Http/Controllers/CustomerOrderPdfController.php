@@ -44,7 +44,7 @@ class CustomerOrderPdfController extends Controller
         $orderItems = $customer_order->orderItems()->with('variationItems')->get();
         
         // Generate QR Code URL using ID + RANDOM CODE
-        $qrCodeData = url('/customer-orders/' . $customer_order->order_id . '/' . $customer_order->random_code);
+        $qrCodeData = url('/customer-order/' . $customer_order->order_id . '/' . $customer_order->random_code);
 
         // Create QR Code (SVG)
         $qrCode = new QrCode($qrCodeData);

@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\CustomerOrder;
+use App\Models\PurchaseOrder;
 use App\Models\Company;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -10,13 +10,12 @@ use Illuminate\Queue\SerializesModels;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\SvgWriter;
 
-class CustomerOrderCreatedMail extends Mailable
+class PurchaseOrderCreatedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $order;
     public $companyDetails;
-    public $customer;
     public $items;
     public $qrCodePath;
     public $qrCodeUrl;
@@ -24,20 +23,19 @@ class CustomerOrderCreatedMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(CustomerOrder $order)
+    public function __construct(PurchaseOrder $order)
     {
         $this->order = $order->load([
-            'customer',
-            'orderItems.variationItems', // eager-load items and variations
+            'items.inventoryItem', 
+            'items',           
+            'invoice',          
+            'supplierAdvanceInvoices',
         ]);
 
-        // Related customer
-        $this->customer = $this->order->customer;
+        // Purchase order items
+        $this->items = $this->order->items;
 
-        // Order items with variations
-        $this->items = $this->order->orderItems;
-
-        // Fetch company details (first record)
+        // Fetch company details (first record in company table)
         $company = Company::first();
         $this->companyDetails = $company ? [
             'name'    => $company->name,
@@ -46,15 +44,15 @@ class CustomerOrderCreatedMail extends Mailable
             'email'   => $company->email ?? 'N/A',
         ] : [];
 
-        // Generate QR code URL (order ID + random code)
-        $this->qrCodeUrl = url('/customer-order/' . $this->order->order_id . '/' . $this->order->random_code);
+        // Generate QR code URL
+        $this->qrCodeUrl = url('/purchase-order/' . $this->order->id . '/' . $this->order->random_code);
 
-        // Generate and save QR code as SVG
+        // Generate and save QR code as SVG in storage
         $qrCode = new QrCode($this->qrCodeUrl);
         $writer = new SvgWriter();
         $result = $writer->write($qrCode);
 
-        $qrCodeFilename = 'qrcode_customer_' . $this->order->order_id . '.svg';
+        $qrCodeFilename = 'purchase_qrcode_' . $this->order->id . '.svg';
         $path = 'public/qrcodes/' . $qrCodeFilename;
 
         \Storage::makeDirectory('public/qrcodes');
@@ -68,11 +66,14 @@ class CustomerOrderCreatedMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('New Customer Order Confirmation')
-                    ->view('emails.customer-orders.created')
+        return $this->subject('New Purchase Order Confirmation')
+                    ->view('emails.purchase-orders.created')
                     ->with([
-                        'qrCodeUrl' => $this->qrCodeUrl,
-                        'qrCodePath' => $this->qrCodePath,
+                        'order'        => $this->order,
+                        'companyDetails' => $this->companyDetails,
+                        'items'        => $this->items,
+                        'qrCodeUrl'    => $this->qrCodeUrl,
+                        'qrCodePath'   => $this->qrCodePath,
                     ]);
     }
 }

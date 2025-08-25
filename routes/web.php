@@ -32,6 +32,7 @@ use App\Http\Controllers\CustomerAdvanceInvoiceController;
 use App\Http\Controllers\TemporaryOperationController;
 use App\Http\Controllers\MaterialQCPrintController;
 use App\Http\Controllers\AssignDailyOperationPrintController;
+use App\Http\Controllers\CustomerOrderFrontendController;
 use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
@@ -140,6 +141,9 @@ Route::get('/purchase-order/{id}/{random_code}', [POFrontendController::class, '
 
 Route::get('/sample-orders/{id}/{random_code}', [SOFrontendController::class, 'showSampleOrder'])
     ->name('sample-orders.show');
+
+Route::get('/customer-order/{id}/{random_code}', [CustomerOrderFrontendController::class, 'showCustomerOrder'])
+    ->name('customer-orders.show');
 
 // Customer Order report route 
 Route::get('/customer-orders/{customer_order}/pdf', [CustomerOrderPdfController::class, 'show'])
