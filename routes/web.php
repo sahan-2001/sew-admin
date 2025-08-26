@@ -7,6 +7,7 @@ use App\Filament\Resources\ActivityLogResource;
 use Filament\Facades\Filament; 
 use App\Models\CustomerOrder;
 use App\Models\PurchaseOrder;
+use App\Models\Company;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CustomerOrderController;
@@ -179,3 +180,15 @@ Route::get('/assign-daily-operations/{assignDailyOperation}/print',
     [AssignDailyOperationPrintController::class, 'print'])
     ->name('assign-daily-operations.print')
     ->middleware('auth');
+
+// Fetch contact data from database
+Route::get('/api/company', function() {
+    return Company::select('address_line_1', 'address_line_2', 'address_line_3', 'city', 'postal_code', 'country', 'primary_phone', 'secondary_phone', 'email')
+                  ->first(); 
+});
+
+
+use App\Http\Controllers\ContactController;
+
+Route::post('/contact/send', [ContactController::class, 'send']);
+// Contact form submission route
