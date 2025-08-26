@@ -65,6 +65,43 @@
             Below are the full details of this order:
         </p>
         
+        <!-- Provider Details -->
+        <div class="order-details">
+            <h2 class="details-title">Provider Details</h2>
+            @if(!empty($providerDetails))
+                <div class="detail-item">
+                    <span class="detail-label">Provider Type:</span>
+                    <span class="detail-value">{{ $providerDetails['type'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Provider ID:</span>
+                    <span class="detail-value">{{ $providerDetails['id'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Provider Name:</span>
+                    <span class="detail-value">{{ $providerDetails['name'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Shop Name:</span>
+                    <span class="detail-value">{{ $providerDetails['shop'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Address:</span>
+                    <span class="detail-value">{{ $providerDetails['address'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Phone:</span>
+                    <span class="detail-value">{{ $providerDetails['phone'] }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{ $providerDetails['email'] }}</span>
+                </div>
+            @else
+                <p style="color:#64748b;">No provider details available.</p>
+            @endif
+        </div>
+
         <!-- Order Details -->
         <div class="order-details">
             <h2 class="details-title">Purchase Order Information</h2>
@@ -98,7 +135,7 @@
                             <td>{{ $item->inventoryItem->name ?? 'N/A' }}</td>
                             <td>{{ $item->quantity }}</td>
                             <td>{{ number_format($item->price, 2) }}</td>
-                            <td>{{ number_format($item->total, 2) }}</td>
+                            <td>{{ number_format($item->quantity * $item->price, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

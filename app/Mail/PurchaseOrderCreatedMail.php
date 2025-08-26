@@ -4,6 +4,8 @@ namespace App\Mail;
 
 use App\Models\PurchaseOrder;
 use App\Models\Company;
+use App\Models\Customer;
+use App\Models\Supplier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -16,6 +18,7 @@ class PurchaseOrderCreatedMail extends Mailable
 
     public $order;
     public $companyDetails;
+    public $providerDetails; // 👈 new
     public $items;
     public $qrCodePath;
     public $qrCodeUrl;
@@ -35,7 +38,7 @@ class PurchaseOrderCreatedMail extends Mailable
         // Purchase order items
         $this->items = $this->order->items;
 
-        // Fetch company details (first record in company table)
+        // Always fetch company details
         $company = Company::first();
         $this->companyDetails = $company ? [
             'name'    => $company->name,
@@ -43,6 +46,33 @@ class PurchaseOrderCreatedMail extends Mailable
             'phone'   => $company->primary_phone ?? 'N/A',
             'email'   => $company->email ?? 'N/A',
         ] : [];
+
+        // 👇 Fetch provider details dynamically
+        if ($this->order->provider_type === 'customer') {
+            $customer = Customer::find($this->order->provider_id);
+            $this->providerDetails = $customer ? [
+                'type'    => 'Customer',
+                'id'    => $supplier->customer_id,
+                'name'    => $customer->name,
+                'shop'    => $customer->shop_name,
+                'address' => "{$customer->address_line_1}, {$customer->address_line_2}, {$customer->city}, {$customer->zip_code}",
+                'phone'   => $customer->phone_1 ?? $customer->phone_2 ?? 'N/A',
+                'email'   => $customer->email ?? 'N/A',
+            ] : [];
+        } elseif ($this->order->provider_type === 'supplier') {
+            $supplier = Supplier::find($this->order->provider_id);
+            $this->providerDetails = $supplier ? [
+                'type'    => 'Supplier',
+                'id'    => $supplier->supplier_id,
+                'name'    => $supplier->name,
+                'shop'    => $supplier->shop_name,
+                'address' => "{$supplier->address_line_1}, {$supplier->address_line_2}, {$supplier->city}, {$supplier->zip_code}",
+                'phone'   => $supplier->phone_1 ?? $supplier->phone_2 ?? 'N/A',
+                'email'   => $supplier->email ?? 'N/A',
+            ] : [];
+        } else {
+            $this->providerDetails = [];
+        }
 
         // Generate QR code URL
         $this->qrCodeUrl = url('/purchase-order/' . $this->order->id . '/' . $this->order->random_code);
@@ -69,11 +99,12 @@ class PurchaseOrderCreatedMail extends Mailable
         return $this->subject('New Purchase Order Confirmation')
                     ->view('emails.purchase-orders.created')
                     ->with([
-                        'order'        => $this->order,
+                        'order'          => $this->order,
                         'companyDetails' => $this->companyDetails,
-                        'items'        => $this->items,
-                        'qrCodeUrl'    => $this->qrCodeUrl,
-                        'qrCodePath'   => $this->qrCodePath,
+                        'providerDetails'=> $this->providerDetails, 
+                        'items'          => $this->items,
+                        'qrCodeUrl'      => $this->qrCodeUrl,
+                        'qrCodePath'     => $this->qrCodePath,
                     ]);
     }
 }

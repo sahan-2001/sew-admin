@@ -65,6 +65,36 @@
             Below are the full details of your order:
         </p>
         
+        <!-- Customer Info -->
+         <div class="order-details">
+            <h2 class="details-title">Customer Information</h2>
+            <div class="detail-item">
+                <span class="detail-label">Customer ID:</span>
+                <span class="detail-value">{{ $customer->customer_id ?? '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Customer Name:</span>
+                <span class="detail-value">{{ $customer->name ?? '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Shop Name:</span>
+                <span class="detail-value">{{ $customer->shop_name ?? '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email:</span>
+                <span class="detail-value">{{ $customer->email ?? '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Phone:</span>
+                <span class="detail-value">
+                    {{ $customer->phone_1 ?? '-' }}
+                    @if(!empty($customer->phone_2))
+                        , {{ $customer->phone_2 }}
+                    @endif
+                </span>
+            </div>
+        </div>
+        
         <!-- Order Details -->
         <div class="order-details">
             <h2 class="details-title">Order Information</h2>

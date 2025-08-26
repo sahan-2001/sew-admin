@@ -294,7 +294,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                 ->columns(3)
                                 ->schema([
                                     TextInput::make('amount')
-                                        ->label('Payment Amount (Rs)')
+                                        ->label('Received Payment Amount (Rs)')
                                         ->numeric()
                                         ->required()
                                         ->live(debounce: 300)
@@ -359,7 +359,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                 ->columns(3)
                                 ->schema([
                                     DatePicker::make('paid_date')
-                                        ->label('Paid Date')
+                                        ->label('Payment Received Date')
                                         ->required()
                                         ->default(now())
                                         ->minDate(function () {
@@ -388,7 +388,7 @@ class CustomerAdvanceInvoiceResource extends Resource
                                         }),
 
                                     Select::make('paid_via')
-                                        ->label('Paid Via')
+                                        ->label('Received Via')
                                         ->options([
                                             'cash' => 'Cash',
                                             'card' => 'Card',

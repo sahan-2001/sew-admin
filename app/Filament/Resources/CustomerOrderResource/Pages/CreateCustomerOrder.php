@@ -10,6 +10,8 @@ use App\Mail\CustomerOrderCreatedMail;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Support\Facades\Storage;
+use Filament\Notifications\Notification;
+
 
 class CreateCustomerOrder extends CreateRecord
 {
@@ -27,23 +29,40 @@ class CreateCustomerOrder extends CreateRecord
         $this->record->refresh();
 
         if ($this->record->customer && $this->record->customer->email) {
-            // Generate QR code URL
-            $qrCodeUrl = url('/customer-orders/' . $this->record->order_id . '/' . $this->record->random_code);
+            try {
+                // Generate QR code URL
+                $qrCodeUrl = url('/customer-orders/' . $this->record->order_id . '/' . $this->record->random_code);
 
-            // Generate and save QR code SVG
-            $qrCode = new QrCode($qrCodeUrl);
-            $writer = new SvgWriter();
-            $result = $writer->write($qrCode);
+                // Generate and save QR code SVG
+                $qrCode = new QrCode($qrCodeUrl);
+                $writer = new SvgWriter();
+                $result = $writer->write($qrCode);
 
-            $qrCodeFilename = 'qrcode_customer_' . $this->record->order_id . '.svg';
-            $path = 'public/qrcodes/' . $qrCodeFilename;
+                $qrCodeFilename = 'qrcode_customer_' . $this->record->order_id . '.svg';
+                $path = 'public/qrcodes/' . $qrCodeFilename;
 
-            Storage::makeDirectory('public/qrcodes');
-            Storage::put($path, $result->getString());
+                Storage::makeDirectory('public/qrcodes');
+                Storage::put($path, $result->getString());
 
-            // Send email to customer
-            Mail::to($this->record->customer->email)
-                ->send(new CustomerOrderCreatedMail($this->record));
+                // Send email to customer
+                Mail::to($this->record->customer->email)
+                    ->send(new CustomerOrderCreatedMail($this->record));
+
+                // Notify Filament user of success
+                Notification::make()
+                    ->title('Email Sent Successfully')
+                    ->body("Customer order confirmation has been sent to {$this->record->customer->email}.")
+                    ->success()
+                    ->send();
+
+            } catch (\Exception $e) {
+                // Notify Filament user if email sending failed
+                Notification::make()
+                    ->title('Email Sending Failed')
+                    ->body("Could not send email: {$e->getMessage()}")
+                    ->danger()
+                    ->send();
+            }
         }
     }
 
