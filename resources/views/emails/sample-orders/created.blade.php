@@ -106,6 +106,30 @@
             <div class="detail-item"><span class="detail-label">Status:</span><span class="detail-value" style="color:#16a34a;">{{ ucfirst($order->status) }}</span></div>
         </div>
 
+        <!-- Passcode Section -->
+        <div style="margin-top:30px; padding:25px; border:2px solid #facc15; 
+                    background: linear-gradient(to right, #fef9c3, #ffffff); 
+                    border-radius:20px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+            
+            <h3 style="font-size:20px; font-weight:700; color:#b45309; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:10px;">
+                <span style="font-size:24px;">🔑</span> Tracking Passcode
+            </h3>
+
+            <p style="font-size:14px; color:#374151; line-height:1.6; margin-bottom:20px;">
+                Use this passcode to <strong style="color:#b45309;">track your order status anytime</strong>. 
+                Keep it safe and do not share publicly.
+            </p>
+
+            <span style="display:inline-block; font-size:14px; font-weight:800; letter-spacing:6px; 
+                        color:#78350f; background:#fef3c7; border:2px solid #fcd34d; 
+                        padding:15px 30px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.1); 
+                        transition:all 0.3s ease; cursor:default;">
+                {{ $order->random_code }}
+            </span>
+        </div>
+
+        <br><br>
+
         <!-- Items Table -->
         <div class="items-table">
             <h2 class="details-title">Ordered Items</h2>
@@ -146,15 +170,23 @@
 
 
         <!-- CTA -->
-        <div class="cta-section">
-            <p>You can view your order using the QR code below:</p>
+        <div class="cta-section" style="margin-top:20px; text-align:center;">
+            <!-- Rectangle Button -->
             <p>
-                <a href="{{ $qrCodeUrl }}">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ urlencode($qrCodeUrl) }}" alt="Sample Order QR Code">
+                <a href="{{ $qrCodeUrl }}" 
+                style="display:inline-block; padding:14px 60px; background:#007bff; color:#fff; text-decoration:none; 
+                        font-weight:bold; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); min-width:220px; text-align:center;">
+                    View Order
                 </a>
             </p>
-
-            <p>Or click this link directly: <a href="{{ $qrCodeUrl }}">{{ $qrCodeUrl }}</a></p>
+            
+            <!-- QR Code Below -->
+            <p style="margin-top:15px;">
+                <a href="{{ $qrCodeUrl }}">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ urlencode($qrCodeUrl) }}" 
+                        alt="Order QR Code" style="border: 1px solid #ddd; border-radius:8px; padding:5px; background:#fff;">
+                </a>
+            </p>
         </div>
     </div>
 

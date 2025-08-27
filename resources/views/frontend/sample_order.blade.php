@@ -168,39 +168,40 @@
             </div>
         </div>
 
-        <!-- Items Table -->
+        <!-- Order Items Section -->
         <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
             <i class="fas fa-list-ul mr-3 text-blue-500"></i> Order Items
         </h2>
 
-        <div class="overflow-x-auto rounded-lg border border-gray-200 mb-6">
-            <table>
-                <thead>
+        <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mb-6">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-blue-50">
                     <tr>
-                        <th>#</th>
-                        <th>Item</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Price</th>
-                        <th class="text-right">Total</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 border-b">#</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 border-b">Item</th>
+                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 border-b">Qty</th>
+                        <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 border-b">Price</th>
+                        <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 border-b">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($sampleOrder->items as $index => $item)
-                    <tr class="item-row">
-                        <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->item_name }}</td>
-                        <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-right">{{ number_format($item->price, 2) }}</td>
-                        <td class="text-right">{{ number_format($item->calculated_total, 2) }}</td>
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 text-sm text-gray-700 border-b">{{ $index + 1 }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800 font-medium border-b">{{ $item->item_name }}</td>
+                        <td class="px-4 py-3 text-sm text-center text-gray-700 border-b">{{ $item->quantity }}</td>
+                        <td class="px-4 py-3 text-sm text-right text-gray-700 border-b">{{ number_format($item->price, 2) }}</td>
+                        <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900 border-b">{{ number_format($item->calculated_total, 2) }}</td>
                     </tr>
+
                     @if($item->is_variation && $item->variations->count())
                         @foreach($item->variations as $variation)
                         <tr class="bg-gray-50">
-                            <td></td>
-                            <td class="pl-6">{{ $variation->variation_name }}</td>
-                            <td class="text-center">{{ $variation->quantity }}</td>
-                            <td class="text-right">{{ number_format($variation->price, 2) }}</td>
-                            <td class="text-right">{{ number_format($variation->total, 2) }}</td>
+                            <td class="px-4 py-2"></td>
+                            <td class="px-4 py-2 pl-8 text-sm text-gray-600 italic">{{ $variation->variation_name }}</td>
+                            <td class="px-4 py-2 text-sm text-center text-gray-600">{{ $variation->quantity }}</td>
+                            <td class="px-4 py-2 text-sm text-right text-gray-600">{{ number_format($variation->price, 2) }}</td>
+                            <td class="px-4 py-2 text-sm text-right text-gray-600">{{ number_format($variation->total, 2) }}</td>
                         </tr>
                         @endforeach
                     @endif

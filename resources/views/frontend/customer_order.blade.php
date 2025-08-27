@@ -58,7 +58,7 @@
     $allStatuses = [
         'planned' => ['icon' => 'clock', 'label' => 'Planned'],
         'released' => ['icon' => 'box', 'label' => 'Released'],
-        'material_released' => ['icon' => 'cubes', 'label' => 'Material Released'],
+        'material released' => ['icon' => 'cubes', 'label' => 'Material Released'],
         'cut' => ['icon' => 'scissors', 'label' => 'Cut'],
         'started' => ['icon' => 'play', 'label' => 'Started'],
         'completed' => ['icon' => 'check-circle', 'label' => 'Completed'],
@@ -164,28 +164,48 @@
                 </thead>
                 <tbody>
                     @foreach($customerOrder->orderItems as $index => $item)
-                    <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td class="font-medium">{{ $item->item_name }}</td>
-                        <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-right">{{ number_format($item->price, 2) }}</td>
-                        <td class="text-right font-medium">{{ number_format($item->calculated_total, 2) }}</td>
-                    </tr>
-                    @if($item->is_variation && $item->variationItems->count())
-                        @foreach($item->variationItems as $variation)
-                        <tr class="bg-gray-50">
-                            <td></td>
-                            <td class="pl-6">{{ $variation->variation_name }}</td>
-                            <td class="text-center">{{ $variation->quantity }}</td>
-                            <td class="text-right">{{ number_format($variation->price, 2) }}</td>
-                            <td class="text-right font-medium">{{ number_format($variation->total, 2) }}</td>
+                        @php
+                            $variationTotal = $item->is_variation && $item->variationItems->count()
+                                ? $item->variationItems->sum('total')
+                                : 0;
+                            $finalTotal = $item->calculated_total + $variationTotal;
+                        @endphp
+
+                        <!-- Main Item -->
+                        <tr class="bg-gray-100">
+                            <td>{{ $index + 1 }}</td>
+                            <td class="font-medium">{{ $item->item_name }}</td>
+                            <td class="text-center">{{ $item->quantity }}</td>
+                            <td class="text-right">{{ number_format($item->price, 2) }}</td>
+                            <td class="text-right font-bold">{{ number_format($finalTotal, 2) }}</td>
                         </tr>
-                        @endforeach
-                    @endif
+
+                        <!-- Variations (if any) -->
+                        @if($item->is_variation && $item->variationItems->count())
+                            @foreach($item->variationItems as $variation)
+                                <tr class="bg-gray-50">
+                                    <td></td>
+                                    <td class="pl-6">{{ $variation->variation_name }}</td>
+                                    <td class="text-center">{{ $variation->quantity }}</td>
+                                    <td class="text-right">{{ number_format($variation->price, 2) }}</td>
+                                    <td class="text-right">{{ number_format($variation->total, 2) }}</td>
+                                </tr>
+                            @endforeach
+
+                            <!-- Variation Subtotal -->
+                            <tr class="bg-yellow-50 font-medium">
+                                <td></td>
+                                <td class="pl-6 text-yellow-700">Subtotal (Variations)</td>
+                                <td></td>
+                                <td></td>
+                                <td class="text-right text-yellow-700">{{ number_format($variationTotal, 2) }}</td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
             </table>
         </div>
+
 
         <!-- Payment Summary + QR -->
         @php

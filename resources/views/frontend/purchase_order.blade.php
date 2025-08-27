@@ -64,9 +64,10 @@
         'paused' => ['icon' => 'pause-circle', 'label' => 'Paused'],
         'planned' => ['icon' => 'calendar', 'label' => 'Planned'],
         'released' => ['icon' => 'paper-plane', 'label' => 'Released'],
-        'partially_arrived' => ['icon' => 'truck-loading', 'label' => 'Partially Arrived'],
+        'partially arrived' => ['icon' => 'truck-loading', 'label' => 'Partially Arrived'],
         'arrived' => ['icon' => 'truck', 'label' => 'Arrived'],
-        'completed' => ['icon' => 'check-circle', 'label' => 'Completed']
+        'invoiced' => ['icon' => 'file-invoice', 'label' => 'Invoiced'],
+        'closed' => ['icon' => 'lock', 'label' => 'Closed']
     ];
     $statusIndex = array_search($purchaseOrder->status, array_keys($statusSteps));
     if ($statusIndex === false) $statusIndex = 0;
@@ -76,7 +77,8 @@
         'released' => 50,
         'partially arrived' => 65,
         'arrived' => 75,
-        'completed' => 100,
+        'invoiced' => 90,
+        'closed' => 100,
         default => 0
     };
 @endphp
@@ -126,7 +128,7 @@
                         <span class="detail-value">{{ $purchaseOrder['provider_type'] }}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">PROVIDER</span>
+                        <span class="detail-label">PROVIDER NAME</span>
                         <span class="detail-value">{{ $providerDetails['name'] }}</span>
                     </div>
                 </div>

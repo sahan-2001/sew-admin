@@ -167,7 +167,7 @@
                 <a href="#services" class="text-gray-700 hover:text-indigo-600 font-medium">Services</a>
                 <a href="#process" class="text-gray-700 hover:text-indigo-600 font-medium">Process</a>
                 <a href="#materials" class="text-gray-700 hover:text-indigo-600 font-medium">Materials</a>
-
+                <a href="#track-order" class="text-gray-700 hover:text-indigo-600 font-medium">Track Order</a>
                 <a href="#contact" class="text-gray-700 hover:text-indigo-600 font-medium">Contact</a>
             </nav>
             
@@ -184,6 +184,7 @@
             <a href="#services" class="block py-2 text-gray-700 hover:text-indigo-600">Services</a>
             <a href="#process" class="block py-2 text-gray-700 hover:text-indigo-600">Process</a>
             <a href="#materials" class="block py-2 text-gray-700 hover:text-indigo-600">Materials</a>
+            <a href="#track-order" class="block py-2 text-gray-700 hover:text-indigo-600">Track Order</a>
             <a href="#contact" class="block py-2 text-gray-700 hover:text-indigo-600">Contact</a>
         </div>
     </header>
@@ -415,6 +416,66 @@
         </div>
     </section>
 
+
+    <!-- Track Order Section with BG Image -->
+    <section id="track-order" class="relative py-16">
+        <div class="absolute inset-0">
+            <!-- Background Image -->
+            <img src="{{ asset('storage/tracking.jpg') }}" 
+                alt="Order Tracking Background" 
+                class="w-full h-full object-cover">
+            <!-- Dark Overlay -->
+            <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        </div>
+
+        <!-- Content on top of BG Image -->
+        <div class="relative container mx-auto px-4 grid md:grid-cols-2 gap-8 items-center text-white">
+            
+            <!-- Left Side: About Order Tracking -->
+            <div class="p-8">
+                <h2 class="text-3xl font-bold mb-4">Track Your Orders Easily</h2>
+                <p class="text-lg leading-relaxed">
+                    Use our order tracking system to stay updated on your 
+                    <span class="font-semibold">Customer Orders</span>, 
+                    <span class="font-semibold">Sample Orders</span>, and 
+                    <span class="font-semibold">Purchase Orders</span>. 
+                    Just enter your Order ID and Security Code to view live updates instantly.
+                </p>
+            </div>
+
+            <!-- Right Side: Track Order Form -->
+            <div class="bg-white bg-opacity-90 text-gray-900 rounded-lg p-8 shadow-md">
+                <form id="track-order-form" class="space-y-6">
+                    <div>
+                        <label for="order-type" class="block text-gray-700 mb-2 font-medium">Order Type</label>
+                        <select id="order-type" name="order_type" class="w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            <option value="">Select Order Type</option>
+                            <option value="customer_order">Customer Order</option>
+                            <option value="sample_order">Sample Order</option>
+                            <option value="purchase_order">Purchase Order</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="order-id" class="block text-gray-700 mb-2 font-medium">Order ID</label>
+                        <input type="text" id="order-id" name="order_id" class="w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    
+                    <div>
+                        <label for="random-code" class="block text-gray-700 mb-2 font-medium">Security Code</label>
+                        <input type="text" id="random-code" name="random_code" class="w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                        <p class="text-sm text-gray-500 mt-1">Enter the security code provided with your order confirmation.</p>
+                    </div>
+                    
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md font-medium w-full">Track Order</button>
+                </form>
+                
+                <div id="tracking-result" class="mt-6 hidden">
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Contact Section -->
     <section id="contact" class="py-16 bg-white">
         <div class="container mx-auto px-4">
@@ -527,6 +588,7 @@
             </div>
         </div>
     </section>
+
 
     <div class="mt-12 w-full h-96 rounded-lg overflow-hidden shadow-md">
         <iframe
@@ -672,6 +734,24 @@
             setTimeout(() => {
                 modal.remove();
             }, 5000);
+        }
+    });
+
+    // Track order form submission
+    document.getElementById('track-order-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const orderType = document.getElementById('order-type').value;
+        const orderId = document.getElementById('order-id').value;
+        const randomCode = document.getElementById('random-code').value;
+        
+        // Based on the order type, redirect to the appropriate tracking page
+        if (orderType === 'customer_order') {
+            window.location.href = `/customer-order/${orderId}/${randomCode}`;
+        } else if (orderType === 'sample_order') {
+            window.location.href = `/sample-order/${orderId}/${randomCode}`;
+        } else if (orderType === 'purchase_order') {
+            window.location.href = `/purchase-order/${orderId}/${randomCode}`;
         }
     });
     </script>

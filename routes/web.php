@@ -34,6 +34,8 @@ use App\Http\Controllers\TemporaryOperationController;
 use App\Http\Controllers\MaterialQCPrintController;
 use App\Http\Controllers\AssignDailyOperationPrintController;
 use App\Http\Controllers\CustomerOrderFrontendController;
+use App\Http\Controllers\OrderTrackingController;
+use App\Http\Controllers\ContactController;
 use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
@@ -146,6 +148,9 @@ Route::get('/sample-orders/{id}/{random_code}', [SOFrontendController::class, 's
 Route::get('/customer-order/{id}/{random_code}', [CustomerOrderFrontendController::class, 'showCustomerOrder'])
     ->name('customer-orders.show');
 
+Route::get('/sample-order/{id}/{random_code}', [SOFrontendController::class, 'showSampleOrder'])
+    ->name('tracking.sample-orders.show');
+
 // Customer Order report route 
 Route::get('/customer-orders/{customer_order}/pdf', [CustomerOrderPdfController::class, 'show'])
     ->name('customer-orders.pdf');
@@ -188,7 +193,9 @@ Route::get('/api/company', function() {
 });
 
 
-use App\Http\Controllers\ContactController;
-
-Route::post('/contact/send', [ContactController::class, 'send']);
 // Contact form submission route
+Route::post('/contact/send', [ContactController::class, 'send']);
+
+// Order Tracking routes
+Route::get('/track-order', [OrderTrackingController::class, 'index'])->name('track-order.form');
+Route::post('/track-order', [OrderTrackingController::class, 'track'])->name('track-order.track');
