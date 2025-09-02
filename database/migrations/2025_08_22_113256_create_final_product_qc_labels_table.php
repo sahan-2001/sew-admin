@@ -9,14 +9,13 @@ return new class extends Migration {
     {
         Schema::create('final_product_qc_labels', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('final_product_qc_id');
+            $table->unsignedBigInteger('final_product_qc_id')->constrained()->cascadeOnDelete();;
             $table->unsignedBigInteger('cutting_label_id');
             $table->enum('result', ['pass', 'fail']);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->timestamps();
 
-            $table->foreign('final_product_qc_id')->references('id')->on('final_product_qcs')->onDelete('cascade');
             $table->foreign('cutting_label_id')->references('id')->on('cutting_labels')->onDelete('cascade');
         });
     }
