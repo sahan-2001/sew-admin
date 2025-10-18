@@ -30,6 +30,11 @@ class StockOverviewResource extends Resource
     protected static ?int $navigationSort = 22;
 
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view stocks') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

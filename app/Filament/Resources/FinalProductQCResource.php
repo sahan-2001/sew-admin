@@ -42,6 +42,11 @@ class FinalProductQCResource extends Resource
     protected static ?string $navigationLabel = 'Final Product QC';
     protected static ?int $navigationSort = 38;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view product qc records') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([

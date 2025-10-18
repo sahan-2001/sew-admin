@@ -162,26 +162,38 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view audit columns']);
 
         // Customer advance invoices
+        Permission::firstOrCreate(['name' => 'view cus_adv_invoice']);
+        Permission::firstOrCreate(['name' => 'create cus_adv_invoices']);
+        Permission::firstOrCreate(['name' => 'delete cus_adv_invoice']);
         Permission::firstOrCreate(['name' => 'cus_adv_invoice.export']);
         Permission::firstOrCreate(['name' => 'create cus_adv_invoices']);
 
         // Cutting stations
+        Permission::firstOrCreate(['name' => 'view cutting stations']);
         Permission::firstOrCreate(['name' => 'create cutting stations']);
+        Permission::firstOrCreate(['name' => 'edit cutting stations']);
+        Permission::firstOrCreate(['name' => 'delete cutting stations']);
         Permission::firstOrCreate(['name' => 'cutting_station.export']);
         
         // Cutting records
+        Permission::firstOrCreate(['name' => 'view cutting records']);
+        Permission::firstOrCreate(['name' => 'recorrect cutting records']);
         Permission::firstOrCreate(['name' => 'create cutting records']);
         Permission::firstOrCreate(['name' => 'cutting_record.export']);
 
         // Assign daily operation
+        Permission::firstOrCreate(['name' => 'view assign daily operations']);
         Permission::firstOrCreate(['name' => 'create assign daily operations']);
+        Permission::firstOrCreate(['name' => 'edit assign daily operations']);
         Permission::firstOrCreate(['name' => 'assign daily operation.export']);
 
         // Enter performance records
+        Permission::firstOrCreate(['name' => 'view performace records']);
         Permission::firstOrCreate(['name' => 'create performace records']);
         Permission::firstOrCreate(['name' => 'performance_record.export']);
 
         // End of day reports
+        Permission::firstOrCreate(['name' => 'view end of day reports']);
         Permission::firstOrCreate(['name' => 'create end of day reports']);
         Permission::firstOrCreate(['name' => 'end_of_day_report.export']);
 
@@ -189,36 +201,58 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'create material qc records']);
         Permission::firstOrCreate(['name' => 'material qc.export']);
 
+        // Final products QC reports
+        Permission::firstOrCreate(['name' => 'view product qc records']);
+        Permission::firstOrCreate(['name' => 'create product qc records']);
+        Permission::firstOrCreate(['name' => 'product qc.export']);
+
         // Non-Inventory items
+        Permission::firstOrCreate(['name' => 'view non inventory items']);
         Permission::firstOrCreate(['name' => 'create non inventory items']);
         Permission::firstOrCreate(['name' => 'non inventory item.export']);
 
         // Purchase order invoices
+        Permission::firstOrCreate(['name' => 'view purchase order invoices']);
         Permission::firstOrCreate(['name' => 'create purchase order invoices']);
         Permission::firstOrCreate(['name' => 'purchase_order_invoices.export']);
         Permission::firstOrCreate(['name' => 'pay purchase order invoice']);
 
         // Purchase order Advance invoices
+        Permission::firstOrCreate(['name' => 'view supplier advance invoices']);
         Permission::firstOrCreate(['name' => 'supplier advance invoices.export']);
         Permission::firstOrCreate(['name' => 'create supplier advance invoices']);
         Permission::firstOrCreate(['name' => 'pay supp adv invoice']);
 
         // Stocks
+        Permission::firstOrCreate(['name' => 'view stocks']);
         Permission::firstOrCreate(['name' => 'create emergency stocks']);
         Permission::firstOrCreate(['name' => 'stocks.import']);
         Permission::firstOrCreate(['name' => 'stock.export']);
 
         // Temporary Operations
+        Permission::firstOrCreate(['name' => 'view temporary operations']);
         Permission::firstOrCreate(['name' => 'create temporary operations']);
         Permission::firstOrCreate(['name' => 'temporary operations.export']);
 
         // Change dates for CO/SO expences/discounts
+        Permission::firstOrCreate(['name' => 'view order discount']);
+        Permission::firstOrCreate(['name' => 'view order expences']);
+
+        Permission::firstOrCreate(['name' => 'edit order discount']);
+        Permission::firstOrCreate(['name' => 'edit order expences']);
+        Permission::firstOrCreate(['name' => 'delete order discount']);
+        Permission::firstOrCreate(['name' => 'delete order expences']);
+
         Permission::firstOrCreate(['name' => 'backdate order discount']);
         Permission::firstOrCreate(['name' => 'future order discount']);
 
         // Change dates for payments
         Permission::firstOrCreate(['name' => 'Allow Backdated Payments']);
         Permission::firstOrCreate(['name' => 'Allow Future Payments']);
+
+        // Company settings
+        Permission::firstOrCreate(['name' => 'view company settings']);
+        Permission::firstOrCreate(['name' => 'edit company settings']);
 
 
 

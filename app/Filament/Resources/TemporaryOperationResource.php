@@ -33,6 +33,11 @@ class TemporaryOperationResource extends Resource
     protected static ?string $navigationGroup = 'Daily Production';
     protected static ?int $navigationSort = 19;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view temporary operations') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

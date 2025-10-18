@@ -20,6 +20,11 @@ class SupplierRequestResource extends Resource
     protected static ?string $navigationGroup = 'Supplier Management';
     protected static ?int $navigationSort = 12;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view customer requests') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

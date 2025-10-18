@@ -28,6 +28,11 @@ class ProductionLineResource extends Resource
     protected static ?string $navigationGroup = 'Production Management';
     protected static ?int $navigationSort = 20;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view production lines') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

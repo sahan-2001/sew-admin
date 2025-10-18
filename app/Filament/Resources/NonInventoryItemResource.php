@@ -21,6 +21,11 @@ class NonInventoryItemResource extends Resource
     protected static ?string $navigationGroup = 'Non Inventory Item Management'; 
     protected static ?int $navigationSort = 26;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view non inventory items') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

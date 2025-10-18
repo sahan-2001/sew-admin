@@ -51,6 +51,11 @@ class CuttingRecordResource extends Resource
     protected static ?string $navigationLabel = 'Cutting Material Records';
     protected static ?int $navigationSort = 16;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view cutting records') ?? false;
+    }
+    
     // Helper method to get line ID
     protected static function getLineId($orderType, $orderId, $itemName)
     {
@@ -986,6 +991,7 @@ class CuttingRecordResource extends Resource
 
                 Tables\Actions\Action::make('recorrect')
                     ->label('Recorrect')
+                    ->visible(fn () => auth()->user()->can('recorrect cutting records'))
                     ->color('danger')
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()

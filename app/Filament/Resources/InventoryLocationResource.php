@@ -22,6 +22,11 @@ class InventoryLocationResource extends Resource
     protected static ?string $navigationGroup = 'Inventory Item Management'; 
     protected static ?int $navigationSort = 24;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view inventory locations') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

@@ -35,6 +35,11 @@ class CompanySettingsResource extends Resource
     protected static ?string $navigationGroup = 'System Settings';
     protected static ?int $navigationSort = 35;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view company settings') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -258,7 +263,8 @@ class CompanySettingsResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->iconButton()
-                    ->tooltip('Edit Settings'),
+                    ->tooltip('Edit Settings')
+                    ->visible(fn () => auth()->user()?->can('edit company settings') ?? false),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

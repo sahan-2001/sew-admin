@@ -50,6 +50,11 @@ class EndOfDayReportResource extends Resource
     protected static ?string $navigationGroup = 'Daily Production';
     protected static ?int $navigationSort = 15;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view end of day reports') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

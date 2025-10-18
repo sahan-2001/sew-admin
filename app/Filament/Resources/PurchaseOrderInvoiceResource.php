@@ -46,6 +46,11 @@ class PurchaseOrderInvoiceResource extends Resource
     protected static ?string $navigationLabel = 'Final PO Invoices';
     protected static ?int $navigationSort = 8;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view purchase order invoices') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([

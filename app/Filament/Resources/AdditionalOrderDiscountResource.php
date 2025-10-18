@@ -27,12 +27,17 @@ class AdditionalOrderDiscountResource extends Resource
     protected static ?string $model = AdditionalOrderDiscount::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-     protected static ?string $navigationGroup = 'CO/ SO Invoices';
+    protected static ?string $navigationGroup = 'CO/ SO Invoices';
     protected static ?string $navigationLabel = 'CO/SO Order Discounts';
     protected static ?string $label = 'CO/SO Order Discount';
     protected static ?string $pluralLabel = 'CO/SO Order Discounts';
     protected static ?int $navigationSort = 5;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view order discount') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -238,10 +243,12 @@ class AdditionalOrderDiscountResource extends Resource
         ])
         ->actions([
             Tables\Actions\EditAction::make()
-                ->hidden(fn ($record) => $record->status === 'closed' || $record->status === 'approved'),
+                ->hidden(fn ($record) => $record->status === 'closed' || $record->status === 'approved')
+                ->visible(fn () => auth()->user()?->can('edit order discount') ?? false),
 
             Tables\Actions\DeleteAction::make()
-                ->hidden(fn ($record) => $record->status === 'closed'),
+                ->hidden(fn ($record) => $record->status === 'closed')
+                ->visible(fn () => auth()->user()?->can('delete order discount') ?? false),
         ])
         ->bulkActions([
         ]);

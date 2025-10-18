@@ -32,6 +32,11 @@ class ProductionLineOperationResource extends Resource
     protected static ?string $navigationGroup = 'Production Management';
     protected static ?int $navigationSort = 18;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view workstations') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

@@ -25,6 +25,11 @@ class ReleaseMaterialResource extends Resource
     protected static ?string $navigationLabel = 'Release Materials';
     protected static ?int $navigationSort = 28;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view release materials') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([

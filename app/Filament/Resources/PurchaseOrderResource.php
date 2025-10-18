@@ -38,6 +38,11 @@ class PurchaseOrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-on-square';
     protected static ?int $navigationSort = 3;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view purchase orders') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

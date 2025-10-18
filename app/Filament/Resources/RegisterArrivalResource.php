@@ -28,6 +28,11 @@ class RegisterArrivalResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-truck';
     protected static ?int $navigationSort = 27;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view register arrivals') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([

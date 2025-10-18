@@ -47,6 +47,11 @@ class CustomerAdvanceInvoiceResource extends Resource
     protected static ?int $navigationSort = 4;
 
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view cus_adv_invoice') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -482,10 +487,13 @@ class CustomerAdvanceInvoiceResource extends Resource
                     ->icon('heroicon-o-arrow-down')
                     ->url(fn (CustomerAdvanceInvoice $record): string => route('customer-advance-invoice.pdf', ['invoice' => $record->id]))
                     ->openUrlInNewTab()
+
                     ->color('primary'),
 
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
+                    ->visible(fn () => auth()->user()?->can('delete cus_adv_invoice') ?? false),
+
             ])
         ->defaultSort('id', 'desc') 
         ->recordUrl(null);

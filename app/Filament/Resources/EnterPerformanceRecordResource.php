@@ -55,6 +55,11 @@ class EnterPerformanceRecordResource extends Resource
     protected static ?int $navigationSort = 14;
 
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view performace records') ?? false;
+    }
+    
     public static function getAvailableLabels(int $modelId = null): array
     {
         if (!$modelId) return [];

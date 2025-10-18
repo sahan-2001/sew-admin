@@ -40,6 +40,11 @@ class CustomerOrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?int $navigationSort = 1;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view customer orders') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

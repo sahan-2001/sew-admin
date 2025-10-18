@@ -41,6 +41,11 @@ class SupplierAdvanceInvoiceResource extends Resource
     protected static ?string $navigationLabel = 'PO Advance Invoices';
     protected static ?int $navigationSort = 7;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view supplier advance invoices') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([

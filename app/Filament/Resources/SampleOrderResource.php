@@ -37,6 +37,11 @@ class SampleOrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-plus';
     protected static ?int $navigationSort = 2;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view sample orders') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

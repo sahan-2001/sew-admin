@@ -32,6 +32,11 @@ class AdditionalOrderExpenseResource extends Resource
     protected static ?string $pluralLabel = 'CO/SO Order Expences';
     protected static ?string $navigationLabel = 'CO/SO Order Expences';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view order expences') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -237,10 +242,12 @@ class AdditionalOrderExpenseResource extends Resource
         ])
         ->actions([
             Tables\Actions\EditAction::make()
-                ->hidden(fn ($record) => $record->status === 'closed' || $record->status === 'approved'),
+                ->hidden(fn ($record) => $record->status === 'closed' || $record->status === 'approved')
+                ->visible(fn () => auth()->user()?->can('edit order expences') ?? false),
 
             Tables\Actions\DeleteAction::make()
-                ->hidden(fn ($record) => $record->status === 'closed'),
+                ->hidden(fn ($record) => $record->status === 'closed')
+                ->visible(fn () => auth()->user()?->can('delete order expences') ?? false),
         ])
         ->bulkActions([
         ]);

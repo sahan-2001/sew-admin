@@ -32,6 +32,11 @@ class ProductionMachineResource extends Resource
     protected static ?int $navigationSort = 29;
     
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view production machines') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

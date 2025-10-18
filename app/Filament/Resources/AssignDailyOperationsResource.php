@@ -46,6 +46,11 @@ class AssignDailyOperationsResource extends Resource
     protected static ?string $navigationLabel = 'Assign Daily Operations';
     protected static ?int $navigationSort = 13;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view assign daily operations') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -633,7 +638,10 @@ class AssignDailyOperationsResource extends Resource
                     ->openUrlInNewTab(),
                 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => $record->status !== 'recorded'),
+                    ->visible(fn ($record) =>
+                        $record->status !== 'recorded'
+                        && auth()->user()?->can('edit assign daily operations')
+                    ),
             ])
         ->defaultSort('id', 'desc') 
         ->recordUrl(null);

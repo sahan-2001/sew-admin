@@ -34,6 +34,11 @@ class MaterialQCResource extends Resource
     protected static ?string $navigationLabel = 'Material QC';
     protected static ?int $navigationSort = 21;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view material qc') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([

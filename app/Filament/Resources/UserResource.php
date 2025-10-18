@@ -11,6 +11,9 @@ use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\Section;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
 
 
 class UserResource extends Resource
@@ -18,12 +21,17 @@ class UserResource extends Resource
     protected static ?string $model = User::class;
 
     protected static ?string $navigationLabel = 'User Management';
-    protected static ?string $pluralLabel = 'User Management';
-    protected static ?string $modelLabel = 'User Management';
+    protected static ?string $pluralLabel = 'Users';
+    protected static ?string $modelLabel = 'User';
     protected static ?string $navigationIcon = 'heroicon-o-user';
     protected static ?string $navigationGroup = 'User Management';
     protected static ?int $navigationSort = 32;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view users') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
@@ -113,8 +121,11 @@ class UserResource extends Resource
                 // Define your filters if needed
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('edit users')),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn () => auth()->user()?->can('delete users')),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

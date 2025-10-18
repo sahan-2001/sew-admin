@@ -421,7 +421,7 @@
     <section id="track-order" class="relative py-16">
         <div class="absolute inset-0">
             <!-- Background Image -->
-            <img src="{{ asset('storage/tracking.jpg') }}" 
+            <img src="{{ asset('public/tracking.jpg') }}" 
                 alt="Order Tracking Background" 
                 class="w-full h-full object-cover">
             <!-- Dark Overlay -->

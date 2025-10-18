@@ -25,6 +25,11 @@ class CustomerResource extends Resource
     protected static ?string $navigationGroup = 'Customer Management';
     protected static ?int $navigationSort = 9;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view customers') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

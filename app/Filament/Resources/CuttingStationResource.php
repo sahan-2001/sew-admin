@@ -31,6 +31,11 @@ class CuttingStationResource extends Resource
     protected static ?string $modelLabel = 'Cutting Station';
     protected static ?int $navigationSort = 17;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view cutting stations') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -79,9 +84,14 @@ class CuttingStationResource extends Resource
                     }),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-                ForceDeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn () => auth()->user()->can('edit cutting stations')),
+
+                DeleteAction::make()
+                    ->visible(fn () => auth()->user()->can('delete cutting stations')),
+
+                ForceDeleteAction::make()
+                    ->visible(fn () => auth()->user()->can('delete cutting stations')),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),

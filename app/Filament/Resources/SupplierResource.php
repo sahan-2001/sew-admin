@@ -26,6 +26,11 @@ class SupplierResource extends Resource
     protected static ?string $navigationGroup = 'Supplier Management';
     protected static ?int $navigationSort = 11;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view suppliers') ?? false;
+    }
+    
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form

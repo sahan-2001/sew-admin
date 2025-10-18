@@ -21,6 +21,11 @@ class WarehouseResource extends Resource
     protected static ?string $navigationGroup = 'Inventory Item Management'; 
     protected static ?int $navigationSort = 25;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view warehouses') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form
