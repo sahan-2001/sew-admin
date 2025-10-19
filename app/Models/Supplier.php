@@ -30,14 +30,36 @@ class Supplier extends Model
         'updated_by',
     ];
 
-    public function addedBy()
+    protected static function booted()
     {
-        return $this->belongsTo(User::class, 'added_by');
-    }
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+        });
 
-    public function approvedBy()
-    {
-        return $this->belongsTo(User::class, 'approved_by');
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+
+        static::created(function ($supplier) {
+            \App\Models\SupplierControlAccount::create([
+                'chart_of_account_id' => 1, 
+                'supplier_id' => $supplier->supplier_id,
+                'payable_account_id' => null,
+                'purchase_account_id' => null,
+                'vat_input_account_id' => null,
+                'purchase_discount_account_id' => null,
+                'bad_debt_recovery_account_id' => null,
+                'debit_total' => 0,
+                'credit_total' => 0,
+                'balance' => 0,
+                'debit_total_vat' => 0,
+                'credit_total_vat' => 0,
+                'balance_vat' => 0,
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+        });
     }
 
     protected static $logAttributes = [
@@ -87,17 +109,5 @@ class Supplier extends Model
                 $userInfo = $user ? " by {$user->name} (ID: {$user->id})" : "";
                 return "Supplier #{$this->supplier_id} was {$eventName}{$userInfo}";
             });
-    }
-
-    protected static function booted()
-    {
-        static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
-        });
-
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
-        });
     }
 }

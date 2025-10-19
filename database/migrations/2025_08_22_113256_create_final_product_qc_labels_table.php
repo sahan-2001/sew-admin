@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('cutting_label_id')->references('id')->on('cutting_labels')->onDelete('cascade');
         });

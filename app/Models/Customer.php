@@ -64,6 +64,24 @@ class Customer extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::created(function ($customer) {
+            \App\Models\CustomerControlAccount::create([
+                'customer_id' => $customer->customer_id,
+                'receivable_account_id' => null,
+                'sales_account_id' => null,
+                'vat_output_account_id' => null,
+                'bad_debt_expense_account_id' => null,
+                'debit_total' => 0,
+                'credit_total' => 0,
+                'balance' => 0,
+                'debit_total_vat' => 0,
+                'credit_total_vat' => 0,
+                'balance_vat' => 0,
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+        });
     }
 
     public function supplierAdvanceInvoices()
