@@ -17,7 +17,7 @@ class ChartOfAccountResource extends Resource
     protected static ?string $model = ChartOfAccount::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Accounting';
+    protected static ?string $navigationGroup = 'Accounting & Finance';
     protected static ?string $navigationLabel = 'Chart of Accounts';
     protected static ?int $navigationSort = 1;
 
@@ -79,58 +79,10 @@ class ChartOfAccountResource extends Resource
                 ->columns(2)
                 ->collapsible(),
 
-            Forms\Components\Section::make('Control Account Settings')
-                ->description('Enable and configure this as a control account if applicable.')
-                ->schema([
-                    Forms\Components\Toggle::make('is_control_account')
-                        ->label('Is Control Account?')
-                        ->live(),
 
-                    Forms\Components\Select::make('control_account_type')
-                        ->label('Control Account Type')
-                        ->options([
-                            'customer' => 'Customer Control Account',
-                            'supplier' => 'Supplier / Vendor Control Account',
-                            'vat' => 'VAT Control Account',
-                            'money_bank' => 'Money & Bank Control Account',
-                        ])
-                        ->visible(fn(callable $get) => $get('is_control_account'))
-                        ->required(fn(callable $get) => $get('is_control_account')),
-                ])
-                ->columns(2)
-                ->collapsible(),
+            Forms\Components\Toggle::make('is_control_account')
+                ->hidden(),
 
-            Forms\Components\Section::make('VAT Configuration')
-                ->description('Select linked VAT accounts if applicable.')
-                ->schema([
-                    Forms\Components\Select::make('vat_output_account_id')
-                        ->label('VAT Output Account')
-                        ->options(fn () => 
-                            VATControlAccount::orderBy('code')
-                                ->get()
-                                ->mapWithKeys(fn ($vat) => [
-                                    $vat->id => "{$vat->code} | {$vat->name} | {$vat->vat_percentage}%"
-                                ])
-                        )
-                        ->searchable()
-                        ->preload()
-                        ->nullable(),
-
-                    Forms\Components\Select::make('vat_input_account_id')
-                        ->label('VAT Input Account')
-                        ->options(fn () => 
-                            VATControlAccount::orderBy('code')
-                                ->get()
-                                ->mapWithKeys(fn ($vat) => [
-                                    $vat->id => "{$vat->code} | {$vat->name} | {$vat->vat_percentage}%"
-                                ])
-                        )
-                        ->searchable()
-                        ->preload()
-                        ->nullable(),
-                ])
-                ->columns(2)
-                ->collapsible(),
 
             Forms\Components\Section::make('Account Balances')
                 ->description('Automatically maintained by the system. Read-only fields.')
@@ -197,13 +149,6 @@ class ChartOfAccountResource extends Resource
 
                 Tables\Columns\TextColumn::make('control_account_type')
                     ->label('Control Type')
-                    ->formatStateUsing(fn(?string $state): ?string => match ($state) {
-                        'customer' => 'Customer',
-                        'supplier' => 'Supplier/Vendor',
-                        'vat' => 'VAT',
-                        'money_bank' => 'Money & Bank',
-                        default => null,
-                    })
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('statement_type')
@@ -257,7 +202,21 @@ class ChartOfAccountResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
+                    ->hidden(fn ($record) => $record->is_control_account || $record->status === 'active')
                     ->before(function ($record, $action) {
+                        if ($record->is_control_account) {
+                            $action->cancel();
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot delete control account')
+                                ->body("The account '{$record->name}' is a control account and cannot be deleted.")
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        // Prevent deleting active accounts
                         if ($record->status === 'active') {
                             $action->cancel();
 
@@ -285,6 +244,9 @@ class ChartOfAccountResource extends Resource
             'index'  => Pages\ListChartOfAccounts::route('/'),
             'create' => Pages\CreateChartOfAccount::route('/create'),
             'edit'   => Pages\EditChartOfAccount::route('/{record}/edit'),
+
+            'balance-sheet'     => Pages\BalanceSheet::route('/balance-sheet'),
+            'income-statement'  => Pages\IncomeStatement::route('/income-statement'),
         ];
     }
 }

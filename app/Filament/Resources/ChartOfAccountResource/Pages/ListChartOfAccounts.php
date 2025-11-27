@@ -13,6 +13,16 @@ class ListChartOfAccounts extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('balance_sheet')
+                ->label('Balance Sheet')
+                ->url(route('filament.admin.resources.chart-of-accounts.balance-sheet'))
+                ->color('success'),
+
+            Actions\Action::make('income_statement')
+                ->label('Income Statement')
+                ->url(route('filament.admin.resources.chart-of-accounts.income-statement'))
+                ->color('primary'),
+
             Actions\CreateAction::make(),
         ];
     }

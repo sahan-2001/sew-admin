@@ -2,27 +2,28 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class VATControlAccount extends Model
+class TransactionSetup extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
-    protected $table = 'v_a_t_control_accounts';
+    protected $table = 'transaction_setups';
 
     protected $fillable = [
-        'code',
-        'name',
+        'transaction_name',
         'description',
+        'remarks',
         'status',
-        'debit_total_vat',
-        'credit_total_vat',
-        'balance_vat',
         'created_by',
         'updated_by',
     ];
+
+    public function transactionSetupAccounts()
+    {
+        return $this->hasMany(TransactionSetupAccount::class);
+    }
 
     protected static function booted()
     {

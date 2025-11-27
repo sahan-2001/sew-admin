@@ -13,7 +13,7 @@ use Filament\Forms\Form;
 class ControlAccountResource extends Resource
 {
     protected static ?string $model = ChartOfAccount::class;
-    protected static ?string $navigationGroup = 'Accounting';
+    protected static ?string $navigationGroup = 'Accounting & Finance';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Control Accounts';
 

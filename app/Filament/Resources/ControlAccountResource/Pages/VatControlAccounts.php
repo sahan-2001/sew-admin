@@ -65,12 +65,6 @@ class VATControlAccounts extends ListRecords
                             ->label('Description')
                             ->rows(2),
 
-                        Forms\Components\TextInput::make('vat_percentage')
-                            ->label('VAT Percentage')
-                            ->numeric()
-                            ->suffix('%')
-                            ->required(),
-
                         Forms\Components\Hidden::make('debit_total_vat')->default(0),
                         Forms\Components\Hidden::make('credit_total_vat')->default(0),
                         Forms\Components\Hidden::make('balance_vat')->default(0),
@@ -96,10 +90,6 @@ class VATControlAccounts extends ListRecords
                     ->label('Name')
                     ->sortable()
                     ->searchable(),
-
-                Tables\Columns\TextColumn::make('vat_percentage')
-                    ->label('VAT %')
-                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('debit_total_vat')
                     ->label('Debit Total (VAT)')
@@ -153,13 +143,6 @@ class VATControlAccounts extends ListRecords
                             ->label('Description')
                             ->rows(2)
                             ->default($record->description),
-
-                        Forms\Components\TextInput::make('vat_percentage')
-                            ->label('VAT Percentage')
-                            ->numeric()
-                            ->suffix('%')
-                            ->required()
-                            ->default($record->vat_percentage),
                     ])
                     ->action(function (array $data, VATControlAccount $record, Action $action) {
                         $record->update($data);

@@ -17,9 +17,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->string('name');
             $table->text('description')->nullable();
-            
-            $table->decimal('vat_percentage', 25, 2)->default(0.00);
-            
+                        
             $table->decimal('debit_total_vat', 25, 2)->default(0.00);
             $table->decimal('credit_total_vat', 25, 2)->default(0.00);
             $table->decimal('balance_vat', 25, 2)->default(0.00);

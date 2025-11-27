@@ -33,8 +33,8 @@ return new class extends Migration
             $table->decimal('balance_vat', 25, 2)->default(0.00);
             
             $table->string('status')->default('created'); 
-            $table->foreignId('created_by');
-            $table->foreignId('updated_by');
+            $table->foreignId('created_by')->nullable();
+            $table->foreignId('updated_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
