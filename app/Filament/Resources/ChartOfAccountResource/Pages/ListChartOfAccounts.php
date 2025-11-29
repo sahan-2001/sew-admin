@@ -21,7 +21,7 @@ class ListChartOfAccounts extends ListRecords
             Actions\Action::make('income_statement')
                 ->label('Income Statement')
                 ->url(route('filament.admin.resources.chart-of-accounts.income-statement'))
-                ->color('primary'),
+                ->color('success'),
 
             Actions\CreateAction::make(),
         ];

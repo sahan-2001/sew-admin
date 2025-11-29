@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('account_type', ['asset', 'equity', 'liability', 'income', 'expense']);
             $table->boolean('is_control_account')->default(false);
             $table->string('control_account_type')->nullable();
+            $table->enum('sub_category', ['current', 'non_current'])->nullable();
             $table->enum('statement_type', ['balance_sheet', 'income_statement'])->default('balance_sheet');
             $table->text('description')->nullable();
             

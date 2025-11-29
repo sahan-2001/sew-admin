@@ -26,11 +26,11 @@ class TransactionSetupSeeder extends Seeder
         }
 
         $accounts = [
-            ['code' => '1000', 'name' => 'Customer Control Account',        'account_type' => 'Asset', 'is_control_account' => true, 'control_account_type' => 'Customer',       'statement_type' => 'balance_sheet'],
-            ['code' => '1100', 'name' => 'Supplier/Vendor Control Account',        'account_type' => 'Liability', 'is_control_account' => true, 'control_account_type' => 'Supplier',       'statement_type' => 'balance_sheet'],
-            ['code' => '1200', 'name' => 'VAT Control Account',             'account_type' => 'Liability', 'is_control_account' => true, 'control_account_type' => 'VAT',            'statement_type' => 'balance_sheet'],
-            ['code' => '1300', 'name' => 'Cash & Bank Control Account',     'account_type' => 'Asset', 'is_control_account' => true, 'control_account_type' => 'Cash & Bank',    'statement_type' => 'balance_sheet'],
-            ['code' => '1400', 'name' => 'Fixed Assets Control Account',    'account_type' => 'Asset', 'is_control_account' => true, 'control_account_type' => 'Fixed Assets',   'statement_type' => 'balance_sheet'],
+            ['code' => '1000', 'name' => 'Customer Control Account',        'account_type' => 'Asset', 'sub_category' => 'current', 'is_control_account' => true, 'control_account_type' => 'Customer',       'statement_type' => 'balance_sheet'],
+            ['code' => '1100', 'name' => 'Supplier/Vendor Control Account',        'account_type' => 'Liability', 'sub_category' => 'current', 'is_control_account' => true, 'control_account_type' => 'Supplier',       'statement_type' => 'balance_sheet'],
+            ['code' => '1200', 'name' => 'VAT Control Account',             'account_type' => 'Liability', 'sub_category' => 'current', 'is_control_account' => true, 'control_account_type' => 'VAT',            'statement_type' => 'balance_sheet'],
+            ['code' => '1300', 'name' => 'Cash & Bank Control Account',     'account_type' => 'Asset', 'sub_category' => 'current', 'is_control_account' => true, 'control_account_type' => 'Cash & Bank',    'statement_type' => 'balance_sheet'],
+            ['code' => '1400', 'name' => 'Fixed Assets Control Account',    'account_type' => 'Asset', 'sub_category' => 'non_current', 'is_control_account' => true, 'control_account_type' => 'Fixed Assets',   'statement_type' => 'balance_sheet'],
         ];
 
         foreach ($accounts as $acc) {
@@ -43,6 +43,7 @@ class TransactionSetupSeeder extends Seeder
                         'is_control_account' => $acc['is_control_account'],
                         'control_account_type' => $acc['control_account_type'],
                         'statement_type' => $acc['statement_type'],
+                        'sub_category' => strtolower($acc['sub_category']),
                         'description' => $acc['name'],
                         'status' => 'Active',
                     ]

@@ -19,6 +19,7 @@ class ChartOfAccount extends Model
         'is_control_account',
         'control_account_type',
         'statement_type',
+        'sub_category',
         'description',
         'vat_output_account_id',
         'vat_input_account_id',

@@ -54,8 +54,9 @@ class ChartOfAccountResource extends Resource
                 ->collapsible(),
             
             Forms\Components\Section::make('Account Type & Statement Type')
-                ->description('Select the Accounting type and effective statement type.')
+                ->description('Select the accounting type, statement type, and sub-category if applicable.')
                 ->schema([
+                    // Account Type
                     Forms\Components\Select::make('account_type')
                         ->label('Account Type')
                         ->options([
@@ -65,20 +66,40 @@ class ChartOfAccountResource extends Resource
                             'income' => 'Income',
                             'expense' => 'Expense',
                         ])
+                        ->reactive()
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            // Auto-map account types → statement types
+                            if (in_array($state, ['income', 'expense'])) {
+                                $set('statement_type', 'income_statement');
+                            } else {
+                                $set('statement_type', 'balance_sheet');
+                            }
+                        })
                         ->required(),
 
+                    // Sub-Category (Current / Non-Current)
+                    Forms\Components\Select::make('sub_category')
+                        ->label('Sub-Category')
+                        ->options([
+                            'current' => 'Current',
+                            'non_current' => 'Non-Current',
+                        ])
+                        ->visible(fn ($get) => in_array($get('account_type'), ['asset', 'liability']))
+                        ->required(fn ($get) => in_array($get('account_type'), ['asset', 'liability'])),
+                        
+                    // Statement Type (read-only, auto-set)
                     Forms\Components\Select::make('statement_type')
                         ->label('Statement Type')
                         ->options([
                             'balance_sheet' => 'Balance Sheet',
                             'income_statement' => 'Income Statement',
                         ])
-                        ->required()
-                        ->default('balance_sheet'),
+                        ->reactive()
+                        ->disabled()
+                        ->required(), 
                 ])
-                ->columns(2)
+                ->columns(3)
                 ->collapsible(),
-
 
             Forms\Components\Toggle::make('is_control_account')
                 ->hidden(),
@@ -141,14 +162,23 @@ class ChartOfAccountResource extends Resource
                         'danger' => 'expense',
                         'primary' => 'income',
                     ])
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state)),
+                    ->formatStateUsing(function ($state, $record) {
+                        $type = ucfirst($state); 
+
+                        if (in_array($state, ['asset', 'liability']) && $record->sub_category) {
+                            $sub = str_replace('_', ' ', $record->sub_category); 
+                            $type .= " ({$sub})";
+                        }
+
+                        return $type;
+                    }),
 
                 Tables\Columns\IconColumn::make('is_control_account')
                     ->label('Control')
                     ->boolean(),
 
                 Tables\Columns\TextColumn::make('control_account_type')
-                    ->label('Control Type')
+                    ->label('Control Account Type')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('statement_type')
