@@ -12,7 +12,6 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 
-
 class CustomerControlAccounts extends ListRecords
 {
     protected static string $resource = ControlAccountResource::class;
@@ -33,7 +32,7 @@ class CustomerControlAccounts extends ListRecords
                 ->color('info')
                 ->icon('heroicon-o-banknotes')
                 ->url(route('filament.admin.resources.control-accounts.vat')),
-                
+
             Actions\Action::make('back')
                 ->label('Back to Control Accounts')
                 ->icon('heroicon-o-arrow-left')
@@ -43,154 +42,171 @@ class CustomerControlAccounts extends ListRecords
     }
 
     public function table(Table $table): Table
-{
-    return $table
-        ->query(CustomerControlAccount::query())
-        ->columns([
-            Tables\Columns\TextColumn::make('customer.customer_id')
-                ->label('Customer ID')
-                ->sortable()
-                ->searchable(),
+    {
+        return $table
+            ->query(CustomerControlAccount::query())
+            ->columns([
+                Tables\Columns\TextColumn::make('customer.customer_id')->label('Customer ID')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('customer.name')->label('Customer Name')->sortable()->searchable()->toggleable(),
+                Tables\Columns\TextColumn::make('debit_total')->label('Debit Total')->money('LKR', true)->sortable(),
+                Tables\Columns\TextColumn::make('credit_total')->label('Credit Total')->money('LKR', true)->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('balance')->label('Balance (No VAT)')->money('LKR', true)->sortable(),
+                Tables\Columns\TextColumn::make('balance_vat')->label('Balance (With VAT)')->money('LKR', true)->sortable(),
 
-            Tables\Columns\TextColumn::make('customer.name')
-                ->toggleable(isToggledHiddenByDefault: true)
-                ->label('Customer Name')
-                ->sortable()
-                ->searchable(),
+                ...(Auth::user()->can('view audit columns') ? [
+                    Tables\Columns\TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                    Tables\Columns\TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                    Tables\Columns\TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    Tables\Columns\TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                ] : []),
+            ])
+            ->actions([
+                // View Details
+                Tables\Actions\Action::make('view_details')
+                    ->label('View Details')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Customer Control Account Details')
+                    ->modalSubmitAction(false)
+                    ->modalWidth('lg')
+                    ->modalContent(function (CustomerControlAccount $record) {
+                        $accounts = [
+                            'Receivable' => $record->receivableAccount?->account_name,
+                            'Sales' => $record->salesAccount?->account_name,
+                            'Export Sales' => $record->exportSalesAccount?->account_name,
+                            'Sales Returns' => $record->salesReturnAccount?->account_name,
+                            'Sales Discounts' => $record->salesDiscountAccount?->account_name,
+                            'Customer Advances' => $record->customerAdvanceAccount?->account_name,
+                            'VAT Output' => $record->vatOutputAccount?->account_name,
+                            'VAT Receivable' => $record->vatReceivableAccount?->account_name,
+                            'Bad Debt' => $record->badDebtExpenseAccount?->account_name,
+                            'Allowance Doubtful' => $record->allowanceDoubtfulAccount?->account_name,
+                            'Inventory' => $record->inventoryAccount?->account_name,
+                            'COGS' => $record->cogsAccount?->account_name,
+                        ];
 
-            Tables\Columns\TextColumn::make('debit_total')
-                ->label('Debit Balance')
-                ->money('LKR', true)
-                ->sortable(),
+                        $html = '<div class="space-y-4"><div><h3 class="font-semibold text-gray-700">Customer Info</h3>';
+                        $html .= '<p><strong>ID:</strong> ' . e($record->customer?->customer_id ?? 'N/A') . '</p>';
+                        $html .= '<p><strong>Name:</strong> ' . e($record->customer?->name ?? 'N/A') . '</p></div>';
+                        $html .= '<div><h3 class="font-semibold text-gray-700">Accounts</h3>';
+                        foreach ($accounts as $label => $value) {
+                            $html .= '<p><strong>' . $label . ':</strong> ' . e($value ?? 'N/A') . '</p>';
+                        }
+                        $html .= '</div><div><h3 class="font-semibold text-gray-700">Balances</h3>';
+                        $html .= '<p><strong>Debit Total:</strong> LKR ' . number_format($record->debit_total, 2) . '</p>';
+                        $html .= '<p><strong>Credit Total:</strong> LKR ' . number_format($record->credit_total, 2) . '</p>';
+                        $html .= '<p><strong>Balance (No VAT):</strong> LKR ' . number_format($record->balance, 2) . '</p>';
+                        $html .= '<p><strong>Balance (With VAT):</strong> LKR ' . number_format($record->balance_vat, 2) . '</p></div>';
+                        $html .= '<div><h3 class="font-semibold text-gray-700">Audit</h3>';
+                        $html .= '<p><strong>Created At:</strong> ' . e(optional($record->created_at)->format("Y-m-d H:i")) . '</p>';
+                        $html .= '<p><strong>Updated At:</strong> ' . e(optional($record->updated_at)->format("Y-m-d H:i")) . '</p></div></div>';
 
-            Tables\Columns\TextColumn::make('credit_total')
-                ->label('Credit Balance')
-                ->money('LKR', true)
-                ->sortable(),
+                        return new HtmlString($html);
+                    }),
 
-            Tables\Columns\TextColumn::make('balance')
-                ->label('Balance without VAT')
-                ->money('LKR', true)
-                ->sortable(),
+                // Edit Accounts
+                Tables\Actions\Action::make('edit')
+                    ->label('Edit Accounts')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->fillForm(fn(CustomerControlAccount $record) => [
+                        'receivable_account_id' => $record->receivable_account_id,
+                        'sales_account_id' => $record->sales_account_id,
+                        'export_sales_account_id' => $record->export_sales_account_id,
+                        'sales_return_account_id' => $record->sales_return_account_id,
+                        'sales_discount_account_id' => $record->sales_discount_account_id,
+                        'customer_advance_account_id' => $record->customer_advance_account_id,
+                        'vat_output_account_id' => $record->vat_output_account_id,
+                        'vat_receivable_account_id' => $record->vat_receivable_account_id,
+                        'bad_debt_expense_account_id' => $record->bad_debt_expense_account_id,
+                        'allowance_for_doubtful_account_id' => $record->allowance_for_doubtful_account_id,
+                        'inventory_account_id' => $record->inventory_account_id,
+                        'cogs_account_id' => $record->cogs_account_id,
+                    ])
+                    ->form([
+                        // --- Sections with filtered Chart of Accounts ---
+                        \Filament\Forms\Components\Section::make('Main Accounts')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('receivable_account_id')
+                                    ->label('Receivable Account')
+                                    ->relationship('receivableAccount', 'account_name', fn($q) => $q->where('is_control_account', true)->where('control_account_type', 'customer'))
+                                    ->searchable()
+                                    ->required(),
+                                \Filament\Forms\Components\Select::make('sales_account_id')
+                                    ->label('Sales Account')
+                                    ->relationship('salesAccount', 'account_name', fn($q) => $q->where('is_control_account', true)->where('control_account_type', 'customer'))
+                                    ->searchable()
+                                    ->required(),
+                                \Filament\Forms\Components\Select::make('export_sales_account_id')
+                                    ->label('Export Sales Account')
+                                    ->relationship('exportSalesAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                            ])->columns(2),
 
-            Tables\Columns\TextColumn::make('balance_vat')
-                ->label('Balance with VAT')
-                ->money('LKR', true)
-                ->sortable(),
+                        \Filament\Forms\Components\Section::make('Contra & Advances')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('sales_return_account_id')
+                                    ->label('Sales Returns Account')
+                                    ->relationship('salesReturnAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                                \Filament\Forms\Components\Select::make('sales_discount_account_id')
+                                    ->label('Sales Discounts Allowed')
+                                    ->relationship('salesDiscountAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                                \Filament\Forms\Components\Select::make('customer_advance_account_id')
+                                    ->label('Customer Advances')
+                                    ->relationship('customerAdvanceAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                            ])->columns(2),
 
-            Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
-                    ->toggleable(isToggledHiddenByDefault: true),
-            
-            ...(
-                Auth::user()->can('view audit columns')
-                    ? [
-                        Tables\Columns\TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
-                        Tables\Columns\TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
-                        Tables\Columns\TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
-                        Tables\Columns\TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
-                    ]
-                    : []
-                    ),
-        ])
-        ->actions([
-            // 🔹 View details modal
-            Tables\Actions\Action::make('view_details')
-                ->label('View Details')
-                ->icon('heroicon-o-eye')
-                ->color('info')
-                ->modalHeading('Customer Control Account Details')
-                ->modalSubmitAction(false)
-                ->modalWidth('lg')
-                ->modalContent(function (CustomerControlAccount $record) {
-                    return new HtmlString('
-                        <div class="space-y-4">
-                            <div>
-                                <h3 class="font-semibold text-gray-700">Customer Info</h3>
-                                <p><strong>ID:</strong> ' . e($record->customer?->customer_id ?? 'N/A') . '</p>
-                                <p><strong>Name:</strong> ' . e($record->customer?->name ?? 'N/A') . '</p>
-                            </div>
+                        \Filament\Forms\Components\Section::make('VAT Accounts')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('vat_output_account_id')
+                                    ->label('VAT Output Account')
+                                    ->relationship('vatOutputAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable()
+                                    ->required(),
+                                \Filament\Forms\Components\Select::make('vat_receivable_account_id')
+                                    ->label('VAT Receivable Account')
+                                    ->relationship('vatReceivableAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                            ])->columns(2),
 
-                            <div>
-                                <h3 class="font-semibold text-gray-700">Accounts</h3>
-                                <p><strong>Receivable:</strong> ' . e($record->receivableAccount?->account_name ?? 'N/A') . '</p>
-                                <p><strong>Sales:</strong> ' . e($record->salesAccount?->account_name ?? 'N/A') . '</p>
-                                <p><strong>VAT Output:</strong> ' . e($record->vatOutputAccount?->account_name ?? 'N/A') . '</p>
-                                <p><strong>Bad Debt:</strong> ' . e($record->badDebtExpenseAccount?->account_name ?? 'N/A') . '</p>
-                            </div>
+                        \Filament\Forms\Components\Section::make('Expenses & Allowances')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('bad_debt_expense_account_id')
+                                    ->label('Bad Debt Expense Account')
+                                    ->relationship('badDebtExpenseAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                                \Filament\Forms\Components\Select::make('allowance_for_doubtful_account_id')
+                                    ->label('Allowance for Doubtful Debts')
+                                    ->relationship('allowanceDoubtfulAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                            ])->columns(2),
 
-                            <div>
-                                <h3 class="font-semibold text-gray-700">Balances</h3>
-                                <p><strong>Debit Total:</strong> LKR ' . number_format($record->debit_total, 2) . '</p>
-                                <p><strong>Credit Total:</strong> LKR ' . number_format($record->credit_total, 2) . '</p>
-                                <p><strong>Balance (no VAT):</strong> LKR ' . number_format($record->balance, 2) . '</p>
-                                <p><strong>Balance (with VAT):</strong> LKR ' . number_format($record->balance_vat, 2) . '</p>
-                            </div>
-
-                            <div>
-                                <h3 class="font-semibold text-gray-700">Audit</h3>
-                                <p><strong>Created At:</strong> ' . e(optional($record->created_at)->format("Y-m-d H:i")) . '</p>
-                                <p><strong>Updated At:</strong> ' . e(optional($record->updated_at)->format("Y-m-d H:i")) . '</p>
-                            </div>
-                        </div>
-                    ');
-                }),
-
-            // 🔹 Edit modal action
-            Tables\Actions\Action::make('edit')
-                ->label('Edit Accounts')
-                ->icon('heroicon-o-pencil-square')
-                ->color('warning')
-                ->fillForm(fn(CustomerControlAccount $record) => [
-                    'receivable_account_id' => $record->receivable_account_id,
-                    'sales_account_id' => $record->sales_account_id,
-                    'vat_output_account_id' => $record->vat_output_account_id,
-                    'bad_debt_expense_account_id' => $record->bad_debt_expense_account_id,
-                ])
-                ->form([
-                    \Filament\Forms\Components\Select::make('receivable_account_id')
-                        ->label('Receivable Account')
-                        ->relationship('receivableAccount', 'account_name')
-                        ->searchable()
-                        ->required(),
-
-                    \Filament\Forms\Components\Select::make('sales_account_id')
-                        ->label('Sales Account')
-                        ->relationship('salesAccount', 'account_name')
-                        ->searchable()
-                        ->required(),
-
-                    \Filament\Forms\Components\Select::make('vat_output_account_id')
-                        ->label('VAT Output Account')
-                        ->relationship('vatOutputAccount', 'account_name')
-                        ->searchable()
-                        ->required(),
-
-                    \Filament\Forms\Components\Select::make('bad_debt_expense_account_id')
-                        ->label('Bad Debt Expense Account')
-                        ->relationship('badDebtExpenseAccount', 'account_name')
-                        ->searchable(),
-                ])
-                ->action(function (array $data, CustomerControlAccount $record): void {
-                    $record->update([
-                        'receivable_account_id' => $data['receivable_account_id'],
-                        'sales_account_id' => $data['sales_account_id'],
-                        'vat_output_account_id' => $data['vat_output_account_id'],
-                        'bad_debt_expense_account_id' => $data['bad_debt_expense_account_id'],
-                        'updated_by' => auth()->id(),
-                    ]);
-
-                    Notification::make()
-                        ->title('Control Account Updated')
-                        ->body('The control account for ' . $record->customer?->name . ' has been successfully updated.')
-                        ->success()
-                        ->send();
-                }),
-        ])
-        ->emptyStateHeading('No Customers in the control account')
-        ->emptyStateDescription('There are currently no customers available. Please add one customer to get started.')
-        ->emptyStateIcon('heroicon-o-exclamation-circle');
+                        \Filament\Forms\Components\Section::make('Inventory & COGS')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('inventory_account_id')
+                                    ->label('Finished Goods Inventory')
+                                    ->relationship('inventoryAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                                \Filament\Forms\Components\Select::make('cogs_account_id')
+                                    ->label('COGS Account')
+                                    ->relationship('cogsAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
+                                    ->searchable(),
+                            ])->columns(2),
+                    ])
+                    ->action(function (array $data, CustomerControlAccount $record) {
+                        $record->update(array_merge($data, ['updated_by' => auth()->id()]));
+                        Notification::make()
+                            ->title('Control Account Updated')
+                            ->body('The control account for ' . $record->customer?->name . ' has been successfully updated.')
+                            ->success()
+                            ->send();
+                    }),
+            ])
+            ->emptyStateHeading('No Customers in the control account')
+            ->emptyStateDescription('Please add a customer to get started.')
+            ->emptyStateIcon('heroicon-o-exclamation-circle');
+    }
 }
-
-}
-

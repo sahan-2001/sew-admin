@@ -9,6 +9,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Columns\TextColumn;
+
+
 
 class ControlAccountResource extends Resource
 {
@@ -16,6 +20,10 @@ class ControlAccountResource extends Resource
     protected static ?string $navigationGroup = 'Accounting & Finance';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Control Accounts';
+
+    protected static ?string $modelLabel = 'Control Account';
+    protected static ?string $pluralModelLabel = 'Control Accounts';
+
 
     /**
      * ------------------------------------------------------------
@@ -70,33 +78,54 @@ class ControlAccountResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\BadgeColumn::make('type')
-                    ->label('Type')
-                    ->colors([
-                        'success' => 'customer',
-                        'warning' => 'supplier',
-                        'info' => 'vat',
-                        'primary' => 'bank',
-                        'secondary' => 'cash',
-                    ])
+                Tables\Columns\TextColumn::make('debit_total')
+                    ->label('Debit without VAT')
+                    ->money('LKR', true)
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('credit_total')
+                    ->label('Credit without VAT')
+                    ->money('LKR', true)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
+                    
                 Tables\Columns\TextColumn::make('balance')
-                    ->label('Balance')
+                    ->label('Balance without VAT')
+                    ->money('LKR', true)
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('debit_total_vat')
+                    ->label('Debit with VAT')
                     ->money('LKR', true)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created')
-                    ->date('Y-m-d'),
+                Tables\Columns\TextColumn::make('credit_total_vat')
+                    ->label('Credit with VAT')
+                    ->money('LKR', true)
+                    ->sortable(),
+
+
+                Tables\Columns\TextColumn::make('balance_vat')
+                    ->label('Balance with VAT')
+                    ->money('LKR', true)
+                    ->sortable(),
+
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
             ])
             ->filters([])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 

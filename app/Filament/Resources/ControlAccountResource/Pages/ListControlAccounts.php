@@ -7,12 +7,8 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Actions;
-use App\Models\CustomerControlAccount;
-use App\Models\SupplierControlAccount;
-use App\Models\VatControlAccount;
-use App\Models\ControlAccountSummary;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\ChartOfAccount;
 
 class ListControlAccounts extends ListRecords
 {
@@ -20,8 +16,9 @@ class ListControlAccounts extends ListRecords
 
     protected function getTableQuery(): ?Builder
     {
-        // Return a valid query builder (never used)
-        return CustomerControlAccount::query()->whereRaw('1 = 0');
+        // Load all ChartOfAccounts where is_control_account = true
+        return ChartOfAccount::query()
+            ->where('is_control_account', true);
     }
 
     protected function getHeaderActions(): array
