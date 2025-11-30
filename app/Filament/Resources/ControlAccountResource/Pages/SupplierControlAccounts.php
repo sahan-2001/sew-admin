@@ -149,34 +149,119 @@ class SupplierControlAccounts extends ListRecords
                         'bad_debt_recovery_account_id' => $record->bad_debt_recovery_account_id,
                     ])
                     ->form([
-                        \Filament\Forms\Components\Select::make('payable_account_id')
-                            ->label('Payable Account')
-                            ->relationship('payableAccount', 'account_name')
-                            ->searchable()
-                            ->required(),
+                        // -----------------------------
+                        // Core Payables
+                        // -----------------------------
+                        \Filament\Forms\Components\Section::make('Core Payables')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('payable_account_id')
+                                    ->label('Payable Account')
+                                    ->relationship('payableAccount', 'name')
+                                    ->searchable()
+                                    ->required(),
 
-                        \Filament\Forms\Components\Select::make('purchase_account_id')
-                            ->label('Purchase Account')
-                            ->relationship('purchaseAccount', 'account_name')
-                            ->searchable()
-                            ->required(),
+                                \Filament\Forms\Components\Select::make('supplier_advance_account_id')
+                                    ->label('Supplier Advance Account')
+                                    ->relationship('supplierAdvanceAccount', 'name')
+                                    ->searchable(),
+                            ])->columns(2),
 
-                        \Filament\Forms\Components\Select::make('vat_input_account_id')
-                            ->label('VAT Input Account')
-                            ->relationship('vatInputAccount', 'account_name')
-                            ->searchable()
-                            ->required(),
+                        // -----------------------------
+                        // Purchase Related Accounts
+                        // -----------------------------
+                        \Filament\Forms\Components\Section::make('Purchase Accounts')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('purchase_account_id')
+                                    ->label('Purchase Account')
+                                    ->relationship('purchaseAccount', 'name')
+                                    ->searchable()
+                                    ->required(),
 
-                        \Filament\Forms\Components\Select::make('purchase_discount_account_id')
-                            ->label('Purchase Discount Account')
-                            ->relationship('purchaseDiscountAccount', 'account_name')
-                            ->searchable(),
+                                \Filament\Forms\Components\Select::make('purchase_return_account_id')
+                                    ->label('Purchase Return Account')
+                                    ->relationship('purchaseReturnAccount', 'name')
+                                    ->searchable(),
 
-                        \Filament\Forms\Components\Select::make('bad_debt_recovery_account_id')
-                            ->label('Bad Debt Recovery Account')
-                            ->relationship('badDebtRecoveryAccount', 'account_name')
-                            ->searchable(),
+                                \Filament\Forms\Components\Select::make('purchase_discount_account_id')
+                                    ->label('Purchase Discount Account')
+                                    ->relationship('purchaseDiscountAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('freight_in_account_id')
+                                    ->label('Freight In Account')
+                                    ->relationship('freightInAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('grni_account_id')
+                                    ->label('GRNI Account')
+                                    ->relationship('grniAccount', 'name')
+                                    ->searchable(),
+                            ])->columns(2),
+
+                        // -----------------------------
+                        // VAT / Tax Accounts
+                        // -----------------------------
+                        \Filament\Forms\Components\Section::make('VAT / Tax Accounts')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('vat_input_account_id')
+                                    ->label('VAT Input Account')
+                                    ->relationship('vatInputAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('vat_suspense_account_id')
+                                    ->label('VAT Suspense Account')
+                                    ->relationship('vatSuspenseAccount', 'name')
+                                    ->searchable(),
+                            ])->columns(2),
+
+                        // -----------------------------
+                        // Manufacturing Specific Accounts
+                        // -----------------------------
+                        \Filament\Forms\Components\Section::make('Manufacturing Accounts')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('direct_material_purchase_account_id')
+                                    ->label('Direct Material Purchase Account')
+                                    ->relationship('directMaterialPurchaseAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('indirect_material_purchase_account_id')
+                                    ->label('Indirect Material Purchase Account')
+                                    ->relationship('indirectMaterialPurchaseAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('production_supplies_account_id')
+                                    ->label('Production Supplies Account')
+                                    ->relationship('productionSuppliesAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('subcontracting_expense_account_id')
+                                    ->label('Subcontracting Expense Account')
+                                    ->relationship('subcontractingExpenseAccount', 'name')
+                                    ->searchable(),
+                            ])->columns(2),
+
+                        // -----------------------------
+                        // Adjustments / Write-offs
+                        // -----------------------------
+                        \Filament\Forms\Components\Section::make('Adjustments / Write-offs')
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('bad_debt_recovery_account_id')
+                                    ->label('Bad Debt Recovery Account')
+                                    ->relationship('badDebtRecoveryAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('supplier_writeoff_account_id')
+                                    ->label('Supplier Write-off Account')
+                                    ->relationship('supplierWriteoffAccount', 'name')
+                                    ->searchable(),
+
+                                \Filament\Forms\Components\Select::make('purchase_price_variance_account_id')
+                                    ->label('Purchase Price Variance Account')
+                                    ->relationship('purchasePriceVarianceAccount', 'name')
+                                    ->searchable(),
+                            ])->columns(2),
                     ])
+
                     ->action(function (array $data, SupplierControlAccount $record): void {
                         $record->update([
                             'payable_account_id' => $data['payable_account_id'],
