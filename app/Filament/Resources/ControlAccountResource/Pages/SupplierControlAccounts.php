@@ -11,6 +11,7 @@ use Filament\Actions;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
+use Filament\Forms;
 
 class SupplierControlAccounts extends ListRecords
 {
@@ -112,11 +113,11 @@ class SupplierControlAccounts extends ListRecords
 
                                 <div>
                                     <h3 class="font-semibold text-gray-700">Accounts</h3>
-                                    <p><strong>Payable:</strong> ' . e($record->payableAccount?->account_name ?? 'N/A') . '</p>
-                                    <p><strong>Purchase:</strong> ' . e($record->purchaseAccount?->account_name ?? 'N/A') . '</p>
-                                    <p><strong>VAT Input:</strong> ' . e($record->vatInputAccount?->account_name ?? 'N/A') . '</p>
-                                    <p><strong>Purchase Discount:</strong> ' . e($record->purchaseDiscountAccount?->account_name ?? 'N/A') . '</p>
-                                    <p><strong>Bad Debt Recovery:</strong> ' . e($record->badDebtRecoveryAccount?->account_name ?? 'N/A') . '</p>
+                                    <p><strong>Payable:</strong> ' . e($record->payableAccount?->name ?? 'N/A') . '</p>
+                                    <p><strong>Purchase:</strong> ' . e($record->purchaseAccount?->name ?? 'N/A') . '</p>
+                                    <p><strong>VAT Input:</strong> ' . e($record->vatInputAccount?->name ?? 'N/A') . '</p>
+                                    <p><strong>Purchase Discount:</strong> ' . e($record->purchaseDiscountAccount?->name ?? 'N/A') . '</p>
+                                    <p><strong>Bad Debt Recovery:</strong> ' . e($record->badDebtRecoveryAccount?->name ?? 'N/A') . '</p>
                                 </div>
 
                                 <div>
@@ -152,123 +153,167 @@ class SupplierControlAccounts extends ListRecords
                         // -----------------------------
                         // Core Payables
                         // -----------------------------
-                        \Filament\Forms\Components\Section::make('Core Payables')
+                        Forms\Components\Section::make('Core Payables')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('payable_account_id')
+                                Forms\Components\Select::make('payable_account_id')
                                     ->label('Payable Account')
-                                    ->relationship('payableAccount', 'name')
-                                    ->searchable()
+                                    ->relationship('payableAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload()
                                     ->required(),
 
-                                \Filament\Forms\Components\Select::make('supplier_advance_account_id')
+                                Forms\Components\Select::make('supplier_advance_account_id')
                                     ->label('Supplier Advance Account')
-                                    ->relationship('supplierAdvanceAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('supplierAdvanceAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
                             ])->columns(2),
 
                         // -----------------------------
-                        // Purchase Related Accounts
+                        // Purchase Accounts
                         // -----------------------------
-                        \Filament\Forms\Components\Section::make('Purchase Accounts')
+                        Forms\Components\Section::make('Purchase Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('purchase_account_id')
+                                Forms\Components\Select::make('purchase_account_id')
                                     ->label('Purchase Account')
-                                    ->relationship('purchaseAccount', 'name')
-                                    ->searchable()
+                                    ->relationship('purchaseAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload()
                                     ->required(),
 
-                                \Filament\Forms\Components\Select::make('purchase_return_account_id')
+                                Forms\Components\Select::make('purchase_return_account_id')
                                     ->label('Purchase Return Account')
-                                    ->relationship('purchaseReturnAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('purchaseReturnAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('purchase_discount_account_id')
+                                Forms\Components\Select::make('purchase_discount_account_id')
                                     ->label('Purchase Discount Account')
-                                    ->relationship('purchaseDiscountAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('purchaseDiscountAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('freight_in_account_id')
+                                Forms\Components\Select::make('freight_in_account_id')
                                     ->label('Freight In Account')
-                                    ->relationship('freightInAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('freightInAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('grni_account_id')
+                                Forms\Components\Select::make('grni_account_id')
                                     ->label('GRNI Account')
-                                    ->relationship('grniAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('grniAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
                             ])->columns(2),
 
                         // -----------------------------
                         // VAT / Tax Accounts
                         // -----------------------------
-                        \Filament\Forms\Components\Section::make('VAT / Tax Accounts')
+                        Forms\Components\Section::make('VAT / Tax Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('vat_input_account_id')
+                                Forms\Components\Select::make('vat_input_account_id')
                                     ->label('VAT Input Account')
-                                    ->relationship('vatInputAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('vatInputAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('vat_suspense_account_id')
+                                Forms\Components\Select::make('vat_suspense_account_id')
                                     ->label('VAT Suspense Account')
-                                    ->relationship('vatSuspenseAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('vatSuspenseAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
                             ])->columns(2),
 
                         // -----------------------------
-                        // Manufacturing Specific Accounts
+                        // Manufacturing Accounts
                         // -----------------------------
-                        \Filament\Forms\Components\Section::make('Manufacturing Accounts')
+                        Forms\Components\Section::make('Manufacturing Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('direct_material_purchase_account_id')
+                                Forms\Components\Select::make('direct_material_purchase_account_id')
                                     ->label('Direct Material Purchase Account')
-                                    ->relationship('directMaterialPurchaseAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('directMaterialPurchaseAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('indirect_material_purchase_account_id')
+                                Forms\Components\Select::make('indirect_material_purchase_account_id')
                                     ->label('Indirect Material Purchase Account')
-                                    ->relationship('indirectMaterialPurchaseAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('indirectMaterialPurchaseAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('production_supplies_account_id')
+                                Forms\Components\Select::make('production_supplies_account_id')
                                     ->label('Production Supplies Account')
-                                    ->relationship('productionSuppliesAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('productionSuppliesAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('subcontracting_expense_account_id')
+                                Forms\Components\Select::make('subcontracting_expense_account_id')
                                     ->label('Subcontracting Expense Account')
-                                    ->relationship('subcontractingExpenseAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('subcontractingExpenseAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
                             ])->columns(2),
 
                         // -----------------------------
                         // Adjustments / Write-offs
                         // -----------------------------
-                        \Filament\Forms\Components\Section::make('Adjustments / Write-offs')
+                        Forms\Components\Section::make('Adjustments / Write-offs')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('bad_debt_recovery_account_id')
+                                Forms\Components\Select::make('bad_debt_recovery_account_id')
                                     ->label('Bad Debt Recovery Account')
-                                    ->relationship('badDebtRecoveryAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('badDebtRecoveryAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('supplier_writeoff_account_id')
+                                Forms\Components\Select::make('supplier_writeoff_account_id')
                                     ->label('Supplier Write-off Account')
-                                    ->relationship('supplierWriteoffAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('supplierWriteoffAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
 
-                                \Filament\Forms\Components\Select::make('purchase_price_variance_account_id')
+                                Forms\Components\Select::make('purchase_price_variance_account_id')
                                     ->label('Purchase Price Variance Account')
-                                    ->relationship('purchasePriceVarianceAccount', 'name')
-                                    ->searchable(),
+                                    ->relationship('purchasePriceVarianceAccount', 'account_name')
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'account_name'])
+                                    ->preload(),
                             ])->columns(2),
                     ])
 
                     ->action(function (array $data, SupplierControlAccount $record): void {
+                        // Update all fields from the form
                         $record->update([
-                            'payable_account_id' => $data['payable_account_id'],
-                            'purchase_account_id' => $data['purchase_account_id'],
-                            'vat_input_account_id' => $data['vat_input_account_id'],
-                            'purchase_discount_account_id' => $data['purchase_discount_account_id'],
-                            'bad_debt_recovery_account_id' => $data['bad_debt_recovery_account_id'],
+                            'payable_account_id' => $data['payable_account_id'] ?? null,
+                            'supplier_advance_account_id' => $data['supplier_advance_account_id'] ?? null,
+                            'purchase_account_id' => $data['purchase_account_id'] ?? null,
+                            'purchase_return_account_id' => $data['purchase_return_account_id'] ?? null,
+                            'purchase_discount_account_id' => $data['purchase_discount_account_id'] ?? null,
+                            'freight_in_account_id' => $data['freight_in_account_id'] ?? null,
+                            'grni_account_id' => $data['grni_account_id'] ?? null,
+                            'vat_input_account_id' => $data['vat_input_account_id'] ?? null,
+                            'vat_suspense_account_id' => $data['vat_suspense_account_id'] ?? null,
+                            'direct_material_purchase_account_id' => $data['direct_material_purchase_account_id'] ?? null,
+                            'indirect_material_purchase_account_id' => $data['indirect_material_purchase_account_id'] ?? null,
+                            'production_supplies_account_id' => $data['production_supplies_account_id'] ?? null,
+                            'subcontracting_expense_account_id' => $data['subcontracting_expense_account_id'] ?? null,
+                            'bad_debt_recovery_account_id' => $data['bad_debt_recovery_account_id'] ?? null,
+                            'supplier_writeoff_account_id' => $data['supplier_writeoff_account_id'] ?? null,
+                            'purchase_price_variance_account_id' => $data['purchase_price_variance_account_id'] ?? null,
                             'updated_by' => auth()->id(),
                         ]);
 
