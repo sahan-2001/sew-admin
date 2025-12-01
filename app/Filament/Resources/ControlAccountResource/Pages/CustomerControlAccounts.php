@@ -11,6 +11,7 @@ use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms;
 
 class CustomerControlAccounts extends ListRecords
 {
@@ -71,18 +72,21 @@ class CustomerControlAccounts extends ListRecords
                     ->modalWidth('lg')
                     ->modalContent(function (CustomerControlAccount $record) {
                         $accounts = [
-                            'Receivable' => $record->receivableAccount?->account_name,
-                            'Sales' => $record->salesAccount?->account_name,
-                            'Export Sales' => $record->exportSalesAccount?->account_name,
-                            'Sales Returns' => $record->salesReturnAccount?->account_name,
-                            'Sales Discounts' => $record->salesDiscountAccount?->account_name,
-                            'Customer Advances' => $record->customerAdvanceAccount?->account_name,
-                            'VAT Output' => $record->vatOutputAccount?->account_name,
-                            'VAT Receivable' => $record->vatReceivableAccount?->account_name,
-                            'Bad Debt' => $record->badDebtExpenseAccount?->account_name,
-                            'Allowance Doubtful' => $record->allowanceDoubtfulAccount?->account_name,
-                            'Inventory' => $record->inventoryAccount?->account_name,
-                            'COGS' => $record->cogsAccount?->account_name,
+                            'Receivable' => $record->receivableAccount?->name,
+                            'Sales' => $record->salesAccount?->name,
+                            'Export Sales' => $record->exportSalesAccount?->name,
+                            'Sales Returns' => $record->salesReturnAccount?->name,
+                            'Sales Discounts' => $record->salesDiscountAccount?->name,
+                            'Customer Advances' => $record->customerAdvanceAccount?->name,
+                            'VAT Output' => $record->vatOutputAccount?->name,
+                            'VAT Receivable' => $record->vatReceivableAccount?->name,
+                            'Bad Debt' => $record->badDebtExpenseAccount?->name,
+                            'Allowance Doubtful' => $record->allowanceDoubtfulAccount?->name,
+                            'Cash Account' => $record->cashAccount?->name,
+                            'Bank Account' => $record->bankAccount?->name,
+                            'Undeposited Funds' => $record->undepositedFundsAccount?->name,
+                            'Inventory' => $record->inventoryAccount?->name,
+                            'COGS' => $record->cogsAccount?->name,
                         ];
 
                         $html = '<div class="space-y-4"><div><h3 class="font-semibold text-gray-700">Customer Info</h3>';
@@ -120,80 +124,235 @@ class CustomerControlAccounts extends ListRecords
                         'vat_receivable_account_id' => $record->vat_receivable_account_id,
                         'bad_debt_expense_account_id' => $record->bad_debt_expense_account_id,
                         'allowance_for_doubtful_account_id' => $record->allowance_for_doubtful_account_id,
+                        'cash_account_id' => $record->cash_account_id,
+                        'bank_account_id' => $record->bank_account_id,
+                        'undeposited_funds_account_id' => $record->undeposited_funds_account_id,
                         'inventory_account_id' => $record->inventory_account_id,
                         'cogs_account_id' => $record->cogs_account_id,
                     ])
                     ->form([
-                        // --- Sections with filtered Chart of Accounts ---
-                        \Filament\Forms\Components\Section::make('Main Accounts')
+                        // --- Main Accounts ---
+                        Forms\Components\Section::make('Main Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('receivable_account_id')
+                                Forms\Components\Select::make('receivable_account_id')
                                     ->label('Receivable Account')
-                                    ->relationship('receivableAccount', 'account_name', fn($q) => $q->where('is_control_account', true)->where('control_account_type', 'customer'))
-                                    ->searchable()
+                                    ->relationship(
+                                        'receivableAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->where('control_account_type', 'customer')
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload()
                                     ->required(),
-                                \Filament\Forms\Components\Select::make('sales_account_id')
+                                    
+                                Forms\Components\Select::make('sales_account_id')
                                     ->label('Sales Account')
-                                    ->relationship('salesAccount', 'account_name', fn($q) => $q->where('is_control_account', true)->where('control_account_type', 'customer'))
-                                    ->searchable()
+                                    ->relationship(
+                                        'salesAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->where('control_account_type', 'customer')
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload()
                                     ->required(),
-                                \Filament\Forms\Components\Select::make('export_sales_account_id')
+                                    
+                                Forms\Components\Select::make('export_sales_account_id')
                                     ->label('Export Sales Account')
-                                    ->relationship('exportSalesAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
+                                    ->relationship(
+                                        'exportSalesAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
                             ])->columns(2),
 
-                        \Filament\Forms\Components\Section::make('Contra & Advances')
+                        // --- Contra & Advances ---
+                        Forms\Components\Section::make('Contra & Advances')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('sales_return_account_id')
+                                Forms\Components\Select::make('sales_return_account_id')
                                     ->label('Sales Returns Account')
-                                    ->relationship('salesReturnAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
-                                \Filament\Forms\Components\Select::make('sales_discount_account_id')
+                                    ->relationship(
+                                        'salesReturnAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('sales_discount_account_id')
                                     ->label('Sales Discounts Allowed')
-                                    ->relationship('salesDiscountAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
-                                \Filament\Forms\Components\Select::make('customer_advance_account_id')
+                                    ->relationship(
+                                        'salesDiscountAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('customer_advance_account_id')
                                     ->label('Customer Advances')
-                                    ->relationship('customerAdvanceAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
+                                    ->relationship(
+                                        'customerAdvanceAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
                             ])->columns(2),
 
-                        \Filament\Forms\Components\Section::make('VAT Accounts')
+                        // --- VAT Accounts ---
+                        Forms\Components\Section::make('VAT Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('vat_output_account_id')
+                                Forms\Components\Select::make('vat_output_account_id')
                                     ->label('VAT Output Account')
-                                    ->relationship('vatOutputAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable()
+                                    ->relationship(
+                                        'vatOutputAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload()
                                     ->required(),
-                                \Filament\Forms\Components\Select::make('vat_receivable_account_id')
+                                    
+                                Forms\Components\Select::make('vat_receivable_account_id')
                                     ->label('VAT Receivable Account')
-                                    ->relationship('vatReceivableAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
+                                    ->relationship(
+                                        'vatReceivableAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
                             ])->columns(2),
 
-                        \Filament\Forms\Components\Section::make('Expenses & Allowances')
+                        // --- Payment Accounts ---
+                        Forms\Components\Section::make('Payment Accounts')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('bad_debt_expense_account_id')
+                                Forms\Components\Select::make('cash_account_id')
+                                    ->label('Cash Account')
+                                    ->relationship(
+                                        'cashAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('bank_account_id')
+                                    ->label('Bank Account')
+                                    ->relationship(
+                                        'bankAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('undeposited_funds_account_id')
+                                    ->label('Undeposited Funds Account')
+                                    ->relationship(
+                                        'undepositedFundsAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                            ])->columns(2),
+
+                        // --- Expenses & Allowances ---
+                        Forms\Components\Section::make('Expenses & Allowances')
+                            ->schema([
+                                Forms\Components\Select::make('bad_debt_expense_account_id')
                                     ->label('Bad Debt Expense Account')
-                                    ->relationship('badDebtExpenseAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
-                                \Filament\Forms\Components\Select::make('allowance_for_doubtful_account_id')
+                                    ->relationship(
+                                        'badDebtExpenseAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('allowance_for_doubtful_account_id')
                                     ->label('Allowance for Doubtful Debts')
-                                    ->relationship('allowanceDoubtfulAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
+                                    ->relationship(
+                                        'allowanceDoubtfulAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
                             ])->columns(2),
 
-                        \Filament\Forms\Components\Section::make('Inventory & COGS')
+                        // --- Inventory & COGS ---
+                        Forms\Components\Section::make('Inventory & COGS')
                             ->schema([
-                                \Filament\Forms\Components\Select::make('inventory_account_id')
+                                Forms\Components\Select::make('inventory_account_id')
                                     ->label('Finished Goods Inventory')
-                                    ->relationship('inventoryAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
-                                \Filament\Forms\Components\Select::make('cogs_account_id')
+                                    ->relationship(
+                                        'inventoryAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
+                                    
+                                Forms\Components\Select::make('cogs_account_id')
                                     ->label('COGS Account')
-                                    ->relationship('cogsAccount', 'account_name', fn($q) => $q->where('is_control_account', true))
-                                    ->searchable(),
+                                    ->relationship(
+                                        'cogsAccount',
+                                        'name',
+                                        fn($query) => $query
+                                            ->where('is_control_account', true)
+                                            ->orderBy('code')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->searchable(['code', 'name'])
+                                    ->preload(),
                             ])->columns(2),
                     ])
                     ->action(function (array $data, CustomerControlAccount $record) {

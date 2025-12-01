@@ -23,6 +23,11 @@ class ListChartOfAccounts extends ListRecords
                 ->url(route('filament.admin.resources.chart-of-accounts.income-statement'))
                 ->color('success'),
 
+            Actions\Action::make('cash_flow')
+                ->label('Cash Flow Statement')
+                ->url(route('filament.admin.resources.chart-of-accounts.cash_flow'))
+                ->color('success'),
+
             Actions\CreateAction::make(),
         ];
     }

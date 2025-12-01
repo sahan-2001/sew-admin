@@ -277,6 +277,7 @@ class ChartOfAccountResource extends Resource
 
             'balance-sheet'     => Pages\BalanceSheet::route('/balance-sheet'),
             'income-statement'  => Pages\IncomeStatement::route('/income-statement'),
+            'cash_flow'         => Pages\CashFlow::route('/cash_flow'),
         ];
     }
 }
