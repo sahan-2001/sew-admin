@@ -157,17 +157,17 @@ class SupplierControlAccounts extends ListRecords
                             ->schema([
                                 Forms\Components\Select::make('payable_account_id')
                                     ->label('Payable Account')
-                                    ->relationship('payableAccount', 'account_name')
+                                    ->relationship('payableAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload()
                                     ->required(),
 
                                 Forms\Components\Select::make('supplier_advance_account_id')
                                     ->label('Supplier Advance Account')
-                                    ->relationship('supplierAdvanceAccount', 'account_name')
+                                    ->relationship('supplierAdvanceAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
                             ])->columns(2),
 
@@ -178,38 +178,38 @@ class SupplierControlAccounts extends ListRecords
                             ->schema([
                                 Forms\Components\Select::make('purchase_account_id')
                                     ->label('Purchase Account')
-                                    ->relationship('purchaseAccount', 'account_name')
+                                    ->relationship('purchaseAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload()
                                     ->required(),
 
                                 Forms\Components\Select::make('purchase_return_account_id')
                                     ->label('Purchase Return Account')
-                                    ->relationship('purchaseReturnAccount', 'account_name')
+                                    ->relationship('purchaseReturnAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('purchase_discount_account_id')
                                     ->label('Purchase Discount Account')
-                                    ->relationship('purchaseDiscountAccount', 'account_name')
+                                    ->relationship('purchaseDiscountAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('freight_in_account_id')
                                     ->label('Freight In Account')
-                                    ->relationship('freightInAccount', 'account_name')
+                                    ->relationship('freightInAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('grni_account_id')
                                     ->label('GRNI Account')
-                                    ->relationship('grniAccount', 'account_name')
+                                    ->relationship('grniAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
                             ])->columns(2),
 
@@ -220,16 +220,16 @@ class SupplierControlAccounts extends ListRecords
                             ->schema([
                                 Forms\Components\Select::make('vat_input_account_id')
                                     ->label('VAT Input Account')
-                                    ->relationship('vatInputAccount', 'account_name')
+                                    ->relationship('vatInputAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('vat_suspense_account_id')
                                     ->label('VAT Suspense Account')
-                                    ->relationship('vatSuspenseAccount', 'account_name')
+                                    ->relationship('vatSuspenseAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
                             ])->columns(2),
 
@@ -240,30 +240,30 @@ class SupplierControlAccounts extends ListRecords
                             ->schema([
                                 Forms\Components\Select::make('direct_material_purchase_account_id')
                                     ->label('Direct Material Purchase Account')
-                                    ->relationship('directMaterialPurchaseAccount', 'account_name')
+                                    ->relationship('directMaterialPurchaseAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('indirect_material_purchase_account_id')
                                     ->label('Indirect Material Purchase Account')
-                                    ->relationship('indirectMaterialPurchaseAccount', 'account_name')
+                                    ->relationship('indirectMaterialPurchaseAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('production_supplies_account_id')
                                     ->label('Production Supplies Account')
-                                    ->relationship('productionSuppliesAccount', 'account_name')
+                                    ->relationship('productionSuppliesAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('subcontracting_expense_account_id')
                                     ->label('Subcontracting Expense Account')
-                                    ->relationship('subcontractingExpenseAccount', 'account_name')
+                                    ->relationship('subcontractingExpenseAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
                             ])->columns(2),
 
@@ -274,23 +274,23 @@ class SupplierControlAccounts extends ListRecords
                             ->schema([
                                 Forms\Components\Select::make('bad_debt_recovery_account_id')
                                     ->label('Bad Debt Recovery Account')
-                                    ->relationship('badDebtRecoveryAccount', 'account_name')
+                                    ->relationship('badDebtRecoveryAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('supplier_writeoff_account_id')
                                     ->label('Supplier Write-off Account')
-                                    ->relationship('supplierWriteoffAccount', 'account_name')
+                                    ->relationship('supplierWriteoffAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
 
                                 Forms\Components\Select::make('purchase_price_variance_account_id')
                                     ->label('Purchase Price Variance Account')
-                                    ->relationship('purchasePriceVarianceAccount', 'account_name')
+                                    ->relationship('purchasePriceVarianceAccount', 'name', fn($query) => $query->where('is_control_account', false))
                                     ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'account_name'])
+                                    ->searchable(['code', 'name'])
                                     ->preload(),
                             ])->columns(2),
                     ])
