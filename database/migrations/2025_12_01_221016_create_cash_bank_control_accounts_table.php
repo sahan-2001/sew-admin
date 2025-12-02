@@ -15,15 +15,33 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
-            $table->decimal('debit_total_vat', 15, 2)->default(0);
-            $table->decimal('credit_total_vat', 15, 2)->default(0);
-            $table->decimal('balance_vat', 15, 2)->default(0);
+            $table->string('account_type')->nullable();         // Cash, Bank, etc.
+            $table->string('currency', 10)->default('LKR');
+            $table->decimal('opening_balance', 15, 2)->default(0);
+            $table->date('opening_balance_date')->nullable();
+
+            $table->decimal('debit_balance', 15, 2)->default(0);
+            $table->decimal('credit_balance', 15, 2)->default(0);
+            $table->decimal('balance', 15, 2)->default(0);
+
             $table->string('bank_name')->nullable();
+            $table->string('branch_name')->nullable();
             $table->string('account_number')->nullable();
-            $table->string('account_type')->nullable(); // cash / bank
+            $table->string('swift_code')->nullable();
+            $table->string('iban')->nullable();
+            $table->string('bank_address')->nullable();
+            $table->string('tax_number')->nullable();
+
             $table->boolean('is_active')->default(true);
+            $table->text('notes')->nullable();
+
+            $table->string('status')->default('created'); 
+            $table->foreignId('created_by')->nullable();
+            $table->foreignId('updated_by')->nullable();
+
             $table->timestamps();
             $table->softDeletes();
+
         });
     }
 

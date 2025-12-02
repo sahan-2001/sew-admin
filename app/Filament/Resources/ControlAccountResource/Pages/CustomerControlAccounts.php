@@ -19,29 +19,13 @@ class CustomerControlAccounts extends ListRecords
 
     protected static ?string $title = 'Customer Control Accounts';
 
-    protected function getHeaderActions(): array
+    protected function getHeaderWidgets(): array
     {
         return [
-            Actions\Action::make('supplier')
-                ->label('Supplier Control Account')
-                ->color('warning')
-                ->icon('heroicon-o-truck')
-                ->url(route('filament.admin.resources.control-accounts.supplier')),
-
-            Actions\Action::make('vat')
-                ->label('VAT Control Account')
-                ->color('info')
-                ->icon('heroicon-o-banknotes')
-                ->url(route('filament.admin.resources.control-accounts.vat')),
-
-            Actions\Action::make('back')
-                ->label('Back to Control Accounts')
-                ->icon('heroicon-o-arrow-left')
-                ->color('gray')
-                ->url(ControlAccountResource::getUrl('index')),
+            \App\Filament\Resources\ControlAccountResource\Widgets\ControlAccountButtons::class,
         ];
     }
-
+    
     public function table(Table $table): Table
     {
         return $table

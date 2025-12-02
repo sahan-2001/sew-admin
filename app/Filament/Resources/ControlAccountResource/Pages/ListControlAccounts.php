@@ -25,10 +25,10 @@ class ListControlAccounts extends ListRecords
     }
 
     protected function getHeaderWidgets(): array
-{
-    return [
-        \App\Filament\Resources\ControlAccountResource\Widgets\ControlAccountButtons::class,
-    ];
-}
+    {
+        return [
+            \App\Filament\Resources\ControlAccountResource\Widgets\ControlAccountButtons::class,
+        ];
+    }
 
 }
