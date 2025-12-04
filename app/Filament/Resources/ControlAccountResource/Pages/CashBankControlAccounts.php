@@ -15,6 +15,7 @@ use Filament\Forms;
 class CashBankControlAccounts extends ListRecords
 {
     protected static string $resource = ControlAccountResource::class;
+    protected static ?string $model = ControlAccount::class;
     protected static ?string $title = 'Cash & Bank Control Accounts';
 
     protected function getHeaderWidgets(): array
@@ -152,6 +153,7 @@ class CashBankControlAccounts extends ListRecords
                     ->label('Edit')
                     ->icon('heroicon-o-pencil-square')
                     ->visible(fn(CashBankControlAccount $record) => $record->status === 'created') // optional: only editable if status = created
+                    ->fillForm(fn (CashBankControlAccount $record) => $record->toArray())
                     ->form([
                         Forms\Components\Section::make('General Information')
                             ->schema([
