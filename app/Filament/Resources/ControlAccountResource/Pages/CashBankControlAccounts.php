@@ -52,13 +52,15 @@ class CashBankControlAccounts extends ListRecords
                     ->form([
                         Forms\Components\Section::make('General Information')
                             ->schema([
-                                Forms\Components\TextInput::make('code')->label('Code')->required(),
+                                Forms\Components\TextInput::make('code')->label('Code')->required()
+                                    ->unique(CashBankControlAccount::class, 'code', ignoreRecord: true),
                                 Forms\Components\TextInput::make('name')->label('Account Name')->required(),
                                 Forms\Components\Select::make('account_type')
                                     ->label('Type')
                                     ->options([
                                         'cash' => 'Cash',
-                                        'bank' => 'Bank',
+                                        'bank' => 'Bank Accounts',
+                                        'fixed-deposit' => 'Fixed Deposit',
                                         'petty_cash' => 'Petty Cash',
                                     ])
                                     ->required(),
@@ -157,13 +159,15 @@ class CashBankControlAccounts extends ListRecords
                     ->form([
                         Forms\Components\Section::make('General Information')
                             ->schema([
-                                Forms\Components\TextInput::make('code')->label('Code')->required(),
+                                Forms\Components\TextInput::make('code')->label('Code')->required()
+                                    ->unique(CashBankControlAccount::class, 'code', ignoreRecord: true),
                                 Forms\Components\TextInput::make('name')->label('Account Name')->required(),
                                 Forms\Components\Select::make('account_type')
                                     ->label('Type')
                                     ->options([
                                         'cash' => 'Cash',
-                                        'bank' => 'Bank',
+                                        'bank' => 'Bank Accounts',
+                                        'fixed-deposit' => 'Fixed Deposit',
                                         'petty_cash' => 'Petty Cash',
                                     ])
                                     ->required(),

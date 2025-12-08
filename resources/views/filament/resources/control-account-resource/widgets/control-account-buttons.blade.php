@@ -42,16 +42,6 @@
                 Cash & Bank Contol Account
             </x-filament::button>
 
-            <x-filament::button
-                tag="a"
-                color="primary"
-                class="flex-1 min-w-[150px] justify-center"
-                href="{{ route('filament.admin.resources.control-accounts.fixed_assets') }}"
-            >
-                <x-heroicon-o-building-office class="w-5 h-5 mr-2" />
-                Fixed Assets Contol Account
-            </x-filament::button>
-
         </div>
     </x-filament::section>
 </x-filament-widgets::widget>

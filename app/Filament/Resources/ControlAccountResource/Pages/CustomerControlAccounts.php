@@ -59,7 +59,7 @@ class CustomerControlAccounts extends ListRecords
                     ->modalWidth('lg')
                     ->modalContent(function (CustomerControlAccount $record) {
                         $accounts = [
-                            'Receivable' => $record->receivableAccount?->name,
+                            //'Receivable' => $record->receivableAccount?->name,
                             'Sales' => $record->salesAccount?->name,
                             'Export Sales' => $record->exportSalesAccount?->name,
                             'Sales Returns' => $record->salesReturnAccount?->name,
@@ -103,7 +103,7 @@ class CustomerControlAccounts extends ListRecords
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
                     ->fillForm(fn(CustomerControlAccount $record) => [
-                        'receivable_account_id' => $record->receivable_account_id,
+                        //'receivable_account_id' => $record->receivable_account_id,
                         'sales_account_id' => $record->sales_account_id,
                         'export_sales_account_id' => $record->export_sales_account_id,
                         'sales_return_account_id' => $record->sales_return_account_id,
@@ -126,20 +126,6 @@ class CustomerControlAccounts extends ListRecords
                         //─────────────────────────
                         Forms\Components\Section::make('Main Accounts')
                             ->schema([
-                                Forms\Components\Select::make('receivable_account_id')
-                                    ->label('Receivable Account')
-                                    ->relationship(
-                                        'receivableAccount',
-                                        'name',
-                                        fn($query) => $query
-                                            ->where('is_control_account', false)
-                                            ->orderBy('code')
-                                    )
-                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'name'])
-                                    ->preload()
-                                    ->required(),
-
                                 Forms\Components\Select::make('sales_account_id')
                                     ->label('Sales Account')
                                     ->relationship(

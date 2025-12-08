@@ -14,7 +14,7 @@ class SupplierControlAccount extends Model
         'supplier_id',
 
         // Core Payables
-        'payable_account_id',
+        // 'payable_account_id',
         'supplier_advance_account_id',
 
         // Purchase Related Accounts
@@ -62,11 +62,6 @@ class SupplierControlAccount extends Model
     }
 
     // Core Payables
-    public function payableAccount()
-    {
-        return $this->belongsTo(ChartOfAccount::class, 'payable_account_id');
-    }
-
     public function supplierAdvanceAccount()
     {
         return $this->belongsTo(ChartOfAccount::class, 'supplier_advance_account_id');

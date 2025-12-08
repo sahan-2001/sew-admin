@@ -18,7 +18,7 @@ class CustomerControlAccount extends Model
         'customer_id',
 
         // Account mappings
-        'receivable_account_id',
+        // 'receivable_account_id',
         'sales_account_id',
         'export_sales_account_id',
         'sales_return_account_id',
@@ -64,7 +64,7 @@ class CustomerControlAccount extends Model
         return $this->belongsTo(Customer::class, 'customer_id', 'customer_id');
     }
 
-    public function receivableAccount() { return $this->belongsTo(ChartOfAccount::class, 'receivable_account_id'); }
+    #public function receivableAccount() { return $this->belongsTo(ChartOfAccount::class, 'receivable_account_id'); }
     public function salesAccount() { return $this->belongsTo(ChartOfAccount::class, 'sales_account_id'); }
     public function exportSalesAccount() { return $this->belongsTo(ChartOfAccount::class, 'export_sales_account_id'); }
     public function salesReturnAccount() { return $this->belongsTo(ChartOfAccount::class, 'sales_return_account_id'); }

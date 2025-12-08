@@ -17,8 +17,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             // Customer Related Accounts -----------------------------
-            $table->foreignId('receivable_account_id')->nullable()
-                ->constrained('chart_of_accounts')->nullOnDelete();
+            // $table->foreignId('receivable_account_id')->nullable()->constrained('chart_of_accounts')->nullOnDelete();
+            // Self account for receivables
 
             $table->foreignId('sales_account_id')->nullable()
                 ->constrained('chart_of_accounts')->nullOnDelete();

@@ -97,7 +97,6 @@ class SupplierControlAccounts extends ListRecords
 
                                 <div>
                                     <h3 class="font-semibold text-gray-700">Accounts</h3>
-                                    <p><strong>Payable:</strong> ' . e($record->payableAccount?->name ?? 'N/A') . '</p>
                                     <p><strong>Purchase:</strong> ' . e($record->purchaseAccount?->name ?? 'N/A') . '</p>
                                     <p><strong>VAT Input:</strong> ' . e($record->vatInputAccount?->name ?? 'N/A') . '</p>
                                     <p><strong>Purchase Discount:</strong> ' . e($record->purchaseDiscountAccount?->name ?? 'N/A') . '</p>
@@ -127,7 +126,7 @@ class SupplierControlAccounts extends ListRecords
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
                     ->fillForm(fn(SupplierControlAccount $record) => [
-                        'payable_account_id' => $record->payable_account_id,
+                        //'payable_account_id' => $record->payable_account_id,
                         'purchase_account_id' => $record->purchase_account_id,
                         'vat_input_account_id' => $record->vat_input_account_id,
                         'purchase_discount_account_id' => $record->purchase_discount_account_id,
@@ -139,14 +138,6 @@ class SupplierControlAccounts extends ListRecords
                         // -----------------------------
                         Forms\Components\Section::make('Core Payables')
                             ->schema([
-                                Forms\Components\Select::make('payable_account_id')
-                                    ->label('Payable Account')
-                                    ->relationship('payableAccount', 'name', fn($query) => $query->where('is_control_account', false))
-                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'name'])
-                                    ->preload()
-                                    ->required(),
-
                                 Forms\Components\Select::make('supplier_advance_account_id')
                                     ->label('Supplier Advance Account')
                                     ->relationship('supplierAdvanceAccount', 'name', fn($query) => $query->where('is_control_account', false))
@@ -282,7 +273,7 @@ class SupplierControlAccounts extends ListRecords
                     ->action(function (array $data, SupplierControlAccount $record): void {
                         // Update all fields from the form
                         $record->update([
-                            'payable_account_id' => $data['payable_account_id'] ?? null,
+                            //'payable_account_id' => $data['payable_account_id'] ?? null,
                             'supplier_advance_account_id' => $data['supplier_advance_account_id'] ?? null,
                             'purchase_account_id' => $data['purchase_account_id'] ?? null,
                             'purchase_return_account_id' => $data['purchase_return_account_id'] ?? null,

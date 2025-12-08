@@ -17,8 +17,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             // Core Payables
-            $table->foreignId('payable_account_id')->nullable()
-                ->constrained('chart_of_accounts')->nullOnDelete();
+            // $table->foreignId('payable_account_id')->nullable()->constrained('chart_of_accounts')->nullOnDelete();
+            // Self account for payables
 
             $table->foreignId('supplier_advance_account_id')->nullable()
                 ->constrained('chart_of_accounts')->nullOnDelete();
