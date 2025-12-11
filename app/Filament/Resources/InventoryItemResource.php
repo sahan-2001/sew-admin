@@ -47,9 +47,9 @@ class InventoryItemResource extends Resource
                         ->label('Item Name')
                         ->required()
                         ->maxLength(255),
-                    Forms\Components\Select::make('category')
+                    Forms\Components\Select::make('category_id') 
                         ->label('Category')
-                        ->options(fn () => self::getCategoryOptions())
+                        ->options(fn () => Category::pluck('name', 'id')->toArray())
                         ->required(),
                     Forms\Components\Select::make('uom')
                         ->label('Unit of Measure')
@@ -95,7 +95,7 @@ class InventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('id')->sortable()->searchable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('item_code')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('category')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('category.name')->label('Category')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('uom')->label('UOM'),
                 Tables\Columns\TextColumn::make('available_quantity')->sortable(),
                 ...(
@@ -188,7 +188,13 @@ class InventoryItemResource extends Resource
     {
         $lastItem = InventoryItem::latest()->first();
         $nextId = $lastItem ? $lastItem->id + 1 : 1;
-        $categoryCode = strtoupper(substr(request()->input('category', 'CAT'), 0, 3));
+
+        // Fetch category name from request (category_id)
+        $categoryId = request()->input('category_id');
+        $categoryName = Category::find($categoryId)?->name ?? 'GEN';
+
+        $categoryCode = strtoupper(substr($categoryName, 0, 3));
+
         return $categoryCode . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 

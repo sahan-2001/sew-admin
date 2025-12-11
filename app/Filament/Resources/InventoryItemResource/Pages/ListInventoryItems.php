@@ -8,11 +8,10 @@ use Filament\Resources\Pages\ListRecords;
 use EightyNine\ExcelImport\ExcelImportAction;
 use EightyNine\ExcelImport\EnhancedDefaultImport;
 use Illuminate\Support\Collection;
+use App\Models\Category;
 use pxlrbt\FilamentExcel\Actions\Pages\ExportAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 use pxlrbt\FilamentExcel\Columns\Column;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Database\UniqueConstraintViolationException;
 
 class ListInventoryItems extends ListRecords
 {
@@ -22,14 +21,15 @@ class ListInventoryItems extends ListRecords
     {
         return [
             ExcelImportAction::make()
+                ->use(CustomInventoryImport::class)
                 ->validateUsing([
-                        'name' => ['required'],
-                        'uom' => ['required'],
-                    ])
+                    'name' => ['required'],
+                    'uom' => ['required'],
+                ])
                 ->label('Import Inv Items')
                 ->modalHeading('Upload Excel File')
-                ->visible(fn () => auth()->user()?->can('inventory.import'))
-                ->modalDescription('Required fields: name, uom'),
+                ->modalDescription('Required fields: name, uom')
+                ->visible(fn () => auth()->user()?->can('inventory.import')),
 
             ExportAction::make()
                 ->label('Export Inventory Items')
@@ -47,12 +47,10 @@ class ListInventoryItems extends ListRecords
                             Column::make('special_note')->heading('Special Note'),
                             Column::make('uom')->heading('Unit of Measure'),
                             Column::make('available_quantity')->heading('Available Quantity'),
-                            Column::make('created_at')->heading('Created At')->getStateUsing(
-                                fn ($record) => $record->created_at->format('Y-m-d H:i:s')
-                            ),
-                            Column::make('updated_at')->heading('Updated At')->getStateUsing(
-                                fn ($record) => $record->updated_at->format('Y-m-d H:i:s')
-                            ),
+                            Column::make('created_at')->heading('Created At')
+                                ->getStateUsing(fn ($record) => $record->created_at->format('Y-m-d H:i:s')),
+                            Column::make('updated_at')->heading('Updated At')
+                                ->getStateUsing(fn ($record) => $record->updated_at->format('Y-m-d H:i:s')),
                         ])
                 ])
                 ->modalHeading('Export Inventory Items')
@@ -66,47 +64,53 @@ class ListInventoryItems extends ListRecords
     }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Custom Importer (Single File)
+|--------------------------------------------------------------------------
+*/
+
 class CustomInventoryImport extends EnhancedDefaultImport
 {
     protected function beforeCollection(Collection $collection): void
     {
-        $firstRow = $collection->first(); 
+        $firstRow = $collection->first();
+
         if ($firstRow) {
             $headers = array_keys($firstRow->toArray());
+
             \Log::info('Uploaded Excel Headers:', $headers);
-            $requiredHeaders = ['name', 'uom'];
-            $this->validateHeaders($requiredHeaders, $collection);
+
+            $required = ['name', 'uom'];
+            $this->validateHeaders($required, $collection);
         }
     }
 
+    // Do NOT return or modify $data here
     protected function beforeCreateRecord(array $data, $row): void
     {
-        // Handle category - create if doesn't exist
+        // Optional: logging or side-effects
+    }
+
+    // ✅ This is where we modify the row before it is saved
+    protected function mutateBeforeValidation(array $data): array
+    {
+        // Default category
         if (empty($data['category'])) {
             $data['category'] = 'uncategorized';
         }
 
-        // Ensure the category exists in the Category model
+        // Ensure category exists
         $category = Category::firstOrCreate(
             ['name' => $data['category']],
-            ['created_by' => auth()->id() ?? 1] 
+            ['created_by' => auth()->id()]
         );
 
         $data['category'] = $category->name;
 
-        // Set default quantity
-        if (!isset($data['available_quantity'])) {
+        // Default quantity
+        if (!isset($data['available_quantity']) || !is_numeric($data['available_quantity'])) {
             $data['available_quantity'] = 0;
-        }
-    }
-
-    protected function mutateBeforeValidation(array $data): array
-    {
-        // Ensure numeric values for quantity
-        if (isset($data['available_quantity'])) {
-            $data['available_quantity'] = is_numeric($data['available_quantity']) 
-                ? $data['available_quantity'] 
-                : 0;
         }
 
         return $data;

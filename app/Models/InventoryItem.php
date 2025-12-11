@@ -16,7 +16,7 @@ class InventoryItem extends Model
     protected $fillable = [
         'item_code',
         'name',
-        'category',
+        'category_id',
         'special_note',
         'uom',
         'available_quantity',
@@ -26,20 +26,31 @@ class InventoryItem extends Model
         'updated_by',
     ];
 
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+    
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($model) {
-            // Generate a unique item code
-            $model->item_code = self::generateUniqueItemCode($model->category);
+            // Get category name safely
+            $categoryName = $model->category?->name ?? 'CAT'; // fallback if no category yet
+
+            // Generate unique item code
+            $model->item_code = self::generateUniqueItemCode($categoryName);
+
             $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
         });
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
     }
+
 
     /**
      * Generate a unique item code based on category
@@ -85,7 +96,7 @@ class InventoryItem extends Model
     protected static $logAttributes = [
         'item_code',
         'name',
-        'category',
+        'category_id',
         'special_note',
         'uom',
         'available_quantity',
@@ -100,7 +111,7 @@ class InventoryItem extends Model
             ->logOnly([
                 'item_code',
                 'name',
-                'category',
+                'category_id',
                 'special_note',
                 'uom',
                 'available_quantity',
