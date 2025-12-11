@@ -25,6 +25,7 @@ class Warehouse extends Model
         'capacity_width',
         'capacity_height',
         'measurement_unit',
+        'status',
         'created_by',
         'updated_by',
     ];

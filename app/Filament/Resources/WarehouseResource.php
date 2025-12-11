@@ -92,6 +92,7 @@ class WarehouseResource extends Resource
                 ...(
                 Auth::user()->can('view audit columns')
                     ? [
+                        TextColumn::make('status')->label('Status')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                         TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                         TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                         TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
@@ -147,7 +148,10 @@ class WarehouseResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Warehouse $record) => auth()->user()->can('edit warehouses')),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (Warehouse $record) => auth()->user()->can('delete warehouses')),
+                    ->visible(fn (Warehouse $record) =>
+                        auth()->user()->can('delete warehouses')
+                        && $record->status !== 'active'
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()

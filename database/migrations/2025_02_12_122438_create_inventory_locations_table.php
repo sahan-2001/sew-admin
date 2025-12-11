@@ -15,6 +15,7 @@ class CreateInventoryLocationsTable extends Migration
             $table->decimal('capacity', 10, 2);
             $table->enum('measurement_unit', ['liters', 'm^3', 'cm^3', 'box', 'pallets', 'other']);
             $table->foreignId('warehouse_id')->constrained()->onDelete('cascade');
+            $table->enum('status', ['created', 'active', 'inactive'])->default('created');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

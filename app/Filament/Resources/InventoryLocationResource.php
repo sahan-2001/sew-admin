@@ -145,7 +145,10 @@ class InventoryLocationResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->visible(fn (InventoryLocation $record) => auth()->user()->can('edit inventory locations')),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (InventoryLocation $record) => auth()->user()->can('delete inventory locations')),
+                    ->visible(fn (Warehouse $record) =>
+                        auth()->user()->can('delete inventory locations')
+                        && $record->status !== 'active'
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()

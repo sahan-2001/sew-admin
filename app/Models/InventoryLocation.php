@@ -18,6 +18,7 @@ class InventoryLocation extends Model
         'location_type',
         'capacity',
         'measurement_unit',
+        'status',
         'created_by',
         'updated_by',
     ];

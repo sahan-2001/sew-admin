@@ -142,7 +142,6 @@ class ControlAccountResource extends Resource
             'supplier' => Pages\SupplierControlAccounts::route('/suppliers'),
             'vat'      => Pages\VatControlAccounts::route('/vat'),
             'cash_bank'     => Pages\CashBankControlAccounts::route('/cash_banks'),
-            'fixed_assets'     => Pages\FixedAssetControlAccounts::route('/fixed_assets'),
         ];
     }
 }

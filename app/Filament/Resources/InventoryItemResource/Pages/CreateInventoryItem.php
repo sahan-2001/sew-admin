@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\InventoryItemResource\Pages;
 
 use App\Filament\Resources\InventoryItemResource;
-use App\Models\Category; // Import the Category model
+use App\Models\InventoryLocation;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Actions\Action;
@@ -26,7 +26,7 @@ class CreateInventoryItem extends CreateRecord
                         ->label('New Category')
                         ->required()
                         ->autocomplete('off')
-                        ->datalist(Category::pluck('name')->toArray())
+                        ->datalist(\App\Models\Category::pluck('name')->toArray())
                         ->rules(['unique:categories,name']),
                 ]),
         ];

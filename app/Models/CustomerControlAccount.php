@@ -86,13 +86,60 @@ class CustomerControlAccount extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id() ?? 1;
-            $model->updated_by = auth()->id() ?? 1;
+            $model->created_by = auth()->id();
+            $model->updated_by = auth()->id();
+
+            // Calculate balances
+            $model->balance = $model->debit_total - $model->credit_total;
+            $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
         });
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id() ?? 1;
+            $model->updated_by = auth()->id();
+
+            // Recalculate balances
+            $model->balance = $model->debit_total - $model->credit_total;
+            $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
         });
+
+        static::saved(function ($model) {
+            $model->updateChartOfAccountTotals();
+        });
+
+        static::deleted(function ($model) {
+            $model->updateChartOfAccountTotals();
+        });
+    }
+
+    // -------------------------------
+    // Sum of all numeric fields
+    // -------------------------------
+    public function updateChartOfAccountTotals()
+    {
+        // Find the ChartOfAccount with code 1000 (Customer Control Account)
+        $chartAccount = ChartOfAccount::where('code', '1000')->first();
+
+        if ($chartAccount) {
+            // Sum all CustomerControlAccount records
+            $totals = self::selectRaw("
+                SUM(debit_total) as debit_total,
+                SUM(credit_total) as credit_total,
+                SUM(balance) as balance,
+                SUM(debit_total_vat) as debit_total_vat,
+                SUM(credit_total_vat) as credit_total_vat,
+                SUM(balance_vat) as balance_vat
+            ")->first();
+
+            // Update the ChartOfAccount
+            $chartAccount->update([
+                'debit_total' => $totals->debit_total ?? 0,
+                'credit_total' => $totals->credit_total ?? 0,
+                'balance' => $totals->balance ?? 0,
+                'debit_total_vat' => $totals->debit_total_vat ?? 0,
+                'credit_total_vat' => $totals->credit_total_vat ?? 0,
+                'balance_vat' => $totals->balance_vat ?? 0,
+            ]);
+        }
     }
 
     // -------------------------------
