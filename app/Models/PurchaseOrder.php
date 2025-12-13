@@ -6,18 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class PurchaseOrder extends Model
 {
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'provider_type',
-        'provider_id',
+        'supplier_id',
         'wanted_date',
         'special_note',
         'status', 
@@ -30,39 +26,74 @@ class PurchaseOrder extends Model
 
     protected static function booted()
     {
-        static::creating(function ($purchaseOrder) {
-            $purchaseOrder->random_code = '';
+        // Automatically set creator/updater and random code
+        static::creating(function ($po) {
+            $po->random_code = '';
             for ($i = 0; $i < 16; $i++) {
-                $purchaseOrder->random_code .= mt_rand(0, 9);
+                $po->random_code .= mt_rand(0, 9);
             }
 
-            $purchaseOrder->created_by = auth()->id();
-            $purchaseOrder->updated_by = auth()->id();
+            $po->created_by = Auth::id() ?? 1;
+            $po->updated_by = Auth::id() ?? 1;
         });
 
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+        static::updating(function ($po) {
+            $po->updated_by = Auth::id() ?? $po->updated_by;
 
-            if ($model->isDirty('status') && $model->status === 'closed') {
-                $model->remaining_balance = 0;
+            // If closing, set remaining balance to 0
+            if ($po->isDirty('status') && $po->status === 'closed') {
+                $po->remaining_balance = 0;
             }
         });
 
-        static::saved(function ($model) {
-            $model->recalculateGrandTotal();
+        // Recalculate grand total after save
+        static::saved(function ($po) {
+            $po->recalculateGrandTotal();
         });
     }
 
+    /**
+     * Relationships
+     */
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function supplierAdvanceInvoices()
+    {
+        return $this->hasMany(SupplierAdvanceInvoice::class);
+    }
+
+    public function invoice()
+    {
+        return $this->hasOne(\App\Models\PurchaseOrderInvoice::class, 'purchase_order_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Totals
+     */
     public function recalculateGrandTotal()
     {
         $oldGrandTotal = $this->grand_total;
         $this->grand_total = $this->items()->sum('total_sale');
-        
+
+        // Only reset remaining balance if it matches old total
         if (is_null($this->remaining_balance) || $this->remaining_balance == $oldGrandTotal) {
             $this->remaining_balance = $this->grand_total;
         }
-        
-        $this->saveQuietly(); 
+
+        $this->saveQuietly();
     }
 
     public function setRemainingBalanceToGrandTotal()
@@ -83,7 +114,7 @@ class PurchaseOrder extends Model
     public function setGrandTotalAttribute($value)
     {
         $this->attributes['grand_total'] = $value;
-        
+
         if (!isset($this->attributes['remaining_balance'])) {
             $this->attributes['remaining_balance'] = $value;
         } elseif (isset($this->attributes['remaining_balance']) && 
@@ -92,50 +123,32 @@ class PurchaseOrder extends Model
         }
     }
 
+    /**
+     * Activity Log
+     */
     protected static $logName = 'purchase_order';
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly([
-                'provider_type',
-                'provider_id',
+                'supplier_id',
                 'wanted_date',
                 'special_note',
                 'status', 
                 'grand_total',
-                'remaining_balance' 
+                'remaining_balance',
             ])
             ->useLogName('purchase_order')
             ->setDescriptionForEvent(function (string $eventName) {
-                $userEmail = $this->user ? $this->user->email : 'unknown';
-                $description = "Purchase Order {$this->id} has been {$eventName} by User {$this->user_id}";
-
+                $userId = Auth::id() ?? 'unknown';
+                $description = "Purchase Order {$this->id} has been {$eventName} by User {$userId}";
+                
                 if ($this->isDirty('status')) {
                     $description .= ". New status: {$this->status}";
                 }
 
                 return $description;
             });
-    }
-    
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function items()
-    {
-        return $this->hasMany(PurchaseOrderItem::class);
-    }
-
-    public function supplierAdvanceInvoices()
-    {
-        return $this->hasMany(SupplierAdvanceInvoice::class);
-    }
-
-    public function invoice()
-    {
-        return $this->hasOne(\App\Models\PurchaseOrderInvoice::class, 'purchase_order_id');
     }
 }

@@ -18,7 +18,14 @@ class CreatePurchaseOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Generate random code
         $data['random_code'] = strtoupper(Str::random(16));
+
+        // Ensure remaining_balance defaults to grand_total if not provided
+        if (!isset($data['remaining_balance']) && isset($data['grand_total'])) {
+            $data['remaining_balance'] = $data['grand_total'];
+        }
+
         return $data;
     }
 
@@ -29,15 +36,9 @@ class CreatePurchaseOrder extends CreateRecord
 
         $email = null;
 
-        if ($this->record->provider_type === 'customer') {
-            $customer = \App\Models\Customer::find($this->record->provider_id);
-            if ($customer && $customer->email) {
-                $email = $customer->email;
-            }
-        }
-
-        if ($this->record->provider_type === 'supplier') {
-            $supplier = \App\Models\Supplier::find($this->record->provider_id);
+        // Get supplier email
+        if ($this->record->supplier_id) {
+            $supplier = \App\Models\Supplier::find($this->record->supplier_id);
             if ($supplier && $supplier->email) {
                 $email = $supplier->email;
             }
@@ -49,18 +50,18 @@ class CreatePurchaseOrder extends CreateRecord
                 $qrCodeData = url('/purchase-orders/' . $this->record->id . '/' . $this->record->random_code);
 
                 // Generate & store SVG QR code
-                $qrCode = new \Endroid\QrCode\QrCode($qrCodeData);
-                $writer = new \Endroid\QrCode\Writer\SvgWriter();
+                $qrCode = new QrCode($qrCodeData);
+                $writer = new SvgWriter();
                 $result = $writer->write($qrCode);
 
                 $qrCodeFilename = 'purchase_qrcode_' . $this->record->id . '.svg';
                 $path = 'public/qrcodes/' . $qrCodeFilename;
 
-                \Storage::makeDirectory('public/qrcodes');
-                \Storage::put($path, $result->getString());
+                Storage::makeDirectory('public/qrcodes');
+                Storage::put($path, $result->getString());
 
                 // Send email
-                \Mail::to($email)->send(new \App\Mail\PurchaseOrderCreatedMail($this->record));
+                Mail::to($email)->send(new PurchaseOrderCreatedMail($this->record));
 
                 // Notify Filament user of success
                 Notification::make()

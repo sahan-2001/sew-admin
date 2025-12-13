@@ -85,16 +85,20 @@
                 <td>{{ str_pad($purchaseOrderDetails['id'], 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
-                <th>Provider Type</th>
-                <td>{{ $purchaseOrderDetails['provider_type'] }}</td>
+                <th>Supplier ID</th>
+                <td>{{ $purchaseOrderDetails['supplier_id'] }}</td>
             </tr>
             <tr>
-                <th>Provider ID</th>
-                <td>{{ $purchaseOrderDetails['provider_id'] }}</td>
+                <th>Supplier Name</th>
+                <td>{{ $purchaseOrderDetails['supplier_name'] }}</td>
             </tr>
             <tr>
-                <th>Provider Name</th>
-                <td>{{ $purchaseOrderDetails['provider_name'] }}</td>
+                <th>Supplier Email</th>
+                <td>{{ $purchaseOrderDetails['supplier_email'] }}</td>
+            </tr>
+            <tr>
+                <th>Supplier Phone</th>
+                <td>{{ $purchaseOrderDetails['supplier_phone'] }}</td>
             </tr>
             <tr>
                 <th>Wanted Date</th>
@@ -165,7 +169,6 @@
             <div class="signature-line"></div>
         </div>
     </div>
-
 
     <div class="footer">
         <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>

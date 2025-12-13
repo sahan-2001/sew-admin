@@ -27,15 +27,15 @@
                 };
 
                 $color = match($status) {
-                    'paused' => '#e5e7eb',          // light gray
-                    'planned' => '#3b82f6',         // blue
-                    'released' => '#f59e0b',        // amber
-                    'partially arrived' => '#fbbf24', // light amber
-                    'arrived' => '#ef4444',         // red
-                    'inspected' => '#10b981',       // green
-                    'invoiced' => '#6b7280',        // gray
-                    'closed' => '#111827',          // dark
-                    default => '#e5e7eb'            // fallback gray
+                    'paused' => '#e5e7eb',
+                    'planned' => '#3b82f6',
+                    'released' => '#f59e0b',
+                    'partially arrived' => '#fbbf24',
+                    'arrived' => '#ef4444',
+                    'inspected' => '#10b981',
+                    'invoiced' => '#6b7280',
+                    'closed' => '#111827',
+                    default => '#e5e7eb'
                 };
             @endphp
 
@@ -57,8 +57,9 @@
     <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
             <p><strong>Order ID:</strong> {{ str_pad($record->id, 5, '0', STR_PAD_LEFT) }}</p>
-            <p><strong>Provider:</strong> {{ $record->provider_name }}</p>
-            <p><strong>Provider Email:</strong> {{ $record->provider_email }}</p>
+            <p><strong>Supplier:</strong> {{ $record->supplier?->name ?? 'N/A' }}</p>
+            <p><strong>Supplier Email:</strong> {{ $record->supplier?->email ?? 'N/A' }}</p>
+            <p><strong>Supplier Phone:</strong> {{ $record->supplier?->phone_1 ?? 'N/A' }}</p>
         </div>
 
         <div>
@@ -104,55 +105,13 @@
     </div>
 
     <style>
-        .progress-bar-container {
-            height: 10px;
-            background-color: #e5e7eb;
-            border-radius: 9999px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            transition: width 0.5s ease-in-out;
-        }
-
-        /* Status Labels */
-        .status-label {
-            display: inline-block;
-            width: 25%;
-            text-align: center;
-        }
-
-        /* Highlight active status label */
-        .status-label.text-blue-600 {
-            font-weight: bold;
-            color: #3b82f6; /* Blue color */
-        }
-
-        .status-label.text-green-600 {
-            font-weight: bold;
-            color: #10b981; /* Green color */
-        }
-
-        .status-label.text-red-600 {
-            font-weight: bold;
-            color: #ef4444; /* Red color */
-        }
-
-        .status-label.text-yellow-600 {
-            font-weight: bold;
-            color: #f59e0b; /* Yellow color */
-        }
-
-        /* Blinking Status */
-        @keyframes blink {
-            50% {
-                opacity: 0.5;
-            }
-        }
-
         .animate-blink {
             animation: blink 1s infinite;
             font-weight: bold;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
         }
     </style>
 

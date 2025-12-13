@@ -26,114 +26,67 @@ class HandlePurchaseOrder extends Page
     // Release Purchase Order
     public function releasePurchaseOrder()
     {
-        try {
-            $this->record->update([
-                'status' => 'released',
-            ]);
-
-            activity()
-                ->performedOn($this->record)
-                ->log('Purchase Order released');
-
-            Notification::make()
-                ->title('Purchase Order Released')
-                ->success()
-                ->body('The purchase order has been successfully released.')
-                ->send();
-
-            // Refresh the page
-            return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
-        } catch (\Exception $e) {
-
-        }
+        $this->updateStatus('released', 'Purchase Order Released', 'The purchase order has been successfully released.');
     }
 
     // Plan Purchase Order
     public function planOrder()
     {
-        try {
-            $this->record->update([
-                'status' => 'planned',
-            ]);
-
-            activity()
-                ->performedOn($this->record)
-                ->log('Purchase Order planned again');
-
-            Notification::make()
-                ->title('Order Planned Again')
-                ->info()
-                ->body('The purchase order has been set back to "planned" status.')
-                ->send();
-
-            // Refresh the page
-            return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
-        } catch (\Exception $e) {
-
-        }
+        $this->updateStatus('planned', 'Order Planned Again', 'The purchase order has been set back to "planned" status.');
     }
 
     // Pause Purchase Order
     public function pauseOrder()
     {
-        try {
-            $this->record->update([
-                'status' => 'paused',
-            ]);
-
-            activity()
-                ->performedOn($this->record)
-                ->log('Purchase Order paused');
-
-            Notification::make()
-                ->title('Purchase Order Paused')
-                ->warning()
-                ->body('The purchase order has been paused.')
-                ->send();
-
-            // Refresh the page
-            return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
-        } catch (\Exception $e) {
-            // Handle exception if needed
-        }
+        $this->updateStatus('paused', 'Purchase Order Paused', 'The purchase order has been paused.');
     }
 
     // Resume Purchase Order
     public function resumeOrder()
     {
+        $this->updateStatus('released', 'Purchase Order Resumed', 'The purchase order has been resumed and marked as released.');
+    }
+
+    protected function updateStatus(string $status, string $notificationTitle, string $notificationBody)
+    {
         try {
             $this->record->update([
-                'status' => 'released',
+                'status' => $status,
             ]);
 
             activity()
                 ->performedOn($this->record)
-                ->log('Purchase Order resumed (status changed to released)');
+                ->log("Purchase Order status changed to {$status}");
 
             Notification::make()
-                ->title('Purchase Order Resumed')
+                ->title($notificationTitle)
                 ->success()
-                ->body('The purchase order has been resumed and marked as released.')
+                ->body($notificationBody)
                 ->send();
 
             return redirect()->route('filament.resources.purchase-orders.handle', ['record' => $this->record->id]);
         } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->danger()
+                ->body('Something went wrong: ' . $e->getMessage())
+                ->send();
         }
     }
 
     protected function getHeaderActions(): array
     {
         $actions = [
-            // Close action
+            // Back to index
             Action::make('Close')
                 ->label('Back to Purchase Orders')
-                ->icon('heroicon-o-arrow-left') 
+                ->icon('heroicon-o-arrow-left')
                 ->color('primary')
                 ->url(fn () => PurchaseOrderResource::getUrl('index'))
                 ->openUrlInNewTab(false),
         ];
 
-        // Show "Release Purchase Order" action if the status is 'planned'
+        // Status-based actions
         if ($this->record->status === 'planned') {
             $actions[] = Action::make('release_purchase_order')
                 ->label('Release Purchase Order')
@@ -146,7 +99,6 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->releasePurchaseOrder());
         }
 
-        // Show "Plan Order" action if the status is 'released' or 'cancelled'
         if (in_array($this->record->status, ['released', 'paused'])) {
             $actions[] = Action::make('plan_order')
                 ->label('Plan Order')
@@ -159,7 +111,6 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->planOrder());
         }
 
-        // Show "Pause Order" action if the status is 'planned', 'released', or 'partially arrived'
         if (in_array($this->record->status, ['released', 'partially arrived', 'inspected', 'invoiced'])) {
             $actions[] = Action::make('pause_order')
                 ->label('Pause Order')
@@ -172,7 +123,6 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->pauseOrder());
         }
 
-        // Show "Resume Order" action if the status is 'paused'
         if ($this->record->status === 'paused') {
             $actions[] = Action::make('resume_order')
                 ->label('Resume Order')
@@ -185,7 +135,7 @@ class HandlePurchaseOrder extends Page
                 ->action(fn () => $this->resumeOrder());
         }
 
-        // Show "Print PDF" action
+        // Print PDF
         $actions[] = Action::make('printPdf')
             ->label('Print PDF')
             ->url(fn () => route('purchase-order.pdf', ['purchase_order' => $this->record->id]))

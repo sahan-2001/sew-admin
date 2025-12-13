@@ -8,7 +8,6 @@ use App\Models\PurchaseOrder;
 use App\Models\Company;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Http\Request;
 
@@ -30,11 +29,17 @@ class PurchaseOrderPdfController extends Controller
             'email' => $company->email ?? 'N/A',        
         ];
 
+        // Fetch supplier details from the purchase order
+        $supplier = $purchase_order->provider_type === 'supplier'
+            ? \App\Models\Supplier::find($purchase_order->provider_id)
+            : null;
+
         $purchaseOrderDetails = [
             'id' => $purchase_order->id,
-            'provider_type' => $purchase_order->provider_type,
-            'provider_id' => $purchase_order->provider_id,
-            'provider_name' => $purchase_order->provider_name,
+            'supplier_id' => $supplier?->supplier_id ?? 'N/A',
+            'supplier_name' => $supplier?->name ?? 'N/A',
+            'supplier_email' => $supplier?->email ?? 'N/A',
+            'supplier_phone' => $supplier?->phone_1 ?? 'N/A',
             'wanted_date' => $purchase_order->wanted_date,
             'status' => $purchase_order->status,
             'created_at' => $purchase_order->created_at->format('Y-m-d H:i:s'), 
@@ -56,12 +61,6 @@ class PurchaseOrderPdfController extends Controller
         // Save QR Code as SVG
         $qrCodeFilename = 'qrcode_' . $purchase_order->id . '.svg';
         $path = 'public/qrcodes/' . $qrCodeFilename;
-
-        Storage::makeDirectory('public/qrcodes');
-        Storage::put($path, $result->getString());
-
-        // Path to be used in the Blade view
-        $qrCodePath = storage_path('app/public/qrcodes/' . $qrCodeFilename);
 
         Storage::makeDirectory('public/qrcodes');
         Storage::put($path, $result->getString());
