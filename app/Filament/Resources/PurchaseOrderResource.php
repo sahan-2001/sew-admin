@@ -6,6 +6,7 @@ use App\Filament\Resources\PurchaseOrderResource\Pages;
 use App\Models\PurchaseOrder;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
+use App\Models\Customer;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
@@ -20,9 +21,11 @@ use Filament\Forms\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Tabs;
+use Illuminate\Support\Carbon;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 
@@ -39,7 +42,7 @@ class PurchaseOrderResource extends Resource
     {
         return Auth::user()?->can('view purchase orders') ?? false;
     }
-
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -50,18 +53,25 @@ class PurchaseOrderResource extends Resource
                             ->schema([
                                 Section::make('Order Information')
                                     ->schema([
-                                        // Supplier select only
                                         Select::make('supplier_id')
                                             ->label('Supplier')
-                                            ->options(Supplier::all()->pluck('name', 'id'))
+                                            ->options(function () {
+                                                return \App\Models\Supplier::all()
+                                                    ->mapWithKeys(fn ($supplier) => [
+                                                        $supplier->supplier_id => "Supplier ID - {$supplier->supplier_id} | Name - {$supplier->name}"
+                                                    ])
+                                                    ->toArray();
+                                            })
                                             ->searchable()
-                                            ->required()
+                                            ->disabled(fn (string $operation): bool => $operation === 'edit')
                                             ->reactive()
                                             ->afterStateUpdated(function ($state, callable $set) {
-                                                $supplier = Supplier::find($state);
-                                                $set('supplier_name', $supplier?->name);
-                                                $set('supplier_email', $supplier?->email);
-                                                $set('supplier_phone', $supplier?->phone_1);
+                                                $supplier = \App\Models\Supplier::find($state);
+                                                if ($supplier) {
+                                                    $set('supplier_name', $supplier->name);
+                                                    $set('supplier_email', $supplier->email);
+                                                    $set('supplier_phone', $supplier->phone_1);
+                                                }
                                             }),
 
                                         TextInput::make('supplier_name')
@@ -84,13 +94,13 @@ class PurchaseOrderResource extends Resource
                                         Textarea::make('special_note')
                                             ->label('Special Note')
                                             ->nullable()
-                                            ->columnSpan(2),
+                                            ->columnSpan(2), 
 
                                         Hidden::make('user_id')
                                             ->default(fn () => auth()->id()),
                                     ])
-                                    ->columns(2),
-                            ]),
+                                    ->columns(2)
+                                ]),
 
                         Tabs\Tab::make('Order Items')
                             ->schema([
@@ -113,7 +123,10 @@ class PurchaseOrderResource extends Resource
                                                             ->label('Quantity')
                                                             ->numeric()
                                                             ->required()
-                                                            ->afterStateUpdated(fn ($state, callable $set) => $set('remaining_quantity', $state)),
+                                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                                $set('remaining_quantity', $state);
+                                                                $set('arrived_quantity', 0);
+                                                            }),
 
                                                         TextInput::make('price')
                                                             ->label('Price')
@@ -122,6 +135,9 @@ class PurchaseOrderResource extends Resource
 
                                                         Hidden::make('remaining_quantity')
                                                             ->default(fn ($get) => $get('quantity')),
+
+                                                        Hidden::make('arrived_quantity')
+                                                            ->default(0),
                                                     ]),
                                             ])
                                             ->columns(1)
@@ -146,16 +162,9 @@ class PurchaseOrderResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-
-                TextColumn::make('supplier_id')
-                    ->label('Supplier ID'),
-
-                TextColumn::make('supplier_name')
-                    ->label('Supplier Name')
-                    ->getStateUsing(fn ($record) => $record->supplier?->name ?? '-'),
-
+                TextColumn::make('provider_type')->label('Provider Type'),
+                TextColumn::make('provider_id')->label('Provider ID')->searchable(),
                 TextColumn::make('wanted_date')->label('Wanted Date')->date(),
-
                 TextColumn::make('status')->label('Status')
                     ->badge()
                     ->colors([
@@ -164,21 +173,25 @@ class PurchaseOrderResource extends Resource
                         'cancelled' => 'red',
                         'completed' => 'green',
                     ]),
-
-                ...(Auth::user()->can('view audit columns')
-                    ? [
-                        TextColumn::make('created_by')->label('Created By')->toggleable(true)->sortable(),
-                        TextColumn::make('updated_by')->label('Updated By')->toggleable(true)->sortable(),
-                        TextColumn::make('created_at')->label('Created At')->toggleable(true)->dateTime()->sortable(),
-                        TextColumn::make('updated_at')->label('Updated At')->toggleable(true)->dateTime()->sortable(),
-                    ]
-                    : []),
+                ...(
+                    Auth::user()->can('view audit columns')
+                        ? [
+                            TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                            TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                            TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                        ]
+                        : []
+                        ),
             ])
             ->filters([
-                SelectFilter::make('supplier_id')
-                    ->label('Supplier')
-                    ->options(Supplier::all()->pluck('name', 'id'))
-                    ->placeholder('All Suppliers'),
+                SelectFilter::make('provider_type')
+                    ->label('Provider Type')
+                    ->options([
+                        'supplier' => 'Supplier',
+                        'customer' => 'Customer',
+                    ])
+                    ->placeholder('All Types'),
 
                 Filter::make('wanted_date')
                     ->label('Wanted Delivery Date')
@@ -187,9 +200,11 @@ class PurchaseOrderResource extends Resource
                             ->label('Wanted Delivery Date')
                             ->closeOnDateSelection(),
                     ])
-                    ->query(fn ($query, array $data) => $query->when($data['date'], fn ($q, $date) =>
-                        $q->whereDate('wanted_date', $date)
-                    )),
+                    ->query(function ($query, array $data) {
+                        return $query->when($data['date'], fn ($q, $date) =>
+                            $q->whereDate('wanted_date', $date)
+                        );
+                    }),
             ])
             ->actions([
                 Action::make('handle')
@@ -198,20 +213,24 @@ class PurchaseOrderResource extends Resource
                     ->openUrlInNewTab(false),
 
                 EditAction::make()
-                    ->visible(fn ($record) =>
+                    ->visible(fn ($record) => 
                         auth()->user()->can('edit purchase orders') &&
                         $record->status === 'planned'
                     ),
 
                 DeleteAction::make()
-                    ->visible(fn ($record) =>
+                    ->visible(fn ($record) => 
                         auth()->user()->can('delete purchase orders') &&
                         $record->status === 'planned'
                     ),
+                
             ])
             ->defaultSort('id', 'desc')
             ->recordUrl(null);
     }
+
+
+
 
     public static function getPages(): array
     {

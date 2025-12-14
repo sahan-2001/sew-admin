@@ -8,52 +8,40 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
         :root {
             --primary: #2563eb;
             --primary-dark: #1e40af;
             --secondary: #64748b;
-            --accent: #f59e0b; /* progress bar color */
+            --accent: #f59e0b;
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
-
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: var(--dark-text); }
-
         .card { box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; }
         .card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.12); }
-
         .header { background: linear-gradient(120deg, var(--primary), var(--primary-dark)); color: white; padding: 24px; position: relative; overflow: hidden; }
         .header::after { content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 200%; background: rgba(255,255,255,0.1); transform: rotate(30deg); }
-
         .status-badge { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; }
-
         .progress-track { display: flex; align-items: center; justify-content: space-between; position: relative; margin: 30px 0; padding: 0 20px; }
         .progress-step { display: flex; flex-direction: column; align-items: center; z-index: 2; }
         .step-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: white; border: 2px solid #e2e8f0; margin-bottom: 8px; transition: all 0.3s ease; }
         .step-active .step-icon { background-color: var(--accent); color: white; border-color: var(--accent); }
         .step-label { font-size: 0.75rem; font-weight: 500; text-align: center; color: #94a3b8; }
         .step-active .step-label { color: var(--accent); font-weight: 600; }
-
         .progress-track::before { content: ''; position: absolute; top: 20px; left: 0; right: 0; height: 2px; background-color: #e2e8f0; z-index: 1; }
         .progress-bar { position: absolute; top: 20px; left: 0; height: 2px; background-color: var(--accent); z-index: 1; transition: width 0.5s ease; }
-
         .info-card { background-color: var(--light-bg); border-radius: 10px; padding: 20px; border-left: 4px solid var(--primary); }
         .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
         .detail-item { display: flex; flex-direction: column; margin-bottom: 15px; }
         .detail-label { font-size: 0.85rem; color: var(--secondary); margin-bottom: 4px; }
         .detail-value { font-weight: 500; color: var(--dark-text); }
-
         table { border-collapse: separate; border-spacing: 0; width: 100%; }
         th { background-color: #f1f5f9; color: var(--secondary); font-weight: 600; text-align: left; padding: 14px 16px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
         tr:last-child td { border-bottom: none; }
         tr:hover { background-color: #f8fafc; }
-
         .grand-total { background: linear-gradient(to right, var(--primary), var(--primary-dark)); color: white; border-radius: 10px; padding: 20px; margin-top: 30px; text-align: right; font-size: 1.25rem; }
-
         .qr-container { background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid #e2e8f0; }
-
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen py-8 px-4">
@@ -124,12 +112,24 @@
                         <span class="detail-value">#{{ str_pad($purchaseOrder->id, 5, '0', STR_PAD_LEFT) }}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">PROVIDER TYPE</span>
-                        <span class="detail-value">{{ $purchaseOrder['provider_type'] }}</span>
+                        <span class="detail-label">SUPPLIER ID</span>
+                        <span class="detail-value">{{ $supplierDetails['supplier_id'] ?? '00000' }}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">PROVIDER NAME</span>
-                        <span class="detail-value">{{ $providerDetails['name'] }}</span>
+                        <span class="detail-label">SUPPLIER NAME</span>
+                        <span class="detail-value">{{ $supplierDetails['name'] ?? 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SUPPLIER PHONE</span>
+                        <span class="detail-value">{{ $supplierDetails['phone'] ?? 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SUPPLIER EMAIL</span>
+                        <span class="detail-value">{{ $supplierDetails['email'] ?? 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SUPPLIER ADDRESS</span>
+                        <span class="detail-value">{{ $supplierDetails['address'] ?? 'N/A' }}</span>
                     </div>
                 </div>
                 <div>
@@ -144,7 +144,7 @@
                 </div>
             </div>
 
-            @if(!empty($purchaseOrder->note))
+            @if(!empty($purchaseOrder->special_note))
             <div class="detail-item mt-4">
                 <span class="detail-label">Notes</span>
                 <span class="detail-value whitespace-pre-line">{{ $purchaseOrder->special_note }}</span>
@@ -152,21 +152,10 @@
             @endif
         </div>
 
-        <!-- Notes Section -->
-        @if(!empty($purchaseOrder->note))
-        <div class="info-card mb-8">
-            <h2 class="text-xl font-semibold mb-3 text-gray-800 flex items-center">
-                <i class="fas fa-sticky-note mr-3 text-yellow-500"></i> Notes
-            </h2>
-            <p class="text-gray-700 leading-relaxed">{{ $purchaseOrder->note }}</p>
-        </div>
-        @endif
-        
         <!-- Order Items Table -->
         <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
             <i class="fas fa-list-ul mr-3 text-blue-500"></i> Order Items
         </h2>
-
         <div class="overflow-x-auto rounded-lg border border-gray-200 mb-6">
             <table>
                 <thead>
@@ -194,7 +183,6 @@
             </table>
         </div>
 
-
         <!-- QR Code + Payment Summary -->
         <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
@@ -211,47 +199,37 @@
                 </p>
             </div>
 
-            <!-- Payment Summary Section -->
+            <!-- Payment Summary -->
             @php
                 $grandTotal = $purchaseOrder->items->sum(fn($item) => $item->quantity * $item->price);
-                $remainingBalance = $purchaseOrder->remaining_balance ?? 0; 
+                $remainingBalance = $purchaseOrder->remaining_balance ?? 0;
                 $alreadyPaid = $grandTotal - $remainingBalance;
             @endphp
-
             <div class="grid grid-cols-1 gap-4">
-                <!-- Grand Total -->
                 <div class="bg-blue-600 text-white rounded-lg p-4 text-right font-semibold shadow">
                     Grand Total: Rs. {{ number_format($grandTotal, 2) }}
                 </div>
-
-                <!-- Already Paid -->
                 <div class="bg-green-500 text-white rounded-lg p-4 text-right font-semibold shadow">
                     Already Paid: Rs. {{ number_format($alreadyPaid, 2) }}
                 </div>
-
-                <!-- Remaining Balance -->
                 <div class="bg-red-500 text-white rounded-lg p-4 text-right font-semibold shadow">
                     Remaining Balance: Rs. {{ number_format($remainingBalance, 2) }}
                 </div>
-
                 <div class="mt-6 flex justify-end space-x-3">
-                    <!-- Back to Homepage -->
-                    <a href="http://127.0.0.1:8000/" 
+                    <a href="{{ url('/') }}" 
                     class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-lg shadow transition">
                         <i class="fas fa-arrow-left mr-2"></i> Back to Homepage
                     </a>
-
-                    <!-- Download PDF -->
                     <a href="{{ route('purchase-order.pdf', $purchaseOrder->id) }}" 
                     target="_blank"
                     class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow transition">
                         <i class="fas fa-file-pdf mr-2"></i> Download PDF
                     </a>
                 </div>
-
             </div>
 
         </div>
+
     </div>
 
 </div>

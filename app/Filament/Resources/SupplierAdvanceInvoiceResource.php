@@ -67,58 +67,56 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             return \App\Models\PurchaseOrder::query()
                                                 ->where('status', '!=', 'closed') 
                                                 ->get()
-                                                ->mapWithKeys(function ($order) {
-                                                    return [
-                                                        $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
-                                                                    " | Remaining: Rs. " . number_format($order->remaining_balance, 2) 
-                                                    ];
-                                                });
+                                                ->mapWithKeys(fn ($order) => [
+                                                    $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
+                                                                " | Remaining: Rs. " . number_format($order->remaining_balance, 2)
+                                                ]);
                                         })
                                         ->reactive()
-                                        ->afterStateUpdated(function ($state, $set, $get) {
-                                            $purchaseOrder = \App\Models\PurchaseOrder::find($state);
+                                        ->afterStateUpdated(function ($state, $set) {
+                                            $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
 
                                             if ($purchaseOrder) {
-                                                $set('provider_type', $purchaseOrder->provider_type ?? 'N/A');
-                                                $set('provider_id', $purchaseOrder->provider_id ?? 'N/A');
-                                                $set('provider_email', $purchaseOrder->provider_email ?? 'N/A');
-                                                $set('wanted_date', $purchaseOrder->wanted_date ?? 'N/A');
-                                                $set('remaining_balance', $purchaseOrder->remaining_balance);
-                                                $set('status', $purchaseOrder->status ?? 'N/A');
+                                                $supplier = $purchaseOrder->supplier;
+
+                                                $set('supplier_id', $supplier?->supplier_id ?? null);
+                                                $set('supplier_name', $supplier?->name ?? 'Unknown');
+                                                $set('supplier_phone', $supplier?->phone_1 ?? null);
+                                                $set('supplier_email', $supplier?->email ?? null);
+
+                                                $set('wanted_date', $purchaseOrder->wanted_date ?? null);
+                                                $set('remaining_balance', $purchaseOrder->remaining_balance ?? 0);
+                                                $set('status', $purchaseOrder->status ?? null);
                                                 $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
                                             } else {
-                                                $set('provider_type', 'N/A');
-                                                $set('provider_id', 'N/A');
-                                                $set('provider_email', 'N/A');
-                                                $set('wanted_date', 'N/A');
-                                                $set('remaining_balance', 'N/A');
-                                                $set('status', 'N/A');
+                                                $set('supplier_id', null);
+                                                $set('supplier_name', 'Unknown');
+                                                $set('supplier_phone', null);
+                                                $set('supplier_email', null);
+                                                $set('wanted_date', null);
+                                                $set('remaining_balance', 0);
+                                                $set('status', null);
                                                 $set('purchase_order_items', []);
                                             }
                                         }),
 
-
-                                    TextInput::make('provider_email')
-                                        ->label('Provider Email')
-                                        ->disabled(),
-
-                                    TextInput::make('wanted_date')
-                                        ->label('Wanted Date')
-                                        ->disabled(),
-                                    
-                                    TextInput::make('status')
-                                        ->label('Status')
-                                        ->disabled(),
-
-                                    TextInput::make('provider_type')
-                                        ->label('Provider Type')
+                                    TextInput::make('supplier_id')
+                                        ->label('Supplier ID')
                                         ->disabled()
-                                        ->dehydrated(), 
-
-                                    TextInput::make('provider_id')
-                                        ->label('Provider ID')
-                                        ->disabled()
+                                        ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
                                         ->dehydrated(),
+
+                                    TextInput::make('supplier_name')
+                                        ->label('Supplier Name')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_phone')
+                                        ->label('Supplier Phone')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_email')
+                                        ->label('Supplier Email')
+                                        ->disabled(),
                                 ]),
 
                             Section::make('Purchase Order Items')

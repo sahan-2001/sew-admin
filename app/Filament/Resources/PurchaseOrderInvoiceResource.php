@@ -77,7 +77,9 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ])
                                         ->afterStateUpdated(function ($state, callable $set) {
                                             $numericId = ltrim($state, '0');
-                                            $purchaseOrder = \App\Models\PurchaseOrder::find($numericId);
+
+                                            // Fetch purchase order with supplier
+                                            $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($numericId);
 
                                             if (!$purchaseOrder) {
                                                 Notification::make()
@@ -89,12 +91,12 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 return;
                                             }
 
-                                            $set('provider_type', $purchaseOrder->provider_type);
-                                            $set('provider_name', $purchaseOrder->provider_name);
-                                            $set('provider_id', $purchaseOrder->provider_id);
-                                            $set('wanted_date', $purchaseOrder->wanted_date);
+                                            // Set supplier and wanted date safely
+                                            $set('supplier_id', $purchaseOrder->supplier_id ?? '');
+                                            $set('supplier_name', optional($purchaseOrder->supplier)->name ?? '');
+                                            $set('wanted_date', $purchaseOrder->wanted_date ?? '');
 
-                                            // Fetch ALL register arrivals for this purchase order
+                                            // Fetch all register arrivals for this purchase order
                                             $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $numericId)->get();
 
                                             $allItems = collect();
@@ -108,7 +110,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 foreach ($items as $item) {
                                                     if ($item->status === 'to be inspected') {
                                                         $hasToBeInspected = true;
-                                                        break 2; 
+                                                        break 2; // Stop processing if any QC not done
                                                     }
 
                                                     $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
@@ -116,11 +118,11 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                                     $allItems->push([
                                                         'register_arrival_id' => $arrival->id,
-                                                        'location_name' => $location?->name,
+                                                        'location_name' => optional($location)->name,
                                                         'received_date' => $arrival->received_date,
                                                         'item_id' => $item->item_id,
-                                                        'item_code' => $inventoryItem?->item_code,
-                                                        'name' => $inventoryItem?->name,
+                                                        'item_code' => optional($inventoryItem)->item_code,
+                                                        'name' => optional($inventoryItem)->name,
                                                         'quantity' => $item->quantity,
                                                         'price' => $item->price,
                                                         'status' => $item->status,
@@ -137,14 +139,13 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     ->duration(8000)
                                                     ->send();
 
-                                                self::clearForm($set); 
+                                                self::clearForm($set);
                                                 return;
                                             }
 
                                             $set('items', $allItems->toArray());
 
-
-                                            // Process ALL Material QC records for this purchase order
+                                            // Process Material QC
                                             $allQcRecords = collect();
                                             foreach ($registerArrivals as $arrival) {
                                                 $qcRecords = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
@@ -158,10 +159,10 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                                     $allQcRecords->push([
                                                         'register_arrival_id' => $arrival->id,
-                                                        'arrival_location' => $arrivalLocation?->name,
+                                                        'arrival_location' => optional($arrivalLocation)->name,
                                                         'received_date' => $arrival->received_date,
-                                                        'item_code' => $item?->item_code,
-                                                        'item_name' => $item?->name,
+                                                        'item_code' => optional($item)->item_code,
+                                                        'item_name' => optional($item)->name,
                                                         'inspected_quantity' => $record->inspected_quantity,
                                                         'approved_qty' => $record->approved_qty,
                                                         'returned_qty' => $record->returned_qty,
@@ -170,19 +171,17 @@ class PurchaseOrderInvoiceResource extends Resource
                                                         'add_scrap' => $record->add_scrap,
                                                         'available_to_store' => $record->available_to_store,
                                                         'cost_of_item' => $record->cost_of_item,
-                                                        'store_location' => $storeLocation?->name,
+                                                        'store_location' => optional($storeLocation)->name,
                                                         'total_returned' => (float) ($record->returned_qty ?? 0) + (float) ($record->add_returned ?? 0),
                                                         'total_scrapped' => (float) ($record->scrapped_qty ?? 0) + (float) ($record->add_scrap ?? 0),
                                                     ]);
                                                 }
                                             }
-
                                             $set('material_qc_items', $allQcRecords->toArray());
 
-                                            // Process ALL Invoice Items from all register arrivals
+                                            // Process invoice items (QC Passed + available_to_store)
                                             $invoiceItems = collect();
 
-                                            // Add passed items from all register arrivals
                                             foreach ($registerArrivals as $arrival) {
                                                 $passedItems = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)
                                                     ->where('status', 'QC Passed')
@@ -192,23 +191,20 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $invItem = \App\Models\InventoryItem::find($item->item_id);
                                                     $location = \App\Models\InventoryLocation::find($arrival->location_id);
 
-                                                    $qty = (float) $item->quantity;
-                                                    $price = (float) $item->price;
-
                                                     $invoiceItems->push([
                                                         'register_arrival_id' => $arrival->id,
                                                         'item_id_i' => $item->item_id,
-                                                        'item_code_i' => $invItem?->item_code,
-                                                        'item_name_i' => $invItem?->name,
-                                                        'stored_quantity_i' => $qty,
+                                                        'item_code_i' => optional($invItem)->item_code,
+                                                        'item_name_i' => optional($invItem)->name,
+                                                        'stored_quantity_i' => (float) $item->quantity,
                                                         'location_id_i' => $arrival->location_id,
-                                                        'location_name_i' => $location?->name,
-                                                        'price_i' => $price,
-                                                        'total' => round($qty * $price, 2),
+                                                        'location_name_i' => optional($location)->name,
+                                                        'price_i' => (float) $item->price,
+                                                        'total' => round((float) $item->quantity * (float) $item->price, 2),
                                                     ]);
                                                 }
 
-                                                // Add Material QC items with available_to_store > 0
+                                                // Material QC items with available_to_store > 0
                                                 $materialQCs = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
                                                     ->where('purchase_order_id', $numericId)
                                                     ->get();
@@ -218,19 +214,16 @@ class PurchaseOrderInvoiceResource extends Resource
                                                         $invItem = \App\Models\InventoryItem::find($qc->item_id);
                                                         $location = \App\Models\InventoryLocation::find($qc->store_location_id);
 
-                                                        $qty = (float) $qc->available_to_store;
-                                                        $price = (float) $qc->cost_of_item;
-
                                                         $invoiceItems->push([
                                                             'register_arrival_id' => $arrival->id,
                                                             'item_id_i' => $qc->item_id,
-                                                            'item_code_i' => $invItem?->item_code,
-                                                            'item_name_i' => $invItem?->name,
-                                                            'stored_quantity_i' => $qty,
+                                                            'item_code_i' => optional($invItem)->item_code,
+                                                            'item_name_i' => optional($invItem)->name,
+                                                            'stored_quantity_i' => (float) $qc->available_to_store,
                                                             'location_id_i' => $qc->store_location_id,
-                                                            'location_name_i' => $location?->name,
-                                                            'price_i' => $price,
-                                                            'total' => round($qty * $price, 2),
+                                                            'location_name_i' => optional($location)->name,
+                                                            'price_i' => (float) $qc->cost_of_item,
+                                                            'total' => round((float) $qc->available_to_store * (float) $qc->cost_of_item, 2),
                                                         ]);
                                                     }
                                                 }
@@ -238,7 +231,7 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                             $set('invoice_items', $invoiceItems->toArray());
 
-                                            // Get advance invoices
+                                            // Fetch paid advance invoices
                                             $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
                                                 ->whereIn('status', ['paid', 'partially_paid'])
                                                 ->get();
@@ -246,9 +239,8 @@ class PurchaseOrderInvoiceResource extends Resource
                                             $set('advance_invoices', $advanceInvoices->toArray());
                                         }),
 
-                                    TextInput::make('provider_type')->label('Provider Type')->disabled()->dehydrated(true),
-                                    TextInput::make('provider_id')->label('Provider ID')->disabled()->dehydrated(true),
-                                    TextInput::make('provider_name')->label('Provider Name')->disabled(),
+                                    TextInput::make('supplier_id')->label('SupplierID')->disabled()->dehydrated(true)->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT)),
+                                    TextInput::make('supplier_name')->label('Supplier Name')->disabled(),
                                     TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
                                 ]),
                                 

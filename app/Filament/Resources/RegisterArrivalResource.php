@@ -45,14 +45,15 @@ class RegisterArrivalResource extends Resource
                                 ->nullable()
                                 ->reactive()
                                 ->afterStateUpdated(fn ($state, Set $set) => static::loadPurchaseOrderDetails($state, $set)),
-                            
-                            TextInput::make('provider_type')
-                                ->label('Provider Type')
+
+                            TextInput::make('supplier_id')
+                                ->label('Supplier ID')
                                 ->disabled()
+                                ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
 
-                            TextInput::make('provider_id')
-                                ->label('Provider ID')
+                            TextInput::make('email')
+                                ->label('Supplier E-mail')
                                 ->disabled()
                                 ->hidden(fn (Get $get) => !$get('purchase_order_id')),
                         ]),
@@ -208,7 +209,7 @@ class RegisterArrivalResource extends Resource
                                 ->maxDate(now()), 
 
                             TextInput::make('invoice_number')
-                                ->label('Invoice Number')
+                                ->label("Supplier's Invoice Number")
                                 ->required(),
 
                             FileUpload::make('image_of_invoice')
@@ -227,8 +228,7 @@ class RegisterArrivalResource extends Resource
     public static function loadPurchaseOrderDetails($purchaseOrderId, Set $set)
     {
         if (!$purchaseOrderId) {
-            $set('provider_id', null);
-            $set('provider_type', null);
+            $set('supplier_id', null);
             $set('due_date', null);
             $set('purchase_order_items', []);
             return;
@@ -237,12 +237,15 @@ class RegisterArrivalResource extends Resource
         $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
 
         if ($purchaseOrder && in_array($purchaseOrder->status, ['released', 'partially arrived'])) {
-            $set('provider_id', $purchaseOrder->provider_id);
-            $set('provider_type', $purchaseOrder->provider_type);
+
+            $supplier = $purchaseOrder->supplier;
+            $set('supplier_id', $supplier?->supplier_id);
+            $set('email', $supplier?->email);
+
             $set('due_date', $purchaseOrder->wanted_date);
 
             $items = PurchaseOrderItem::where('purchase_order_id', $purchaseOrderId)
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('remaining_quantity', '>', 0)
                         ->orWhereNull('remaining_quantity');
                 })
@@ -255,9 +258,9 @@ class RegisterArrivalResource extends Resource
                     'item_code' => $item->inventoryItem->item_code,
                     'item_name' => $item->inventoryItem->name,
                     'remaining_quantity' => $item->remaining_quantity ?? $item->quantity,
-                    'arrived_quantity' => $item->arrived_quantity ?? 0,
+                    'quantity' => 0,
                     'price' => $item->price,
-                    'total' => ($item->remaining_quantity ?? $item->quantity) * $item->price,
+                    'total' => 0,
                     'status' => 'not arrived',
                 ];
             })->toArray();
@@ -270,8 +273,8 @@ class RegisterArrivalResource extends Resource
                 ->body('The selected purchase order is not in a released or partially arrived status.')
                 ->send();
 
-            $set('provider_id', null);
-            $set('provider_type', null);
+            $set('supplier_id', null);
+            $set('email', null);
             $set('due_date', null);
             $set('purchase_order_items', []);
         }

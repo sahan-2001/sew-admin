@@ -57,6 +57,7 @@
     <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
             <p><strong>Order ID:</strong> {{ str_pad($record->id, 5, '0', STR_PAD_LEFT) }}</p>
+            <p><strong>Supplier ID:</strong> {{ str_pad($record->supplier?->supplier_id ?? 0, 5, '0', STR_PAD_LEFT) }}</p>
             <p><strong>Supplier:</strong> {{ $record->supplier?->name ?? 'N/A' }}</p>
             <p><strong>Supplier Email:</strong> {{ $record->supplier?->email ?? 'N/A' }}</p>
             <p><strong>Supplier Phone:</strong> {{ $record->supplier?->phone_1 ?? 'N/A' }}</p>

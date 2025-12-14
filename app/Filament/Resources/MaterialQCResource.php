@@ -55,18 +55,21 @@ class MaterialQCResource extends Resource
                                                 ->required()
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, callable $set) {
-                                                    $purchaseOrder = \App\Models\PurchaseOrder::find($state);
-
-                                                    // Reset form state
+                                                    // Reset all related fields first
                                                     $set('register_arrival_id', null);
                                                     $set('items', []);
-                                                    $set('provider_type', null);
-                                                    $set('provider_id', null);
+                                                    $set('supplier_id', null);
+                                                    $set('supplier_name', null);
+                                                    $set('supplier_phone', null);
+                                                    $set('supplier_email', null);
                                                     $set('wanted_date', null);
                                                     $set('location_id', null);
                                                     $set('location_name', null);
                                                     $set('received_date', null);
                                                     $set('invoice_number', null);
+
+                                                    // Load PurchaseOrder with supplier relation
+                                                    $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
 
                                                     if (!$purchaseOrder) {
                                                         Notification::make()
@@ -77,6 +80,7 @@ class MaterialQCResource extends Resource
                                                         return;
                                                     }
 
+                                                    // Check PurchaseOrder status
                                                     if (!in_array($purchaseOrder->status, ['arrived', 'partially arrived'])) {
                                                         Notification::make()
                                                             ->title('Invalid Purchase Order Status')
@@ -86,17 +90,67 @@ class MaterialQCResource extends Resource
                                                         return;
                                                     }
 
-                                                    // Set supplier info
-                                                    $set('provider_type', $purchaseOrder->provider_type);
-                                                    $set('provider_id', $purchaseOrder->provider_id);
+                                                    // Set Supplier Info
+                                                    $supplier = $purchaseOrder->supplier;
+                                                    $set('supplier_id', $supplier?->supplier_id ? str_pad($supplier->supplier_id, 5, '0', STR_PAD_LEFT) : null);
+                                                    $set('supplier_name', $supplier?->name ?? 'Unknown Supplier');
+                                                    $set('supplier_phone', $supplier?->phone_1 ?? null);
+                                                    $set('supplier_email', $supplier?->email ?? null);
+
+                                                    // Set wanted delivery date
                                                     $set('wanted_date', $purchaseOrder->wanted_date);
+
+                                                    // Load Register Arrival options if any
+                                                    $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $state)
+                                                        ->whereHas('items', function ($query) {
+                                                            $query->where('status', 'to be inspected')
+                                                                ->where('quantity', '>', 0);
+                                                        })
+                                                        ->get();
+
+                                                    if ($registerArrivals->isEmpty()) {
+                                                        Notification::make()
+                                                            ->title('No Arrivals Found')
+                                                            ->body('No register arrivals with items to inspect exist for this purchase order.')
+                                                            ->warning()
+                                                            ->send();
+                                                    }
+
+                                                    $set('register_arrival_options', $registerArrivals->mapWithKeys(function ($arrival) {
+                                                        $location = \App\Models\InventoryLocation::find($arrival->location_id);
+                                                        return [
+                                                            $arrival->id => 'ID: ' . $arrival->id
+                                                                . ' | Location: ' . ($location?->name ?? 'Unknown')
+                                                                . ' | Date: ' . $arrival->received_date,
+                                                        ];
+                                                    })->toArray());
                                                 }),
 
-                                            Forms\Components\TextInput::make('provider_type')->label('Provider Type')->disabled(),
-                                            Forms\Components\TextInput::make('provider_id')->label('Provider ID')->disabled(),
-                                            Forms\Components\TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
-                                        ])
-                                    ]),        
+
+                                            // Supplier fields
+                                            Forms\Components\TextInput::make('supplier_id')
+                                                ->label('Supplier ID')
+                                                ->disabled()
+                                                ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
+                                                ->hidden(fn (callable $get) => !$get('purchase_order_id')),
+
+                                            Forms\Components\TextInput::make('supplier_name')
+                                                ->label('Supplier Name')
+                                                ->disabled()
+                                                ->hidden(fn (callable $get) => !$get('purchase_order_id')),
+
+                                            Forms\Components\TextInput::make('supplier_phone')
+                                                ->label('Phone')
+                                                ->disabled()
+                                                ->hidden(fn (callable $get) => !$get('purchase_order_id')),
+
+                                            Forms\Components\TextInput::make('supplier_email')
+                                                ->label('Email')
+                                                ->disabled()
+                                                ->hidden(fn (callable $get) => !$get('purchase_order_id')),
+
+                                            ]),
+                                        ]),
                                         
                                     Forms\Components\Section::make('Register Arrival Details')
                                         ->schema([    
