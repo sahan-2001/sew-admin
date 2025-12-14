@@ -12,7 +12,7 @@ class CreateInventoryItemsTable extends Migration
             $table->id();
             $table->string('item_code')->unique();
             $table->string('name');
-            $table->unsignedBigInteger('category_id');
+            $table->foreignId('category_id')->constrained()->onDelete('cascade');
             $table->text('special_note')->nullable();
             $table->string('uom');
             $table->integer('available_quantity')->default(0);
@@ -22,8 +22,6 @@ class CreateInventoryItemsTable extends Migration
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();
             $table->timestamps();
-
-            $table->foreign('category_id')->references('id')->on('categories')->onDelete('restrict');
         });
     }
 
