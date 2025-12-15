@@ -25,7 +25,6 @@ class ListSuppliers extends ListRecords
             ExcelImportAction::make()
                 ->validateUsing([
                     'name' => ['required'],
-                    'shop_name' => ['required'],
                     'address_line_1' => ['required'],
                     'email' => ['required', 'email'],
                     'phone_1' => ['required'],
@@ -90,7 +89,7 @@ class ListSuppliers extends ListRecords
 
     protected function beforeCollection(Collection $collection): void
     {
-        $requiredHeaders = ['name', 'shop_name', 'address_line_1', 'email', 'phone_1'];
+        $requiredHeaders = ['name', 'address_line_1', 'email', 'phone_1'];
 
         $firstRow = $collection->first();
         if ($firstRow) {
@@ -103,7 +102,7 @@ class ListSuppliers extends ListRecords
     protected function beforeCreateRecord(array $data, $row): void
     {
         // Check required fields are present and non-empty
-        foreach (['name', 'shop_name', 'address', 'email', 'phone_1'] as $field) {
+        foreach (['name', 'address_line_1', 'city', 'zip_code', 'email', 'phone_1'] as $field) {
             if (!isset($data[$field]) || trim($data[$field]) === '') {
                 throw new ValidationException(
                     ValidationException::withMessages([
@@ -132,4 +131,30 @@ class ListSuppliers extends ListRecords
             );
         }
     }
+
+
+    protected function afterCreateRecord($record, $row): void
+    {
+        // Ensure SupplierControlAccount exists for the imported supplier
+        \App\Models\SupplierControlAccount::firstOrCreate(
+            ['supplier_id' => $record->supplier_id],
+            [
+                'chart_of_account_id' => 1,
+                'payable_account_id' => null,
+                'purchase_account_id' => null,
+                'vat_input_account_id' => null,
+                'purchase_discount_account_id' => null,
+                'bad_debt_recovery_account_id' => null,
+                'debit_total' => 0,
+                'credit_total' => 0,
+                'balance' => 0,
+                'debit_total_vat' => 0,
+                'credit_total_vat' => 0,
+                'balance_vat' => 0,
+                'created_by' => auth()->id() ?? 1, // fallback to admin ID if auth not available
+                'updated_by' => auth()->id() ?? 1,
+            ]
+        );
+    }
+
 }

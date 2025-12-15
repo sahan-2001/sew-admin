@@ -85,7 +85,7 @@ class CustomerResource extends Resource
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('shop_name')->sortable()->searchable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('phone_1')->sortable()->searchable(),
                 

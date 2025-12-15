@@ -36,12 +36,13 @@ class InventoryItem extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            // Get category name safely
-            $categoryName = $model->category?->name ?? 'CAT'; // fallback if no category yet
+            // Ensure category_id can still be null
+            $model->category_id = $model->category_id ?? null;
 
-            // Generate unique item code
-            $model->item_code = self::generateUniqueItemCode($categoryName);
+            // Always use fallback prefix for item_code
+            $model->item_code = self::generateUniqueItemCode('ITEM');
 
+            // Set created_by / updated_by
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
         });
@@ -51,46 +52,23 @@ class InventoryItem extends Model
         });
     }
 
-
     /**
      * Generate a unique item code based on category
      */
-    protected static function generateUniqueItemCode(string $category): string
+    protected static function generateUniqueItemCode(string $prefix): string
     {
-        $categoryCode = strtoupper(substr($category, 0, 3));
-        $maxAttempts = 10;
-        $attempt = 0;
+        $prefix = strtoupper(substr($prefix, 0, 4)); // "ITEM"
+        $lastItem = self::where('item_code', 'like', $prefix.'%')
+                        ->orderBy('item_code', 'desc')
+                        ->first();
 
-        do {
-            $attempt++;
-            $lastItem = self::where('item_code', 'like', $categoryCode.'%')
-                ->orderBy('item_code', 'desc')
-                ->first();
+        $nextNumber = 1;
+        if ($lastItem) {
+            $numericPart = (int) substr($lastItem->item_code, strlen($prefix));
+            $nextNumber = $numericPart + 1;
+        }
 
-            if ($lastItem) {
-                // Extract the numeric part and increment
-                $numericPart = (int) substr($lastItem->item_code, 3);
-                $nextNumber = $numericPart + 1;
-            } else {
-                $nextNumber = 1;
-            }
-
-            $newCode = $categoryCode . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-            // Check if code already exists (unlikely but possible in race conditions)
-            $exists = self::where('item_code', $newCode)->exists();
-
-            if (!$exists) {
-                return $newCode;
-            }
-
-            // If we're here, the code exists - try again with a higher number
-            $nextNumber++;
-
-        } while ($attempt < $maxAttempts);
-
-        // If all attempts fail (extremely unlikely), fall back to UUID
-        return $categoryCode . substr(Str::uuid()->toString(), 0, 4);
+        return $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
     }
 
     protected static $logAttributes = [

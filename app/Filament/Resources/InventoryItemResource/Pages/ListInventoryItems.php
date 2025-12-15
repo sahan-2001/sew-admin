@@ -23,8 +23,10 @@ class ListInventoryItems extends ListRecords
             ExcelImportAction::make()
                 ->use(CustomInventoryImport::class)
                 ->validateUsing([
-                    'name' => ['required'],
-                    'uom' => ['required'],
+                    'name' => ['required', 'string'],
+                    'uom' => ['required', 'string'],
+                    'category_id' => ['nullable', 'string'],
+                    'available_quantity' => ['nullable', 'numeric'],
                 ])
                 ->label('Import Inv Items')
                 ->modalHeading('Upload Excel File')
@@ -43,7 +45,7 @@ class ListInventoryItems extends ListRecords
                             Column::make('id')->heading('ID'),
                             Column::make('item_code')->heading('Item Code'),
                             Column::make('name')->heading('Name'),
-                            Column::make('category')->heading('Category'),
+                            Column::make('category_id')->heading('Category ID'),
                             Column::make('special_note')->heading('Special Note'),
                             Column::make('uom')->heading('Unit of Measure'),
                             Column::make('available_quantity')->heading('Available Quantity'),
@@ -86,33 +88,25 @@ class CustomInventoryImport extends EnhancedDefaultImport
         }
     }
 
-    // Do NOT return or modify $data here
-    protected function beforeCreateRecord(array $data, $row): void
-    {
-        // Optional: logging or side-effects
-    }
-
-    // ✅ This is where we modify the row before it is saved
     protected function mutateBeforeValidation(array $data): array
     {
-        // Default category
-        if (empty($data['category'])) {
-            $data['category'] = 'uncategorized';
+        // CATEGORY
+        if (!empty($data['category'])) {
+            $category = Category::firstOrCreate(
+                ['name' => trim($data['category'])],
+                ['created_by' => auth()->id(), 'updated_by' => auth()->id()]
+            );
+            $data['category_id'] = $category->id;
+        } else {
+            $data['category_id'] = null; // must always be set
         }
 
-        // Ensure category exists
-        $category = Category::firstOrCreate(
-            ['name' => $data['category']],
-            ['created_by' => auth()->id()]
-        );
+        unset($data['category']);
 
-        $data['category'] = $category->name;
-
-        // Default quantity
-        if (!isset($data['available_quantity']) || !is_numeric($data['available_quantity'])) {
-            $data['available_quantity'] = 0;
-        }
+        // AVAILABLE QUANTITY
+        $data['available_quantity'] = is_numeric($data['available_quantity']) ? $data['available_quantity'] : 0;
 
         return $data;
     }
+
 }

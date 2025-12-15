@@ -272,14 +272,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Create specific position roles
         $positions = [
             'GM' => 'General Manager',
-            'Finance Manager',
-            'QC',
-            'Technician',
-            'Cutting Supervisor',
-            'Sewing Line Supervisor'
-        ];
-
-        
+            'FIN' => 'Finance Manager',
+            'QC' => 'Quality Controller',
+            'TECH' => 'Technician',
+            'CUT_SUP' => 'Cutting Supervisor',
+            'SEW_SUP' => 'Sewing Line Supervisor',
+        ]; 
 
         // Create a Superuser and assign role
         $superuser = User::firstOrCreate([
