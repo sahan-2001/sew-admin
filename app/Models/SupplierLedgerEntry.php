@@ -13,6 +13,7 @@ class SupplierLedgerEntry extends Model
     protected $fillable = [
         'entry_code',
         'supplier_id',
+        'chart_of_account_id',
         'entry_date',
         'debit',
         'credit',
@@ -27,6 +28,11 @@ class SupplierLedgerEntry extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class);
     }
 
     public function invoice()

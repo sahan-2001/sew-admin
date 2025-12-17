@@ -19,6 +19,12 @@ return new class extends Migration
                 ->references('supplier_id')->on('suppliers')
                 ->cascadeOnDelete();
 
+            $table->foreignId('chart_of_account_id')
+                  ->nullable()
+                  ->constrained('chart_of_accounts')
+                  ->nullOnDelete()
+                  ->after('supplier_id'); 
+
             $table->date('entry_date');
             $table->decimal('debit', 15, 2)->default(0);
             $table->decimal('credit', 15, 2)->default(0);
