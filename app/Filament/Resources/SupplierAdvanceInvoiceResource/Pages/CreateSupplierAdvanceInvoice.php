@@ -184,7 +184,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
             // Debit – Supplier Control Account
             GeneralLedgerEntry::create([
                 'entry_code' => $entryCode,
-                'account_id' => $supplierControl->id, 
+                'account_id' => null, 
                 'entry_date' => $now,
                 'Control_account_table' => 'supplier_control_accounts',
                 'control_account_record_id' => $supplierControl->id,
@@ -244,5 +244,47 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
         }
     }
 
+    protected function afterCreate(): void
+    {
+        $invoice = $this->record;
+        $po = PurchaseOrder::find($invoice->purchase_order_id);
 
+        if (!$po) return;
+
+        // Determine advance amount
+        $advanceAmount = $invoice->payment_type === 'fixed'
+            ? $invoice->fix_payment_amount
+            : $invoice->percent_calculated_payment;
+
+        if ($advanceAmount > 0) {
+            $this->createLedgerEntries($invoice, $advanceAmount);
+        }
+
+        // Prepare summary
+        $summary = [
+            'Invoice ID' => $invoice->id,
+            'Supplier' => $invoice->supplier->name ?? '-',
+            'PO ID' => $invoice->purchase_order_id,
+            'Advance Amount' => 'Rs. ' . number_format($advanceAmount, 2),
+            'Supplier Advance Account' => $invoice->supplierAdvanceAccount->name ?? '-',
+            'Status' => ucfirst($invoice->status),
+        ];
+
+        // Build HTML table
+        $message = '<table style="width:100%;border-collapse:collapse;">';
+        foreach ($summary as $label => $value) {
+            $message .= "<tr>
+                <td style='padding:4px;font-weight:bold;border:1px solid #ccc;'>{$label}</td>
+                <td style='padding:4px;border:1px solid #ccc;'>{$value}</td>
+            </tr>";
+        }
+        $message .= '</table>';
+
+        // Show notification
+        Notification::make()
+            ->title('Supplier Advance Invoice Summary')
+            ->body($message)
+            ->success()
+            ->send();
+    }
 }

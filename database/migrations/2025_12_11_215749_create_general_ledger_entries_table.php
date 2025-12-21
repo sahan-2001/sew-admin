@@ -12,7 +12,7 @@ class CreateGeneralLedgerEntriesTable extends Migration
             $table->id();
             $table->string('entry_code')->nullable();
 
-            $table->unsignedBigInteger('account_id');
+            $table->unsignedBigInteger('account_id')->nullable();
             $table->string('source_table')->nullable();
             $table->unsignedBigInteger('source_id')->nullable();
 
