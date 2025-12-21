@@ -11,13 +11,14 @@ return new class extends Migration
         Schema::create('supplier_ledger_entries', function (Blueprint $table) {
             $table->id();
 
-            $table->string('entry_code')->unique()->nullable();
+            $table->string('entry_code')->nullable();
 
             // Supplier FK (fixed)
-            $table->unsignedBigInteger('supplier_id');
+            $table->unsignedBigInteger('supplier_id')->nullable();
             $table->foreign('supplier_id')
-                ->references('supplier_id')->on('suppliers')
-                ->cascadeOnDelete();
+                ->references('supplier_id')
+                ->on('suppliers')
+                ->nullOnDelete();
 
             $table->foreignId('chart_of_account_id')
                   ->nullable()

@@ -49,141 +49,151 @@ class SupplierAdvanceInvoiceResource extends Resource
     }
     
     public static function form(Form $form): Form
-{
-    return $form->schema([
-        Tabs::make('Tabs')
-            ->columnSpanFull()
-            ->tabs([
-                Tabs\Tab::make('Purchase Order Details')
-                    ->schema([
-                        Section::make('Purchase Order Information')
-                            ->columns(2)
-                            ->schema([
-                                Select::make('purchase_order_id')
-                                    ->label('Purchase Order')
-                                    ->required()
-                                    ->dehydrated()
-                                    ->disabled(fn (?string $context) => $context === 'edit')
-                                    ->searchable()
-                                    ->options(function () {
-                                        return \App\Models\PurchaseOrder::query()
-                                            ->where('status', '!=', 'closed') 
-                                            ->get()
-                                            ->mapWithKeys(fn ($order) => [
-                                                $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
-                                                            " | Remaining: Rs. " . number_format($order->remaining_balance, 2)
-                                            ]);
-                                    })
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, $set, $get) {
-                                        $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
+    {
+        return $form->schema([
+            Tabs::make('Tabs')
+                ->columnSpanFull()
+                ->tabs([
+                    Tabs\Tab::make('Purchase Order Details')
+                        ->schema([
+                            Section::make('Purchase Order Information')
+                                ->columns(2)
+                                ->schema([
+                                    Select::make('purchase_order_id')
+                                        ->label('Purchase Order')
+                                        ->required()
+                                        ->dehydrated()
+                                        ->disabled(fn (?string $context) => $context === 'edit')
+                                        ->searchable()
+                                        ->options(function () {
+                                            return \App\Models\PurchaseOrder::query()
+                                                ->where('status', '!=', 'closed') 
+                                                ->get()
+                                                ->mapWithKeys(fn ($order) => [
+                                                    $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
+                                                                " | Remaining: Rs. " . number_format($order->remaining_balance, 2)
+                                                ]);
+                                        })
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
 
-                                        if ($purchaseOrder) {
-                                            $supplier = $purchaseOrder->supplier;
+                                            if ($purchaseOrder) {
+                                                $supplier = $purchaseOrder->supplier;
 
-                                            $set('supplier_id', $supplier?->supplier_id ?? null);
-                                            $set('supplier_name', $supplier?->name ?? 'Unknown');
-                                            $set('supplier_phone', $supplier?->phone_1 ?? null);
-                                            $set('supplier_email', $supplier?->email ?? null);
+                                                $set('supplier_id', $supplier?->supplier_id ?? null);
+                                                $set('supplier_name', $supplier?->name ?? 'Unknown');
+                                                $set('supplier_phone', $supplier?->phone_1 ?? null);
+                                                $set('supplier_email', $supplier?->email ?? null);
 
-                                            $set('wanted_date', $purchaseOrder->wanted_date ?? null);
-                                            $set('remaining_balance', $purchaseOrder->remaining_balance ?? 0);
-                                            $set('status', $purchaseOrder->status ?? null);
-                                            $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
+                                                $set('wanted_date', $purchaseOrder->wanted_date ?? null);
+                                                $set('remaining_balance', $purchaseOrder->remaining_balance ?? 0);
+                                                $set('status', $purchaseOrder->status ?? null);
+                                                $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
 
-                                            // Fetch supplier advance account
-                                            $supplierId = $supplier?->supplier_id;
-                                            if ($supplierId) {
-                                                $supplierControlAccount = \App\Models\SupplierControlAccount::with('supplierAdvanceAccount')
-                                                    ->where('supplier_id', $supplierId)
-                                                    ->first();
+                                                // Fetch supplier control account
+                                                $supplierId = $supplier?->supplier_id;
+                                                if ($supplierId) {
+                                                    $supplierControlAccount = \App\Models\SupplierControlAccount::with('supplierAdvanceAccount')
+                                                        ->where('supplier_id', $supplierId)
+                                                        ->first();
 
-                                                if ($supplierControlAccount && $supplierControlAccount->supplierAdvanceAccount) {
-                                                    $advanceAccount = $supplierControlAccount->supplierAdvanceAccount;
-                                                    $set('supplier_advance_account_id', $advanceAccount->id);
-                                                    $set('supplier_advance_account_display', 
-                                                        'ID: ' . str_pad($advanceAccount->id, 5, '0', STR_PAD_LEFT) . 
-                                                        '| Balance without VAT: Rs. ' . number_format($advanceAccount->balance ?? 0, 2).
-                                                        ' | Balance with VAT: Rs. ' . number_format($advanceAccount->balance_vat ?? 0, 2)
-                                                    );
-                                                } else {
-                                                    $set('supplier_advance_account_id', null);
-                                                    $set('supplier_advance_account_display', 
-                                                        $supplierControlAccount 
-                                                            ? 'No advance account configured' 
-                                                            : 'No control account found'
-                                                    );
+                                                    if ($supplierControlAccount) {
+                                                        // Set the control account ID
+                                                        $set('supplier_control_account_id', $supplierControlAccount->id);
+                                                        
+                                                        if ($supplierControlAccount->supplierAdvanceAccount) {
+                                                            $advanceAccount = $supplierControlAccount->supplierAdvanceAccount;
+                                                            $set('supplier_advance_account_id', $advanceAccount->id);
+                                                            $set('supplier_advance_account_display', 
+                                                                'ID: ' . str_pad($advanceAccount->id, 5, '0', STR_PAD_LEFT) . 
+                                                                '| Balance without VAT: Rs. ' . number_format($advanceAccount->balance ?? 0, 2).
+                                                                ' | Balance with VAT: Rs. ' . number_format($advanceAccount->balance_vat ?? 0, 2)
+                                                            );
+                                                        } else {
+                                                            $set('supplier_advance_account_id', null);
+                                                            $set('supplier_advance_account_display', 'No advance account configured');
+                                                        }
+                                                    } else {
+                                                        $set('supplier_control_account_id', null);
+                                                        $set('supplier_advance_account_id', null);
+                                                        $set('supplier_advance_account_display', 'No control account found');
+                                                    }
                                                 }
+                                            } else {
+                                                // Clear all fields if PO not found
+                                                $set('supplier_id', null);
+                                                $set('supplier_name', 'Unknown');
+                                                $set('supplier_phone', null);
+                                                $set('supplier_email', null);
+                                                $set('wanted_date', null);
+                                                $set('remaining_balance', 0);
+                                                $set('status', null);
+                                                $set('purchase_order_items', []);
+                                                $set('supplier_control_account_id', null);
+                                                $set('supplier_advance_account_id', null);
+                                                $set('supplier_advance_account_display', 'Select a PO to see advance account');
                                             }
-                                        } else {
-                                            // Clear all fields if PO not found
-                                            $set('supplier_id', null);
-                                            $set('supplier_name', 'Unknown');
-                                            $set('supplier_phone', null);
-                                            $set('supplier_email', null);
-                                            $set('wanted_date', null);
-                                            $set('remaining_balance', 0);
-                                            $set('status', null);
-                                            $set('purchase_order_items', []);
-                                            $set('supplier_advance_account_id', null);
-                                            $set('supplier_advance_account_display', 'Select a PO to see advance account');
-                                        }
-                                    }),
-
-                                TextInput::make('supplier_id')
-                                    ->label('Supplier ID')
-                                    ->disabled()
-                                    ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
-                                    ->dehydrated(),
-
-                                TextInput::make('supplier_name')
-                                    ->label('Supplier Name')
-                                    ->disabled(),
-
-                                TextInput::make('supplier_phone')
-                                    ->label('Supplier Phone')
-                                    ->disabled(),
-
-                                TextInput::make('supplier_email')
-                                    ->label('Supplier Email')
-                                    ->disabled(),
-
-                                // Supplier Advance Account Section
-                                TextInput::make('supplier_advance_account_display')
-                                    ->label('Supplier Advance Account')
-                                    ->disabled()
-                                    ->columnSpanFull()
-                                    ->extraAttributes(['class' => 'font-bold text-primary-600']),
-
-                                Hidden::make('supplier_advance_account_id')
-                                    ->dehydrated(),
-                            ]),
-
-                        Section::make('Purchase Order Items')
-                            ->schema([
-                                Repeater::make('purchase_order_items')
-                                    ->columns(5)
-                                    ->schema([
-                                        TextInput::make('inventory_item_id')->label('Inventory Item ID')->disabled(),
-                                        TextInput::make('quantity')->label('Quantity')->disabled(),
-                                        TextInput::make('price')->label('Price')->disabled(),
-                                        TextInput::make('arrived_quantity')->label('Arrived Quantity')->disabled(),
-                                        TextInput::make('total_sale')->label('Total Sale')->disabled(),
-                                    ])
-                                    ->disabled(),          
-                                    
-                                    Placeholder::make('grand_total')
-                                        ->label('Grand Total')
-                                        ->content(function (Get $get) {
-                                            $items = $get('purchase_order_items') ?? [];
-                                            $sum = collect($items)->sum('total_sale');
-                                            return 'Rs. ' . number_format((float) $sum, 2);
                                         }),
 
-                                    Hidden::make('grand_total')
+                                    TextInput::make('supplier_id')
+                                        ->label('Supplier ID')
+                                        ->disabled()
+                                        ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
                                         ->dehydrated(),
-                            ]),
-                    ]),
+
+                                    TextInput::make('supplier_name')
+                                        ->label('Supplier Name')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_phone')
+                                        ->label('Supplier Phone')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_email')
+                                        ->label('Supplier Email')
+                                        ->disabled(),
+
+                                    // Hidden fields for account IDs
+                                    Hidden::make('supplier_control_account_id')
+                                        ->dehydrated(),
+                                        
+                                    Hidden::make('supplier_advance_account_id')
+                                        ->dehydrated(),
+
+                                    // Supplier Advance Account Section
+                                    TextInput::make('supplier_advance_account_display')
+                                        ->label('Supplier Advance Account')
+                                        ->disabled()
+                                        ->columnSpanFull()
+                                        ->extraAttributes(['class' => 'font-bold text-primary-600']),
+                                ]),
+
+                            Section::make('Purchase Order Items')
+                                ->schema([
+                                    Repeater::make('purchase_order_items')
+                                        ->columns(5)
+                                        ->schema([
+                                            TextInput::make('inventory_item_id')->label('Inventory Item ID')->disabled(),
+                                            TextInput::make('quantity')->label('Quantity')->disabled(),
+                                            TextInput::make('price')->label('Price')->disabled(),
+                                            TextInput::make('arrived_quantity')->label('Arrived Quantity')->disabled(),
+                                            TextInput::make('total_sale')->label('Total Sale')->disabled(),
+                                        ])
+                                        ->disabled(),          
+                                        
+                                        Placeholder::make('grand_total')
+                                            ->label('Grand Total')
+                                            ->content(function (Get $get) {
+                                                $items = $get('purchase_order_items') ?? [];
+                                                $sum = collect($items)->sum('total_sale');
+                                                return 'Rs. ' . number_format((float) $sum, 2);
+                                            }),
+
+                                        Hidden::make('grand_total')
+                                            ->dehydrated(),
+                                ]),
+                        ]),
 
                     Tabs\Tab::make('Payment for Purchase Order Items')
                         ->schema([
@@ -226,8 +236,8 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $set('calculated_payment', null);
                                         }),
 
-                                    // Amount input for fixed payment
-                                    TextInput::make('fix_payment_amount')
+                                    // Amount input for fixed payment - CHANGED TO 'payment_amount'
+                                    TextInput::make('payment_amount')
                                         ->label('Enter Amount')
                                         ->dehydrated()
                                         ->suffix('Rs.')
@@ -238,7 +248,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $remainingBalance = (float) ($get('remaining_balance') ?? 0);
 
                                             if ($state > $remainingBalance) {
-                                                $set('fix_payment_amount', null);
+                                                $set('payment_amount', null);
                                                 $set('calculated_payment', null);
 
                                                 Notification::make()
@@ -297,9 +307,19 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             return $calculated && $calculated <= $remainingBalance ? $calculated : null;
                                         }),
                                 ]),
-                            ]),
 
-                            
+                            // ADD THIS SECTION TO STORE THE FINAL CALCULATED AMOUNT
+                            Hidden::make('final_payment_amount')
+                                ->dehydrated()
+                                ->default(function (Get $get) {
+                                    if ($get('payment_type') === 'fixed') {
+                                        return (float) ($get('payment_amount') ?? 0);
+                                    } elseif ($get('payment_type') === 'percentage') {
+                                        return (float) ($get('percent_calculated_payment') ?? 0);
+                                    }
+                                    return 0;
+                                }),
+                        ]),
                 ])
                 ->columnSpanFull(),
         ]);

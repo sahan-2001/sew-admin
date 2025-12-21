@@ -15,6 +15,10 @@ class GeneralLedgerEntry extends Model
     protected $fillable = [
         'entry_code',
         'account_id',
+        'source_table',
+        'source_id',
+        'Control_account_table',
+        'control_account_record_id',
         'entry_date',
         'debit',
         'credit',

@@ -1,42 +1,57 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateSupplierAdvanceInvoicesTable extends Migration
+return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
         Schema::create('supplier_advance_invoices', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('purchase_order_id');
-            $table->string('provider_type')->nullable();
-            $table->string('provider_id')->nullable();
-            $table->string('status')->default('pending'); 
-            $table->decimal('grand_total', 10, 2);
-            $table->string('payment_type');
-            $table->decimal('fix_payment_amount', 10, 2)->nullable();
+            $table->foreignId('purchase_order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('supplier_id')->constrained('suppliers', 'supplier_id')->onDelete('cascade');
+            $table->string('status')->default('pending');
+            
+            // Payment details
+            $table->string('payment_type')->nullable(); // fixed, percentage
+            $table->decimal('fix_payment_amount', 15, 2)->nullable();
             $table->decimal('payment_percentage', 5, 2)->nullable();
-            $table->decimal('percent_calculated_payment', 10, 2)->nullable();
-
-            $table->decimal('paid_amount', 10, 2)->default(0);
-            $table->decimal('remaining_amount', 10, 2)->default(0);
+            $table->decimal('percent_calculated_payment', 15, 2)->nullable();
+            
+            // Amount fields
+            $table->decimal('grand_total', 15, 2)->default(0);
+            $table->decimal('paid_amount', 15, 2)->default(0);
+            $table->decimal('remaining_amount', 15, 2)->default(0);
+            
+            // Payment info
             $table->date('paid_date')->nullable();
             $table->string('paid_via')->nullable();
-
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-
-            $table->string('random_code')->nullable(); 
             
+            // Account references
+            $table->foreignId('supplier_control_account_id')->nullable();
+            $table->foreignId('supplier_advance_account_id')->nullable();
             
-            $table->softDeletes();
+            // Random code
+            $table->string('random_code', 16)->unique();
+            
+            // Audit
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
+            $table->softDeletes();
+            
+            // Indexes
+            $table->index('purchase_order_id');
+            $table->index('supplier_id'); // Changed from provider_id
+            $table->index('status');
+            $table->index('random_code');
         });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('supplier_advance_invoices');
     }
-}
+};

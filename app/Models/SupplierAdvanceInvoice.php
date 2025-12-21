@@ -13,8 +13,7 @@ class SupplierAdvanceInvoice extends Model
 
     protected $fillable = [
         'purchase_order_id',
-        'provider_type',
-        'provider_id',
+        'supplier_id', // Changed from provider_id
         'status',
         'grand_total',
         'payment_type',
@@ -27,7 +26,9 @@ class SupplierAdvanceInvoice extends Model
         'remaining_amount',
         'paid_date',
         'paid_via',
-        'random_code', 
+        'random_code',
+        'supplier_control_account_id',
+        'supplier_advance_account_id',
     ];
 
     protected $casts = [
@@ -36,6 +37,7 @@ class SupplierAdvanceInvoice extends Model
         'grand_total' => 'decimal:2',
         'fix_payment_amount' => 'decimal:2',
         'percent_calculated_payment' => 'decimal:2',
+        'payment_percentage' => 'decimal:2',
         'paid_date' => 'date',
     ];
 
@@ -46,7 +48,17 @@ class SupplierAdvanceInvoice extends Model
     
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class, 'supplier_id'); // Changed from provider_id
+    }
+
+    public function supplierControlAccount()
+    {
+        return $this->belongsTo(SupplierControlAccount::class, 'supplier_control_account_id');
+    }
+
+    public function supplierAdvanceAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'supplier_advance_account_id');
     }
 
     public function purchaseOrderAdvInvDeduction()
@@ -84,14 +96,16 @@ class SupplierAdvanceInvoice extends Model
 
             // Set initial status
             $invoice->status = 'pending';
-            $invoice->paid_amount = 0;
-
-            // Calculate remaining amount
-            if ($invoice->fix_payment_amount) {
+            
+            // Set initial paid amount
+            if ($invoice->payment_type === 'fixed' && $invoice->fix_payment_amount) {
+                $invoice->paid_amount = 0; // Initial paid amount is 0
                 $invoice->remaining_amount = $invoice->fix_payment_amount;
-            } elseif ($invoice->percent_calculated_payment) {
+            } elseif ($invoice->payment_type === 'percentage' && $invoice->percent_calculated_payment) {
+                $invoice->paid_amount = 0; // Initial paid amount is 0
                 $invoice->remaining_amount = $invoice->percent_calculated_payment;
             } else {
+                $invoice->paid_amount = 0;
                 $invoice->remaining_amount = 0;
             }
         });

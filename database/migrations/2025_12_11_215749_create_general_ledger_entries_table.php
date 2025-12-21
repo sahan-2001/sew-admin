@@ -10,13 +10,21 @@ class CreateGeneralLedgerEntriesTable extends Migration
     {
         Schema::create('general_ledger_entries', function (Blueprint $table) {
             $table->id();
-            $table->string('entry_code')->unique()->nullable();
+            $table->string('entry_code')->nullable();
+
             $table->unsignedBigInteger('account_id');
+            $table->string('source_table')->nullable();
+            $table->unsignedBigInteger('source_id')->nullable();
+
             $table->date('entry_date');
+            $table->string('control_account_table')->nullable();
+            $table->unsignedBigInteger('control_account_record_id')->nullable();
+            
             $table->decimal('debit', 15, 2)->default(0);
             $table->decimal('credit', 15, 2)->default(0);
             $table->text('transaction_name')->nullable();
             $table->text('description')->nullable();
+
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->softDeletes();
@@ -26,6 +34,8 @@ class CreateGeneralLedgerEntriesTable extends Migration
             $table->foreign('account_id')->references('id')->on('chart_of_accounts')->onDelete('cascade');
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
+
+            $table->index(['source_table', 'source_id']);
         });
     }
 
