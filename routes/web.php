@@ -36,6 +36,7 @@ use App\Http\Controllers\AssignDailyOperationPrintController;
 use App\Http\Controllers\CustomerOrderFrontendController;
 use App\Http\Controllers\OrderTrackingController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\MaterialQCReturnScrapNotePrintController;
 use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
@@ -199,3 +200,8 @@ Route::post('/contact/send', [ContactController::class, 'send']);
 // Order Tracking routes
 Route::get('/track-order', [OrderTrackingController::class, 'index'])->name('track-order.form');
 Route::post('/track-order', [OrderTrackingController::class, 'track'])->name('track-order.track');
+
+
+// Material QC Return and Scrap Note Print route
+Route::get('/material-qc/{materialQC}/print-return-note',[MaterialQCReturnScrapNotePrintController::class, 'printReturnNote'])
+    ->name('material-qc.print-return-note');

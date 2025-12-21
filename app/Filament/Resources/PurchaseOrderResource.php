@@ -122,6 +122,7 @@ class PurchaseOrderResource extends Resource
                                                         TextInput::make('quantity')
                                                             ->label('Quantity')
                                                             ->numeric()
+                                                            ->reactive()
                                                             ->required()
                                                             ->afterStateUpdated(function ($state, callable $set) {
                                                                 $set('remaining_quantity', $state);
@@ -162,8 +163,7 @@ class PurchaseOrderResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('provider_type')->label('Provider Type'),
-                TextColumn::make('provider_id')->label('Provider ID')->searchable(),
+                TextColumn::make('supplier_id')->label('Supplier ID')->searchable(),
                 TextColumn::make('wanted_date')->label('Wanted Date')->date(),
                 TextColumn::make('status')->label('Status')
                     ->badge()

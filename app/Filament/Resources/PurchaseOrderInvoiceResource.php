@@ -56,196 +56,160 @@ class PurchaseOrderInvoiceResource extends Resource
         return $form->schema([
             Tabs::make('Form Tabs')
                 ->tabs([
-                    Tab::make('Purchase Order')
+                    Tabs\Tab::make('Purchase Order Details')
                         ->schema([
-                            Section::make('Purchase Order Details')->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('purchase_order_id')
-                                        ->label('Purchase Order ID')
+                            Section::make('Purchase Order Information')
+                                ->columns(2)
+                                ->schema([
+                                    Select::make('purchase_order_id')
+                                        ->label('Purchase Order')
                                         ->required()
+                                        ->dehydrated()
+                                        ->disabled(fn (?string $context) => $context === 'edit')
+                                        ->searchable()
+                                        ->options(function () {
+                                            return \App\Models\PurchaseOrder::query()
+                                                ->where('status', '!=', 'closed') 
+                                                ->get()
+                                                ->mapWithKeys(fn ($order) => [
+                                                    $order->id => "ID:{$order->id} | Total: Rs. " . number_format($order->grand_total, 2) . 
+                                                                " | Remaining: Rs. " . number_format($order->remaining_balance, 2)
+                                                ]);
+                                        })
                                         ->reactive()
-                                        ->rules([
-                                            function () {  
-                                                return function (string $attribute, $value, \Closure $fail) {
-                                                    $exists = \App\Models\PurchaseOrderInvoice::where('purchase_order_id', $value)->exists();
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
 
-                                                    if ($exists) {
-                                                        $fail('An invoice for this Purchase Order already exists.');
-                                                    }
-                                                };
-                                            },
-                                        ])
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            $numericId = ltrim($state, '0');
+                                            if ($purchaseOrder) {
+                                                $supplier = $purchaseOrder->supplier;
 
-                                            // Fetch purchase order with supplier
-                                            $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($numericId);
+                                                $set('supplier_id', $supplier?->supplier_id ?? null);
+                                                $set('supplier_name', $supplier?->name ?? 'Unknown');
+                                                $set('supplier_phone', $supplier?->phone_1 ?? null);
+                                                $set('supplier_email', $supplier?->email ?? null);
 
-                                            if (!$purchaseOrder) {
-                                                Notification::make()
-                                                    ->title('Purchase Order Not Found')
-                                                    ->body('The purchase order ID entered does not exist.')
-                                                    ->danger()
-                                                    ->send();
-                                                self::clearForm($set);
-                                                return;
-                                            }
+                                                $set('wanted_date', $purchaseOrder->wanted_date ?? null);
+                                                $set('remaining_balance', $purchaseOrder->remaining_balance ?? 0);
+                                                $set('status', $purchaseOrder->status ?? null);
+                                                $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
 
-                                            // Set supplier and wanted date safely
-                                            $set('supplier_id', $purchaseOrder->supplier_id ?? '');
-                                            $set('supplier_name', optional($purchaseOrder->supplier)->name ?? '');
-                                            $set('wanted_date', $purchaseOrder->wanted_date ?? '');
+                                                // Fetch supplier control account with related chart accounts
+                                                $supplierId = $supplier?->supplier_id;
+                                                if ($supplierId) {
+                                                    $supplierControlAccount = \App\Models\SupplierControlAccount::with([
+                                                        'purchaseAccount',
+                                                        'purchaseDiscountAccount'
+                                                    ])->where('supplier_id', $supplierId)->first();
 
-                                            // Fetch all register arrivals for this purchase order
-                                            $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $numericId)->get();
+                                                    if ($supplierControlAccount) {
+                                                        // Set the control account ID
+                                                        $set('supplier_control_account_id', $supplierControlAccount->id);
+                                                        
+                                                        // Set purchase account details
+                                                        if ($supplierControlAccount->purchaseAccount) {
+                                                            $purchaseAccount = $supplierControlAccount->purchaseAccount;
+                                                            $set('purchase_account_id', $purchaseAccount->id);
+                                                            $set('purchase_account_display', 
+                                                                'ID: ' . str_pad($purchaseAccount->id, 5, '0', STR_PAD_LEFT) . 
+                                                                ' | Name: ' . $purchaseAccount->account_name .
+                                                                ' | Balance: Rs. ' . number_format($purchaseAccount->balance ?? 0, 2)
+                                                            );
+                                                        } else {
+                                                            $set('purchase_account_id', null);
+                                                            $set('purchase_account_display', 'No purchase account configured');
+                                                        }
 
-                                            $allItems = collect();
-                                            $hasToBeInspected = false;
-
-                                            foreach ($registerArrivals as $arrival) {
-                                                $items = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)
-                                                    ->where('status', '!=', 'invoiced')
-                                                    ->get();
-
-                                                foreach ($items as $item) {
-                                                    if ($item->status === 'to be inspected') {
-                                                        $hasToBeInspected = true;
-                                                        break 2; // Stop processing if any QC not done
-                                                    }
-
-                                                    $inventoryItem = \App\Models\InventoryItem::find($item->item_id);
-                                                    $location = \App\Models\InventoryLocation::find($arrival->location_id);
-
-                                                    $allItems->push([
-                                                        'register_arrival_id' => $arrival->id,
-                                                        'location_name' => optional($location)->name,
-                                                        'received_date' => $arrival->received_date,
-                                                        'item_id' => $item->item_id,
-                                                        'item_code' => optional($inventoryItem)->item_code,
-                                                        'name' => optional($inventoryItem)->name,
-                                                        'quantity' => $item->quantity,
-                                                        'price' => $item->price,
-                                                        'status' => $item->status,
-                                                        'total' => $item->total,
-                                                    ]);
-                                                }
-                                            }
-
-                                            if ($hasToBeInspected) {
-                                                Notification::make()
-                                                    ->title('QC Incomplete')
-                                                    ->body('There are items where Material QC is not completed.')
-                                                    ->danger()
-                                                    ->duration(8000)
-                                                    ->send();
-
-                                                self::clearForm($set);
-                                                return;
-                                            }
-
-                                            $set('items', $allItems->toArray());
-
-                                            // Process Material QC
-                                            $allQcRecords = collect();
-                                            foreach ($registerArrivals as $arrival) {
-                                                $qcRecords = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
-                                                    ->where('purchase_order_id', $numericId)
-                                                    ->get();
-
-                                                foreach ($qcRecords as $record) {
-                                                    $item = \App\Models\InventoryItem::find($record->item_id);
-                                                    $storeLocation = \App\Models\InventoryLocation::find($record->store_location_id);
-                                                    $arrivalLocation = \App\Models\InventoryLocation::find($arrival->location_id);
-
-                                                    $allQcRecords->push([
-                                                        'register_arrival_id' => $arrival->id,
-                                                        'arrival_location' => optional($arrivalLocation)->name,
-                                                        'received_date' => $arrival->received_date,
-                                                        'item_code' => optional($item)->item_code,
-                                                        'item_name' => optional($item)->name,
-                                                        'inspected_quantity' => $record->inspected_quantity,
-                                                        'approved_qty' => $record->approved_qty,
-                                                        'returned_qty' => $record->returned_qty,
-                                                        'scrapped_qty' => $record->scrapped_qty,
-                                                        'add_returned' => $record->add_returned,
-                                                        'add_scrap' => $record->add_scrap,
-                                                        'available_to_store' => $record->available_to_store,
-                                                        'cost_of_item' => $record->cost_of_item,
-                                                        'store_location' => optional($storeLocation)->name,
-                                                        'total_returned' => (float) ($record->returned_qty ?? 0) + (float) ($record->add_returned ?? 0),
-                                                        'total_scrapped' => (float) ($record->scrapped_qty ?? 0) + (float) ($record->add_scrap ?? 0),
-                                                    ]);
-                                                }
-                                            }
-                                            $set('material_qc_items', $allQcRecords->toArray());
-
-                                            // Process invoice items (QC Passed + available_to_store)
-                                            $invoiceItems = collect();
-
-                                            foreach ($registerArrivals as $arrival) {
-                                                $passedItems = \App\Models\RegisterArrivalItem::where('register_arrival_id', $arrival->id)
-                                                    ->where('status', 'QC Passed')
-                                                    ->get();
-
-                                                foreach ($passedItems as $item) {
-                                                    $invItem = \App\Models\InventoryItem::find($item->item_id);
-                                                    $location = \App\Models\InventoryLocation::find($arrival->location_id);
-
-                                                    $invoiceItems->push([
-                                                        'register_arrival_id' => $arrival->id,
-                                                        'item_id_i' => $item->item_id,
-                                                        'item_code_i' => optional($invItem)->item_code,
-                                                        'item_name_i' => optional($invItem)->name,
-                                                        'stored_quantity_i' => (float) $item->quantity,
-                                                        'location_id_i' => $arrival->location_id,
-                                                        'location_name_i' => optional($location)->name,
-                                                        'price_i' => (float) $item->price,
-                                                        'total' => round((float) $item->quantity * (float) $item->price, 2),
-                                                    ]);
-                                                }
-
-                                                // Material QC items with available_to_store > 0
-                                                $materialQCs = \App\Models\MaterialQC::where('register_arrival_id', $arrival->id)
-                                                    ->where('purchase_order_id', $numericId)
-                                                    ->get();
-
-                                                foreach ($materialQCs as $qc) {
-                                                    if ($qc->available_to_store > 0) {
-                                                        $invItem = \App\Models\InventoryItem::find($qc->item_id);
-                                                        $location = \App\Models\InventoryLocation::find($qc->store_location_id);
-
-                                                        $invoiceItems->push([
-                                                            'register_arrival_id' => $arrival->id,
-                                                            'item_id_i' => $qc->item_id,
-                                                            'item_code_i' => optional($invItem)->item_code,
-                                                            'item_name_i' => optional($invItem)->name,
-                                                            'stored_quantity_i' => (float) $qc->available_to_store,
-                                                            'location_id_i' => $qc->store_location_id,
-                                                            'location_name_i' => optional($location)->name,
-                                                            'price_i' => (float) $qc->cost_of_item,
-                                                            'total' => round((float) $qc->available_to_store * (float) $qc->cost_of_item, 2),
-                                                        ]);
+                                                        // Set purchase discount account details
+                                                        if ($supplierControlAccount->purchaseDiscountAccount) {
+                                                            $purchaseDiscountAccount = $supplierControlAccount->purchaseDiscountAccount;
+                                                            $set('purchase_discount_account_id', $purchaseDiscountAccount->id);
+                                                            $set('purchase_discount_account_display', 
+                                                                'ID: ' . str_pad($purchaseDiscountAccount->id, 5, '0', STR_PAD_LEFT) . 
+                                                                ' | Name: ' . $purchaseDiscountAccount->account_name .
+                                                                ' | Balance: Rs. ' . number_format($purchaseDiscountAccount->balance ?? 0, 2)
+                                                            );
+                                                        } else {
+                                                            $set('purchase_discount_account_id', null);
+                                                            $set('purchase_discount_account_display', 'No purchase discount account configured');
+                                                        }
+                                                    } else {
+                                                        $set('supplier_control_account_id', null);
+                                                        $set('purchase_account_id', null);
+                                                        $set('purchase_account_display', 'No control account found');
+                                                        $set('purchase_discount_account_id', null);
+                                                        $set('purchase_discount_account_display', 'No control account found');
                                                     }
                                                 }
+                                            } else {
+                                                // Clear all fields if PO not found
+                                                $set('supplier_id', null);
+                                                $set('supplier_name', 'Unknown');
+                                                $set('supplier_phone', null);
+                                                $set('supplier_email', null);
+                                                $set('wanted_date', null);
+                                                $set('remaining_balance', 0);
+                                                $set('status', null);
+                                                $set('purchase_order_items', []);
+                                                $set('supplier_control_account_id', null);
+                                                $set('purchase_account_id', null);
+                                                $set('purchase_account_display', 'Select a PO to see accounts');
+                                                $set('purchase_discount_account_id', null);
+                                                $set('purchase_discount_account_display', 'Select a PO to see accounts');
                                             }
-
-                                            $set('invoice_items', $invoiceItems->toArray());
-
-                                            // Fetch paid advance invoices
-                                            $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
-                                                ->whereIn('status', ['paid', 'partially_paid'])
-                                                ->get();
-
-                                            $set('advance_invoices', $advanceInvoices->toArray());
                                         }),
 
-                                    TextInput::make('supplier_id')->label('SupplierID')->disabled()->dehydrated(true)->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT)),
-                                    TextInput::make('supplier_name')->label('Supplier Name')->disabled(),
-                                    TextInput::make('wanted_date')->label('Wanted Date')->disabled(),
+                                    TextInput::make('supplier_id')
+                                        ->label('Supplier ID')
+                                        ->disabled()
+                                        ->formatStateUsing(fn($state) => str_pad($state ?? 0, 5, '0', STR_PAD_LEFT))
+                                        ->dehydrated(),
+
+                                    TextInput::make('supplier_name')
+                                        ->label('Supplier Name')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_phone')
+                                        ->label('Supplier Phone')
+                                        ->disabled(),
+
+                                    TextInput::make('supplier_email')
+                                        ->label('Supplier Email')
+                                        ->disabled(),
                                 ]),
-                                
+
+                            Section::make('Ledger Account Configuration')
+                                ->columns(2)
+                                ->schema([
+                                    // Hidden fields for account IDs
+                                    Hidden::make('supplier_control_account_id')
+                                        ->dehydrated(),
+                                        
+                                    Hidden::make('purchase_account_id')
+                                        ->dehydrated(),
+                                        
+                                    Hidden::make('purchase_discount_account_id')
+                                        ->dehydrated(),
+
+                                    // Purchase Account Section
+                                    TextInput::make('purchase_account_display')
+                                        ->label('Purchase Account')
+                                        ->disabled()
+                                        ->columns(1)
+                                        ->extraAttributes(['class' => 'font-bold text-blue-600']),
+
+                                    // Purchase Discount Account Section
+                                    TextInput::make('purchase_discount_account_display')
+                                        ->label('Purchase Discount Account')
+                                        ->disabled()
+                                        ->columns(1)
+                                        ->extraAttributes(['class' => 'font-bold text-green-600']),
+                                    ]),
+
+
+                        Section::make('Received Items from Register Arrivals')
+                            ->columns(2)
+                            ->schema([ 
                                 Repeater::make('items')
-                                    ->label('Items from All Register Arrivals')
                                     ->schema([
                                         TextInput::make('register_arrival_id')->label('Register Arrival ID')->disabled(),
                                         TextInput::make('location_name')->label('Location')->disabled(),

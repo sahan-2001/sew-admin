@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Return Note</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .company-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .company-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .company-header p {
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .letter-meta {
+            margin-bottom: 15px;
+        }
+
+        .letter-meta table {
+            width: 100%;
+        }
+
+        .letter-meta td {
+            padding: 2px 0;
+        }
+
+        .subject {
+            margin: 15px 0;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 6px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .section-title {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .signature {
+            margin-top: 40px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 10px;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- ================= COMPANY HEADER ================= -->
+<div class="company-header">
+    <h2>{{ $companyDetails['name'] }}</h2>
+    <p>{{ $companyDetails['address'] }}</p>
+    <p>Tel: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
+</div>
+
+<!-- ================= META ================= -->
+<div class="letter-meta">
+    <table>
+        <tr>
+            <td><strong>Date:</strong> {{ now()->format('Y-m-d') }}</td>
+            <td class="right">
+                <strong>Reference:</strong> QC-RET-{{ str_pad($qc->id, 5, '0', STR_PAD_LEFT) }}
+            </td>
+        </tr>
+    </table>
+</div>
+
+<!-- ================= SUPPLIER ================= -->
+<p>
+    <strong>To:</strong><br>
+    @php
+        $supplierLines = [
+            $qc->purchaseOrder->supplier->name ?? null,
+            $qc->purchaseOrder->supplier->address_line_1 ?? null,
+            $qc->purchaseOrder->supplier->address_line_2 ?? null,
+            $qc->purchaseOrder->supplier->city ?? null,
+            $qc->purchaseOrder->supplier->postal_code ?? null,
+            $qc->purchaseOrder->supplier->phone_1 ?? null,
+            $qc->purchaseOrder->supplier->email ?? null,
+        ];
+    @endphp
+
+    @foreach(array_filter($supplierLines) as $line)
+        {{ $line }}<br>
+    @endforeach
+</p>
+
+
+<!-- ================= SUBJECT ================= -->
+<div class="subject">
+    Subject: Return of Goods – Purchase Order #
+    {{ str_pad($qc->purchase_order_id, 5, '0', STR_PAD_LEFT) }}
+</div>
+
+<!-- ================= BODY ================= -->
+<p>
+    Dear Sir / Madam,
+</p>
+
+<p>
+    We refer to the above purchase order and the recent delivery received at our facility.
+    Upon quality inspection, we regret to inform you that part of the supplied material
+    did not meet our quality requirements.
+</p>
+
+<p>
+    Accordingly, the following items are being returned for your necessary action.
+</p>
+
+<!-- ================= RETURN ITEMS ================= -->
+<div class="section-title">Returned Item Details</div>
+<table>
+    <thead>
+        <tr>
+            <th>Item Code</th>
+            <th>Item Description</th>
+            <th class="right">Returned Quantity</th>
+            <th>Return Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ $qc->inventoryItem->item_code }}</td>
+            <td>{{ $qc->inventoryItem->name }}</td>
+            <td class="right">{{ $qc->returned_qty }}</td>
+            <td>{{ $qc->storeLocation->name ?? 'N/A' }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- ================= PO SUMMARY ================= -->
+<div class="section-title">Purchase Order Summary</div>
+<table>
+    <tr>
+        <th>Purchase Order No</th>
+        <th>Wanted Date</th>
+        <th class="right">Order Value</th>
+    </tr>
+    <tr>
+        <td>{{ str_pad($qc->purchase_order_id, 5, '0', STR_PAD_LEFT) }}</td>
+        <td>{{ $qc->purchaseOrder->wanted_date }}</td>
+        <td class="right">{{ number_format($qc->purchaseOrder->grand_total, 2) }}</td>
+    </tr>
+</table>
+
+<p>
+    We kindly request you to arrange a replacement or issue a credit note at your earliest
+    convenience.
+</p>
+
+<p>
+    Thank you for your continued cooperation.
+</p>
+
+<!-- ================= SIGNATURE ================= -->
+<div class="signature">
+    <p>
+        Yours faithfully,<br><br>
+        <strong>{{ $companyDetails['name'] }}</strong><br>
+        Quality Control Department
+    </p>
+</div>
+
+<!-- ================= FOOTER ================= -->
+<div class="footer">
+    Generated by {{ auth()->user()->email }} on {{ now()->format('Y-m-d H:i') }}
+</div>
+
+</body>
+</html>

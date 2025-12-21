@@ -23,6 +23,10 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Filters\TextFilter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
+use App\Models\PurchaseOrder;
+use App\Models\RegisterArrival;
+use App\Models\InventoryLocation;
+
 
 class MaterialQCResource extends Resource
 {
@@ -50,13 +54,27 @@ class MaterialQCResource extends Resource
                                 ->schema([
                                     Forms\Components\Grid::make(2)
                                         ->schema([
-                                            Forms\Components\TextInput::make('purchase_order_id')
-                                                ->label('Purchase Order ID')
+                                            Select::make('purchase_order_id')
+                                                ->label('Purchase Order')
                                                 ->required()
+                                                ->searchable()
+                                                ->preload()
+                                                ->options(function () {
+                                                    return PurchaseOrder::whereIn('status', ['arrived', 'partially arrived'])
+                                                        ->orderByDesc('id')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($po) => [
+                                                            $po->id => 'PO-' . str_pad($po->id, 5, '0', STR_PAD_LEFT)
+                                                                . ' | Date: ' . $po->wanted_date
+                                                        ])
+                                                        ->toArray();
+                                                })
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, callable $set) {
-                                                    // Reset all related fields first
+
+                                                    /* Reset dependent fields */
                                                     $set('register_arrival_id', null);
+                                                    $set('register_arrival_options', []);
                                                     $set('items', []);
                                                     $set('supplier_id', null);
                                                     $set('supplier_name', null);
@@ -68,64 +86,72 @@ class MaterialQCResource extends Resource
                                                     $set('received_date', null);
                                                     $set('invoice_number', null);
 
-                                                    // Load PurchaseOrder with supplier relation
-                                                    $purchaseOrder = \App\Models\PurchaseOrder::with('supplier')->find($state);
+                                                    if (!$state) {
+                                                        return;
+                                                    }
+
+                                                    /* Load Purchase Order */
+                                                    $purchaseOrder = PurchaseOrder::with('supplier')->find($state);
 
                                                     if (!$purchaseOrder) {
                                                         Notification::make()
                                                             ->title('Purchase Order Not Found')
-                                                            ->body('The purchase order ID entered does not exist.')
                                                             ->danger()
                                                             ->send();
                                                         return;
                                                     }
 
-                                                    // Check PurchaseOrder status
+                                                    /* Validate Status */
                                                     if (!in_array($purchaseOrder->status, ['arrived', 'partially arrived'])) {
                                                         Notification::make()
                                                             ->title('Invalid Purchase Order Status')
-                                                            ->body('Purchase order status must be "arrived" or "partially arrived".')
+                                                            ->body('Only Arrived or Partially Arrived POs are allowed.')
                                                             ->danger()
                                                             ->send();
                                                         return;
                                                     }
 
-                                                    // Set Supplier Info
+                                                    /* Supplier Info */
                                                     $supplier = $purchaseOrder->supplier;
-                                                    $set('supplier_id', $supplier?->supplier_id ? str_pad($supplier->supplier_id, 5, '0', STR_PAD_LEFT) : null);
-                                                    $set('supplier_name', $supplier?->name ?? 'Unknown Supplier');
-                                                    $set('supplier_phone', $supplier?->phone_1 ?? null);
-                                                    $set('supplier_email', $supplier?->email ?? null);
 
-                                                    // Set wanted delivery date
+                                                    $set('supplier_id', $supplier?->supplier_id
+                                                        ? str_pad($supplier->supplier_id, 5, '0', STR_PAD_LEFT)
+                                                        : null
+                                                    );
+                                                    $set('supplier_name', $supplier?->name);
+                                                    $set('supplier_phone', $supplier?->phone_1);
+                                                    $set('supplier_email', $supplier?->email);
+
+                                                    /* Wanted Date */
                                                     $set('wanted_date', $purchaseOrder->wanted_date);
 
-                                                    // Load Register Arrival options if any
-                                                    $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $state)
-                                                        ->whereHas('items', function ($query) {
-                                                            $query->where('status', 'to be inspected')
-                                                                ->where('quantity', '>', 0);
+                                                    /* Register Arrivals with items to inspect */
+                                                    $registerArrivals = RegisterArrival::where('purchase_order_id', $state)
+                                                        ->whereHas('items', function ($q) {
+                                                            $q->where('status', 'to be inspected')
+                                                            ->where('quantity', '>', 0);
                                                         })
                                                         ->get();
 
                                                     if ($registerArrivals->isEmpty()) {
                                                         Notification::make()
                                                             ->title('No Arrivals Found')
-                                                            ->body('No register arrivals with items to inspect exist for this purchase order.')
+                                                            ->body('No arrivals with items pending inspection.')
                                                             ->warning()
                                                             ->send();
                                                     }
 
+                                                    /* Arrival Dropdown Options */
                                                     $set('register_arrival_options', $registerArrivals->mapWithKeys(function ($arrival) {
-                                                        $location = \App\Models\InventoryLocation::find($arrival->location_id);
+                                                        $location = InventoryLocation::find($arrival->location_id);
+
                                                         return [
-                                                            $arrival->id => 'ID: ' . $arrival->id
-                                                                . ' | Location: ' . ($location?->name ?? 'Unknown')
+                                                            $arrival->id => 'RA-' . str_pad($arrival->id, 5, '0', STR_PAD_LEFT)
+                                                                . ' | Location: ' . ($location?->name ?? 'N/A')
                                                                 . ' | Date: ' . $arrival->received_date,
                                                         ];
                                                     })->toArray());
                                                 }),
-
 
                                             // Supplier fields
                                             Forms\Components\TextInput::make('supplier_id')
@@ -618,10 +644,17 @@ class MaterialQCResource extends Resource
             ])
             ->actions([
                 Action::make('print')
-                    ->label('Print PDF')
+                    ->label('QC Report')
                     ->icon('heroicon-o-printer')
                     ->url(fn ($record) => route('material-qc.print', $record))
                     ->openUrlInNewTab(),
+
+                Action::make('print')
+                    ->label('Return & Scrap Note')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn ($record) => route('material-qc.print-return-note', $record))
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => ($record->returned_qty ?? 0) > 0 || ($record->scrapped_qty ?? 0) > 0),
                 
                 Action::make('reCorrection')
                     ->label('Re-Correction')
