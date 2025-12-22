@@ -42,25 +42,17 @@ class CreatePurchaseOrderInvoice extends CreateRecord
 
             $invoice = PurchaseOrderInvoice::create([
                 'purchase_order_id' => $data['purchase_order_id'],
-                'provider_type' => $data['provider_type'] ?? null,
-                'provider_id' => $data['provider_id'] ?? null,
-                'provider_name' => $data['provider_name'] ?? null,
+                'supplier_id' => $data['supplier_id'] ?? null,
                 'wanted_date' => $data['wanted_date'] ?? null,
                 'grand_total' => $grandTotal, 
                 'adv_paid' => $totalPaidAmount, 
                 'additional_cost' => $totalAdditionalCost,
                 'discount' => $totalDiscountsDeductions,
-                'total_calculation_method' => $data['total_calculation_method'] ?? null,
+                'total_calculation_method' => $data['total_calculation_method'] ?? 'manual', // default value
                 'due_payment' => $paymentDue,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
-
-            if ($data['provider_type'] === 'supplier') {
-                \App\Models\Supplier::where('supplier_id', $data['provider_id'])->increment('outstanding_balance', $paymentDue);
-            } elseif ($data['provider_type'] === 'customer') {
-                \App\Models\Customer::where('customer_id', $data['provider_id'])->decrement('remaining_balance', $paymentDue);
-            }
             
             // Get the purchase order ID (remove leading zeros)
             $purchaseOrderId = ltrim($data['purchase_order_id'], '0');

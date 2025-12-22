@@ -15,8 +15,7 @@ class PurchaseOrderInvoice extends Model
     protected $fillable = [
         'purchase_order_id',
         'register_arrival_id',
-        'provider_type',
-        'provider_id',
+        'supplier_id',
         'status',
         'grand_total',
         'adv_paid',
@@ -102,8 +101,7 @@ class PurchaseOrderInvoice extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'purchase_order_id',
-                'provider_type',
-                'provider_id',
+                'supplier_id',
                 'status',
                 'grand_total',
                 'adv_paid',

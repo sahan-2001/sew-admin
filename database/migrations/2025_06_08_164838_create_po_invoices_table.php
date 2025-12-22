@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('purchase_order_invoices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('purchase_order_id')->constrained()->onDelete('cascade');
-            $table->string('provider_type');
-            $table->unsignedBigInteger('provider_id');
+            $table->unsignedBigInteger('supplier_id');
             $table->string('status')->default('pending');
             $table->decimal('grand_total', 15, 2)->default(0.00);
             $table->decimal('adv_paid', 15, 2)->default(0.00);
