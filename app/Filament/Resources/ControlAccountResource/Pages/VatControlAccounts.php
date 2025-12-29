@@ -49,6 +49,14 @@ class VATControlAccounts extends ListRecords
                             ->label('Description')
                             ->rows(2),
 
+                        Forms\Components\Select::make('vat_type')
+                            ->label('VAT Account Type')
+                            ->options([
+                                'purchase' => 'Purchase VAT (Input VAT)',
+                                'sales' => 'Sales VAT (Output VAT)',
+                            ])
+                            ->required(),
+
                         Forms\Components\Hidden::make('debit_total_vat')->default(0),
                         Forms\Components\Hidden::make('credit_total_vat')->default(0),
                         Forms\Components\Hidden::make('balance_vat')->default(0),
@@ -74,6 +82,9 @@ class VATControlAccounts extends ListRecords
                     ->label('Name')
                     ->sortable()
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('vat_account_type')
+                    ->label('VAT Account Type'),
 
                 Tables\Columns\TextColumn::make('debit_total_vat')
                     ->label('Debit Total (VAT)')

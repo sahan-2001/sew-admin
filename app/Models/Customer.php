@@ -42,6 +42,11 @@ class Customer extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function vatGroups()
+    {
+        return $this->hasMany(VatGroupCustomer::class, 'customer_id', 'customer_id');
+    }
+
     protected static $logAttributes = [
         'name',
         'shop_name',

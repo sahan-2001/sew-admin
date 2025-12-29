@@ -30,6 +30,11 @@ class Supplier extends Model
         'updated_by',
     ];
 
+    public function vatGroups()
+    {
+        return $this->hasMany(VatGroupSupplier::class, 'supplier_id', 'supplier_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

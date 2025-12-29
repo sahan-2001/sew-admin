@@ -16,6 +16,7 @@ class VATControlAccount extends Model
         'code',
         'name',
         'description',
+        'vat_account_type',
         'status',
         'debit_total_vat',
         'credit_total_vat',

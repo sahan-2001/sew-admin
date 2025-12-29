@@ -93,15 +93,15 @@ class SupplierControlAccount extends Model
         return $this->belongsTo(ChartOfAccount::class, 'grni_account_id');
     }
 
-    // VAT / Tax
-    public function vatInputAccount()
+    // VAT Control Accounts
+    public function vatInputControlAccount()
     {
-        return $this->belongsTo(ChartOfAccount::class, 'vat_input_account_id');
+        return $this->belongsTo(VATControlAccount::class,'vat_input_account_id')->where('vat_account_type', 'purchase');
     }
 
-    public function vatSuspenseAccount()
+    public function vatSuspenseControlAccount()
     {
-        return $this->belongsTo(ChartOfAccount::class, 'vat_suspense_account_id');
+        return $this->belongsTo(VATControlAccount::class,'vat_suspense_account_id')->where('vat_account_type', 'purchase');
     }
 
     // Manufacturing Specific Accounts

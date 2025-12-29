@@ -98,9 +98,24 @@ class SupplierControlAccounts extends ListRecords
                                 <div>
                                     <h3 class="font-semibold text-gray-700">Accounts</h3>
                                     <p><strong>Purchase:</strong> ' . e($record->purchaseAccount?->name ?? 'N/A') . '</p>
-                                    <p><strong>VAT Input:</strong> ' . e($record->vatInputAccount?->name ?? 'N/A') . '</p>
                                     <p><strong>Purchase Discount:</strong> ' . e($record->purchaseDiscountAccount?->name ?? 'N/A') . '</p>
                                     <p><strong>Bad Debt Recovery:</strong> ' . e($record->badDebtRecoveryAccount?->name ?? 'N/A') . '</p>
+                                </div>
+
+                                <div>
+                                    <h3 class="font-semibold text-gray-700">VAT Control Accounts</h3>
+                                    <p>
+                                        <strong>Input VAT:</strong>
+                                        ' . e($record->vatInputControlAccount
+                                            ? "{$record->vatInputControlAccount->code} | {$record->vatInputControlAccount->name}"
+                                            : 'N/A') . '
+                                    </p>
+                                    <p>
+                                        <strong>VAT Suspense:</strong>
+                                        ' . e($record->vatSuspenseControlAccount
+                                            ? "{$record->vatSuspenseControlAccount->code} | {$record->vatSuspenseControlAccount->name}"
+                                            : 'N/A') . '
+                                    </p>
                                 </div>
 
                                 <div>
@@ -193,20 +208,36 @@ class SupplierControlAccounts extends ListRecords
                         // -----------------------------
                         Forms\Components\Section::make('VAT / Tax Accounts')
                             ->schema([
+
                                 Forms\Components\Select::make('vat_input_account_id')
-                                    ->label('VAT Input Account')
-                                    ->relationship('vatInputAccount', 'name', fn($query) => $query->where('is_control_account', false))
-                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
+                                    ->label('Input VAT Control Account')
+                                    ->relationship(
+                                        'vatInputControlAccount',
+                                        'name',
+                                        fn ($query) => $query->where('vat_account_type', 'purchase')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(
+                                        fn ($record) => "{$record->code} | {$record->name}"
+                                    )
+                                    ->searchable(['code', 'name'])
+                                    ->preload()
+                                    ->required(),
+
+                                Forms\Components\Select::make('vat_suspense_account_id')
+                                    ->label('VAT Suspense Control Account')
+                                    ->relationship(
+                                        'vatSuspenseControlAccount',
+                                        'name',
+                                        fn ($query) => $query->where('vat_account_type', 'purchase')
+                                    )
+                                    ->getOptionLabelFromRecordUsing(
+                                        fn ($record) => "{$record->code} | {$record->name}"
+                                    )
                                     ->searchable(['code', 'name'])
                                     ->preload(),
 
-                                Forms\Components\Select::make('vat_suspense_account_id')
-                                    ->label('VAT Suspense Account')
-                                    ->relationship('vatSuspenseAccount', 'name', fn($query) => $query->where('is_control_account', false))
-                                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->code} | {$record->name}")
-                                    ->searchable(['code', 'name'])
-                                    ->preload(),
-                            ])->columns(2),
+                            ])
+                            ->columns(2),
 
                         // -----------------------------
                         // Manufacturing Accounts

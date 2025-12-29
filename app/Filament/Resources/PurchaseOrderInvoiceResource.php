@@ -235,7 +235,6 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                             // Advance Invoices
                                             $advanceInvoices = \App\Models\SupplierAdvanceInvoice::where('purchase_order_id', $numericId)
-                                                ->whereIn('status', ['paid', 'partially_paid'])
                                                 ->get();
 
                                             $set('advance_invoices', $advanceInvoices->toArray());
@@ -498,6 +497,11 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->label('Calculated Amount')
                                                 ->disabled()
                                                 ->visible(fn (Get $get): bool => $get('payment_type') === 'percentage'),
+                                            TextInput::make('grand_total')
+                                                ->label('Grand Total')
+                                                ->disabled()
+                                                ->numeric()
+                                                ->dehydrated(),
                                             TextInput::make('paid_amount')
                                                 ->label('Paid Amount')
                                                 ->disabled()

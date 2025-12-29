@@ -30,6 +30,11 @@ class InventoryItem extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function vatGroups()
+    {
+        return $this->hasMany(VatGroupInventory::class, 'inventory_item_id');
+    }
     
     protected static function boot()
     {

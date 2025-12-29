@@ -154,4 +154,212 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             throw $e;
         }
     }
+
+    private function createLedgerEntries(PurchaseOrderInvoice $invoice): void
+    {
+        $entryCode = 'PO_INV_' . now()->format('YmdHis');
+        $now = now();
+        $userId = auth()->id();
+
+        $supplierControl = \App\Models\SupplierControlAccount::find(
+            $invoice->supplier_control_account_id
+        );
+
+        if (!$supplierControl) {
+            throw new \Exception('Supplier control account not configured.');
+        }
+
+        /**
+         * ===============================
+         * 1️⃣ PURCHASE INVOICE
+         * ===============================
+         */
+
+        // Supplier Ledger
+        \App\Models\SupplierLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'supplier_id' => null,
+            'chart_of_account_id' => $invoice->purchase_account_id,
+            'entry_date' => $now,
+            'debit' => $invoice->grand_total,
+            'credit' => 0,
+            'transaction_name' => 'Purchase Invoice',
+            'description' => "Purchase Invoice Liability/ Invoice ID: {$invoice->id}",
+            'invoice_id' => $invoice->id,
+            'purchase_order_id' => $invoice->purchase_order_id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        \App\Models\SupplierLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'supplier_id' => null,
+            'chart_of_account_id' => $invoice->purchase_account_id,
+            'entry_date' => $now,
+            'debit' => $invoice->adv_paid,
+            'credit' => 0,
+            'transaction_name' => 'Purchase Invoice',
+            'description' => "Deduction of paid advance invoices/ Invoice ID: {$invoice->id}",
+            'invoice_id' => $invoice->id,
+            'purchase_order_id' => $invoice->purchase_order_id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+        
+        \App\Models\SupplierLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'supplier_id' => $invoice->supplier_id,
+            'chart_of_account_id' => null,
+            'entry_date' => $now,
+            'debit' => 0,
+            'credit' => $invoice->due_payment,
+            'transaction_name' => 'Purchase Invoice',
+            'description' => "Purchase Invoice (Arrived item cost of purchase order)/ Invoice ID: {$invoice->id}",
+            'invoice_id' => $invoice->id,
+            'purchase_order_id' => $invoice->purchase_order_id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        // General Ledger
+        GeneralLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'account_id' => $invoice->purchase_account_id,
+            'entry_date' => $now,
+            'debit' => $invoice->grand_total,
+            'credit' => 0,
+            'transaction_name' => 'Purchase Invoice',
+            'description' => "Deduction of paid advance invoices/ Invoice ID: {$invoice->id}",
+            'source_table' => 'purchase_order_invoices',
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        GeneralLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'account_id' => $invoice->purchase_account_id,
+            'entry_date' => $now,
+            'debit' => $invoice->grand_total,
+            'credit' => 0,
+            'transaction_name' => 'Purchase Invoice',
+            'description' => "Deduction of paid advance invoices/ Invoice ID: {$invoice->id}",
+            'source_table' => 'purchase_order_invoices',
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        GeneralLedgerEntry::create([
+            'entry_code' => $entryCode,
+            'account_id' => null,
+            'Control_account_table' => 'supplier_control_accounts',
+            'control_account_record_id' => $supplierControl->id,
+            'entry_date' => $now,
+            'debit' => 0,
+            'credit' => $invoice->grand_total,
+            'transaction_name' => 'Purchase Invoice',
+            'source_table' => 'purchase_order_invoices',
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        // Update totals
+        ChartOfAccount::where('id', $invoice->purchase_account_id)->update([
+            'debit_total' => DB::raw("debit_total + {$invoice->grand_total}"),
+            'debit_total_vat' => DB::raw("debit_total_vat + {$invoice->grand_total}"),
+        ]);
+
+        $supplierControl->increment('credit_total', $invoice->grand_total);
+        $supplierControl->increment('credit_total_vat', $invoice->grand_total);
+
+        /**
+         * ===============================
+         * 2️⃣ FREIGHT / ADDITIONAL COST
+         * ===============================
+         */
+        if ($invoice->additional_cost > 0 && $invoice->freight_in_account_id) {
+
+            GeneralLedgerEntry::create([
+                'entry_code' => $entryCode,
+                'account_id' => $invoice->freight_in_account_id,
+                'entry_date' => $now,
+                'debit' => $invoice->additional_cost,
+                'credit' => 0,
+                'transaction_name' => 'Freight In',
+                'source_table' => 'purchase_order_invoices',
+                'source_id' => $invoice->id,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            GeneralLedgerEntry::create([
+                'entry_code' => $entryCode,
+                'account_id' => null,
+                'Control_account_table' => 'supplier_control_accounts',
+                'control_account_record_id' => $supplierControl->id,
+                'entry_date' => $now,
+                'debit' => 0,
+                'credit' => $invoice->additional_cost,
+                'transaction_name' => 'Freight In',
+                'source_table' => 'purchase_order_invoices',
+                'source_id' => $invoice->id,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            ChartOfAccount::where('id', $invoice->freight_in_account_id)->increment(
+                'debit_total',
+                $invoice->additional_cost
+            );
+
+            $supplierControl->increment('credit_total', $invoice->additional_cost);
+        }
+
+        /**
+         * ===============================
+         * 3️⃣ DISCOUNTS / DEDUCTIONS
+         * ===============================
+         */
+        if ($invoice->discount > 0 && $invoice->purchase_discount_account_id) {
+
+            GeneralLedgerEntry::create([
+                'entry_code' => $entryCode,
+                'account_id' => null,
+                'Control_account_table' => 'supplier_control_accounts',
+                'control_account_record_id' => $supplierControl->id,
+                'entry_date' => $now,
+                'debit' => $invoice->discount,
+                'credit' => 0,
+                'transaction_name' => 'Purchase Discount',
+                'source_table' => 'purchase_order_invoices',
+                'source_id' => $invoice->id,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            GeneralLedgerEntry::create([
+                'entry_code' => $entryCode,
+                'account_id' => $invoice->purchase_discount_account_id,
+                'entry_date' => $now,
+                'debit' => 0,
+                'credit' => $invoice->discount,
+                'transaction_name' => 'Purchase Discount',
+                'source_table' => 'purchase_order_invoices',
+                'source_id' => $invoice->id,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            ChartOfAccount::where('id', $invoice->purchase_discount_account_id)->increment(
+                'credit_total',
+                $invoice->discount
+            );
+
+            $supplierControl->decrement('credit_total', $invoice->discount);
+        }
+    }
+
+
 }
