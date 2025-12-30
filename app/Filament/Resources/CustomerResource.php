@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerResource\Pages;
 use App\Models\Customer;
+use App\Models\CustomerVatGroup;
+use Filament\Forms\Components\Select;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -42,6 +44,19 @@ class CustomerResource extends Resource
                             ->maxLength(255),
                         Forms\Components\TextInput::make('shop_name')
                             ->maxLength(255),
+                        Select::make('customer_vat_group_id')
+                            ->label('Customer VAT Group')
+                            ->options(
+                                CustomerVatGroup::where('status', 'active')
+                                    ->get()
+                                    ->mapWithKeys(fn ($vat) => [
+                                        $vat->id => "VAT Group Code: {$vat->code} |Name:  {$vat->vat_group_name} | Rate: {$vat->vat_rate}%",
+                                    ])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
                     ]),
                 Section::make('Contact Details')
                     ->columns(2)

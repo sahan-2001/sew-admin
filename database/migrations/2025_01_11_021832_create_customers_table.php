@@ -25,6 +25,7 @@ class CreateCustomersTable extends Migration
             $table->string('phone_1')->nullable();
             $table->string('phone_2')->nullable();
             $table->decimal('remaining_balance', 8, 2)->default(0);
+            $table->unsignedBigInteger('customer_vat_group_id')->nullable();
             $table->unsignedBigInteger('requested_by')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->unsignedBigInteger('created_by');
@@ -34,6 +35,7 @@ class CreateCustomersTable extends Migration
 
             $table->foreign('requested_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
+            $table->foreign('customer_vat_group_id')->references('id')->on('customer_vat_groups')->onDelete('set null');
         });
     }
 

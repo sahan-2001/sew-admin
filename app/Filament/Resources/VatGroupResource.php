@@ -14,7 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 
 class VatGroupResource extends Resource
 {
-    protected static ?string $model = CustomerVatGroup::class; // can be any model; main model
+    protected static ?string $model = CustomerVatGroup::class; 
 
     protected static ?string $navigationGroup = 'Accounting & Finance';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
@@ -50,7 +50,7 @@ class VatGroupResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVatGroups::route('/'), // your main resource page
+            'index' => Pages\ListVatGroups::route('/'), 
             'create' => Pages\CreateVatGroup::route('/create'),
             'edit' => Pages\EditVatGroup::route('/{record}/edit'),
 

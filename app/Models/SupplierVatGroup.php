@@ -31,7 +31,7 @@ class SupplierVatGroup extends Model
 
     public function suppliers()
     {
-        return $this->hasMany(SupplierVatGroupSupplier::class);
+        return $this->hasMany(Supplier::class, 'supplier_vat_group_id', 'id');
     }
 
     /* ---------------------------------

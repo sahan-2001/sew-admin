@@ -25,14 +25,15 @@ class Supplier extends Model
         'phone_1',
         'phone_2',
         'outstanding_balance',
+        'supplier_vat_group_id',
         'approved_by',
         'created_by',
         'updated_by',
     ];
 
-    public function vatGroups()
+    public function vatGroup()
     {
-        return $this->hasMany(VatGroupSupplier::class, 'supplier_id', 'supplier_id');
+        return $this->belongsTo(SupplierVatGroup::class, 'supplier_vat_group_id');
     }
 
     protected static function booted()
@@ -75,6 +76,7 @@ class Supplier extends Model
         'phone_1',
         'phone_2',
         'outstanding_balance',
+        'supplier_vat_group_id',
         'approved_by',
     ];
 

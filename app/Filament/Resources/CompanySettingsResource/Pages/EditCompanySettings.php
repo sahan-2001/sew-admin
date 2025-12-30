@@ -175,4 +175,9 @@ class EditCompanySettings extends EditRecord
             $company->management()->whereIn('id', $toDelete)->delete();
         }
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

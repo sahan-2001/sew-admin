@@ -32,7 +32,7 @@ class InventoryItemVatGroup extends Model
 
     public function inventoryItems()
     {
-        return $this->hasMany(InventoryItemVatGroupItem::class);
+        return $this->hasMany(InventoryItem::class, 'inventory_item_vat_group_id', 'id');
     }
 
     /* ---------------------------------

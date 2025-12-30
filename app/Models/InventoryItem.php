@@ -22,6 +22,7 @@ class InventoryItem extends Model
         'available_quantity',
         'moq',
         'max_order_quantity',
+        'inventory_item_vat_group_id',
         'created_by',
         'updated_by',
     ];
@@ -31,9 +32,9 @@ class InventoryItem extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function vatGroups()
+    public function vatGroup()
     {
-        return $this->hasMany(VatGroupInventory::class, 'inventory_item_id');
+        return $this->belongsTo(InventoryItemVatGroup::class, 'inventory_item_vat_group_id');
     }
     
     protected static function boot()
@@ -83,6 +84,7 @@ class InventoryItem extends Model
         'special_note',
         'uom',
         'available_quantity',
+        'inventory_item_vat_group_id',
         'created_by',
     ];
 

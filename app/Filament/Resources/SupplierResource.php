@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SupplierResource\Pages;
 use App\Models\Supplier;
+use App\Models\SupplierVatGroup;
+use Filament\Forms\Components\Select;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -44,6 +46,18 @@ class SupplierResource extends Resource
                         Forms\Components\TextInput::make('shop_name')
                             ->required()
                             ->maxLength(255),
+                        Select::make('supplier_vat_group_id')
+                            ->label('Supplier VAT Group')
+                            ->options(
+                                SupplierVatGroup::where('status', 'active')
+                                    ->get()
+                                    ->mapWithKeys(fn ($vat) => [
+                                        $vat->id => "VAT Group Code: {$vat->code} |Name:  {$vat->vat_group_name} | Rate: {$vat->vat_rate}%",
+                                    ])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required(),
                     ]),
 
                 Section::make('Contact Details')

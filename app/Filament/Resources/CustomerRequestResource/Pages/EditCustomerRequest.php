@@ -57,4 +57,9 @@ class EditCustomerRequest extends EditRecord
 
         $this->notify('danger', 'Customer Request Rejected');
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

@@ -10,5 +10,8 @@ class EditRolePermission extends EditRecord
 {
     protected static string $resource = RolePermissionResource::class;
 
-    
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

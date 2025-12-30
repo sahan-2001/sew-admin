@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\InventoryItemResource\Pages;
 use App\Models\InventoryItem;
 use App\Models\Category;
+use App\Models\InventoryItemVatGroup;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -38,7 +39,20 @@ class InventoryItemResource extends Resource
                         ->label('Item Code')
                         ->disabled()
                         ->default(fn () => self::generateItemCode()),
-                ]),
+                    Select::make('inventory_item_vat_group_id')
+                            ->label('Inventory Item VAT Group')
+                            ->options(
+                                InventoryItemVatGroup::where('status', 'active')
+                                    ->get()
+                                    ->mapWithKeys(fn ($vat) => [
+                                        $vat->id => "VAT Group Code: {$vat->code} |Name:  {$vat->vat_group_name} | Rate: {$vat->vat_rate}%",
+                                    ])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                ])
+                ->columns(2),
 
                 Section::make('Item Details')
                 ->columns(2)

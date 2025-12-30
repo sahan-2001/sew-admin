@@ -42,6 +42,11 @@ class EditTemporaryOperation extends EditRecord
 
         return $record;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }
 
 class ShowTemporaryOperation extends ViewRecord

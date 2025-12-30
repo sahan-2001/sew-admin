@@ -18,6 +18,7 @@ class CreateInventoryItemsTable extends Migration
             $table->integer('available_quantity')->default(0);
             $table->decimal('moq', 12, 2)->nullable();
             $table->decimal('max_order_quantity', 12, 2)->nullable();
+            $table->foreignId('inventory_item_vat_group_id')->nullable()->constrained('inventory_item_vat_groups')->onDelete('set null');
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->softDeletes();

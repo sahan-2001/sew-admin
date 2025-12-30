@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\NonInventoryItemResource\Pages;
 use App\Models\NonInventoryItem;
 use App\Models\NonInventoryCategory;
+use App\Models\NonInventoryItemVatGroup;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -38,6 +39,19 @@ class NonInventoryItemResource extends Resource
                         ->disabled()
                         ->default(fn () => self::generateItemId()),
 
+                    Select::make('non_inventory_item_vat_group_id')
+                            ->label('Non Inventory Item VAT Group')
+                            ->options(
+                                NonInventoryItemVatGroup::where('status', 'active')
+                                    ->get()
+                                    ->mapWithKeys(fn ($vat) => [
+                                        $vat->id => "VAT Group Code: {$vat->code} |Name:  {$vat->vat_group_name} | Rate: {$vat->vat_rate}%",
+                                    ])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                            
                     Forms\Components\TextInput::make('name')
                         ->required()
                         ->maxLength(255),

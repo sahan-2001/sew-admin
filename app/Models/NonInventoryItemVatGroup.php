@@ -31,7 +31,7 @@ class NonInventoryItemVatGroup extends Model
 
     public function nonInventoryItems()
     {
-        return $this->hasMany(NonInventoryItemVatGroupItem::class);
+        return $this->hasMany(NonInventoryItem::class, 'non_inventory_item_vat_group_id', 'id');
     }
 
     /* ---------------------------------

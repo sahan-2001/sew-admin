@@ -16,6 +16,7 @@ class NonInventoryItem extends Model
         'item_id',
         'name',
         'non_inventory_category_id',
+        'non_inventory_item_vat_group_id',
         'price',
         'remarks',
         'created_by',
@@ -26,6 +27,7 @@ class NonInventoryItem extends Model
         'item_id',
         'name',
         'non_inventory_category_id',
+        'non_inventory_item_vat_group_id',
         'price',
         'remarks',
         'created_by',
@@ -56,6 +58,11 @@ class NonInventoryItem extends Model
     public function category()
     {
         return $this->belongsTo(NonInventoryCategory::class, 'non_inventory_category_id');
+    }
+
+    public function vatGroup()
+    {
+        return $this->belongsTo(NonInventoryItemVatGroup::class, 'non_inventory_item_vat_group_id');
     }
 
     protected static function booted()

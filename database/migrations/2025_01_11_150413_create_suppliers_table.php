@@ -25,6 +25,7 @@ class CreateSuppliersTable extends Migration
             $table->string('phone_1')->nullable();
             $table->string('phone_2')->nullable();
             $table->decimal('outstanding_balance', 8, 2)->default(0);
+            $table->unsignedBigInteger('supplier_vat_group_id')->nullable();
             $table->unsignedBigInteger('added_by')->nullable(); 
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->timestamps();
@@ -34,6 +35,8 @@ class CreateSuppliersTable extends Migration
 
             $table->foreign('added_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
+            $table->foreign('supplier_vat_group_id')->references('id')->on('supplier_vat_groups')->onDelete('set null');
+
         });
     }
 

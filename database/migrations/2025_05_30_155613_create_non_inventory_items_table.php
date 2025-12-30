@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('non_inventory_category_id');
             $table->decimal('price', 10, 2);
             $table->text('remarks')->nullable();
+            $table->unsignedBigInteger('non_inventory_item_vat_group_id')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
@@ -27,6 +28,11 @@ return new class extends Migration
                 ->references('id')
                 ->on('non_inventory_categories')
                 ->onDelete('cascade');
+
+            $table->foreign('non_inventory_item_vat_group_id')
+                ->references('id')
+                ->on('non_inventory_item_vat_groups')
+                ->onDelete('set null');
         });
     }
 

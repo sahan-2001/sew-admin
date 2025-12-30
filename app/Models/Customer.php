@@ -26,6 +26,7 @@ class Customer extends Model
         'phone_1',
         'phone_2',
         'remaining_balance',
+        'customer_vat_group_id',
         'requested_by',
         'approved_by',
         'created_by',
@@ -42,9 +43,9 @@ class Customer extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function vatGroups()
+    public function vatGroup()
     {
-        return $this->hasMany(VatGroupCustomer::class, 'customer_id', 'customer_id');
+        return $this->belongsTo(CustomerVatGroup::class, 'customer_vat_group_id');
     }
 
     protected static $logAttributes = [
@@ -55,6 +56,7 @@ class Customer extends Model
         'phone_1',
         'phone_2',
         'remaining_balance',
+        'customer_vat_group_id',
         'requested_by',
         'approved_by',
     ];
