@@ -56,21 +56,36 @@ class PurchaseOrderResource extends Resource
                                         Select::make('supplier_id')
                                             ->label('Supplier')
                                             ->options(function () {
-                                                return \App\Models\Supplier::all()
+                                                return Supplier::all()
                                                     ->mapWithKeys(fn ($supplier) => [
-                                                        $supplier->supplier_id => "Supplier ID - {$supplier->supplier_id} | Name - {$supplier->name}"
+                                                        $supplier->supplier_id =>
+                                                            "Supplier ID - {$supplier->supplier_id} | Name - {$supplier->name}"
                                                     ])
                                                     ->toArray();
                                             })
                                             ->searchable()
-                                            ->disabled(fn (string $operation): bool => $operation === 'edit')
                                             ->reactive()
+                                            ->disabled(fn (string $operation) => $operation === 'edit')
                                             ->afterStateUpdated(function ($state, callable $set) {
-                                                $supplier = \App\Models\Supplier::find($state);
+
+                                                $supplier = Supplier::with('vatGroup')->find($state);
+
                                                 if ($supplier) {
+                                                    // Basic supplier info
                                                     $set('supplier_name', $supplier->name);
                                                     $set('supplier_email', $supplier->email);
                                                     $set('supplier_phone', $supplier->phone_1);
+
+                                                    // VAT group info
+                                                    if ($supplier->vatGroup) {
+                                                        $set('supplier_vat_group_id', $supplier->vatGroup->id);
+                                                        $set('supplier_vat_group_name', $supplier->vatGroup->vat_group_name);
+                                                        $set('supplier_vat_rate', $supplier->vatGroup->vat_rate);
+                                                    } else {
+                                                        $set('supplier_vat_group_id', null);
+                                                        $set('supplier_vat_group_name', null);
+                                                        $set('supplier_vat_rate', null);
+                                                    }
                                                 }
                                             }),
 
@@ -86,18 +101,40 @@ class PurchaseOrderResource extends Resource
                                             ->label('Phone')
                                             ->disabled(),
 
-                                        DatePicker::make('wanted_date')
+                                        Hidden::make('user_id')
+                                            ->default(fn () => auth()->id()),
+
+                                        TextInput::make('supplier_vat_group_name')
+                                            ->label('Supplier VAT Group')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        TextInput::make('supplier_vat_rate')
+                                            ->label('Supplierr VAT Rate')
+                                            ->suffix('%')
+                                            ->disabled()
+                                            ->dehydrated(false),
+                                    ])
+                                    ->columns(2),
+                                    
+                                Section::make('Order Information')
+                                    ->schema([
+                                        DatePicker::make('wanted_delivery_date')
                                             ->label('Wanted Delivery Date')
                                             ->required()
                                             ->minDate(now()),
-
+                                        
+                                        DatePicker::make('promised_delivery_date')
+                                            ->label('Promised Delivery Date')
+                                            ->required()
+                                            ->minDate(now()),
+                                            
                                         Textarea::make('special_note')
                                             ->label('Special Note')
                                             ->nullable()
                                             ->columnSpan(2), 
 
-                                        Hidden::make('user_id')
-                                            ->default(fn () => auth()->id()),
+                                        Hidden::make('supplier_vat_group_id'),
                                     ])
                                     ->columns(2)
                                 ]),
@@ -109,49 +146,120 @@ class PurchaseOrderResource extends Resource
                                         Repeater::make('items')
                                             ->relationship('items')
                                             ->schema([
-                                                Grid::make(3)
-                                                    ->schema([
-                                                        Select::make('inventory_item_id')
-                                                            ->label('Item')
-                                                            ->relationship('inventoryItem', 'name')
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->id} | Item Code - {$record->item_code} | Name - {$record->name}")
-                                                            ->required(),
+                                                Grid::make(3)->schema([
 
-                                                        TextInput::make('quantity')
-                                                            ->label('Quantity')
-                                                            ->numeric()
-                                                            ->reactive()
-                                                            ->required()
-                                                            ->afterStateUpdated(function ($state, callable $set) {
-                                                                $set('remaining_quantity', $state);
-                                                                $set('arrived_quantity', 0);
-                                                            }),
+                                                    Select::make('inventory_item_id')
+                                                        ->label('Item')
+                                                        ->relationship('inventoryItem', 'name')
+                                                        ->searchable()
+                                                        ->preload()
+                                                        ->reactive()
+                                                        ->columnSpan(2)
+                                                        ->getOptionLabelFromRecordUsing(fn ($record) =>
+                                                            "{$record->id} | Item Code - {$record->item_code} | Name - {$record->name}"
+                                                        )
+                                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
 
-                                                        TextInput::make('price')
-                                                            ->label('Price')
-                                                            ->numeric()
-                                                            ->required(),
+                                                            $item = InventoryItem::with('vatGroup')->find($state);
 
-                                                        Hidden::make('remaining_quantity')
-                                                            ->default(fn ($get) => $get('quantity')),
+                                                            if ($item && $item->vatGroup) {
+                                                                $set('inventory_item_vat_group_id', $item->vatGroup->id);
+                                                                $set('vat_group_name', $item->vatGroup->vat_group_name);
+                                                                $set('vat_rate', $item->vatGroup->vat_rate); // ✅ FIXED
+                                                            } else {
+                                                                $set('inventory_item_vat_group_id', null);
+                                                                $set('vat_group_name', null);
+                                                                $set('vat_rate', null);
+                                                            }
 
-                                                        Hidden::make('arrived_quantity')
-                                                            ->default(0),
-                                                    ]),
+                                                            self::recalculate($set, $get);
+                                                        })
+                                                        ->required(),
+
+                                                    TextInput::make('vat_group_name')
+                                                        ->label('Item VAT Group')
+                                                        ->disabled()
+                                                        ->dehydrated(false),
+
+                                                    TextInput::make('quantity')
+                                                        ->numeric()
+                                                        ->reactive()
+                                                        ->required()
+                                                        ->afterStateUpdated(fn ($state, $set, $get) =>
+                                                            self::recalculate($set, $get)
+                                                        ),
+
+                                                    TextInput::make('price')
+                                                        ->numeric()
+                                                        ->reactive()
+                                                        ->required()
+                                                        ->prefix('Rs.')
+                                                        ->afterStateUpdated(fn ($state, $set, $get) =>
+                                                            self::recalculate($set, $get)
+                                                        ),
+
+                                                    TextInput::make('vat_rate')
+                                                        ->label('Item VAT %')
+                                                        ->suffix('%')
+                                                        ->disabled()
+                                                        ->reactive()
+                                                        ->dehydrated(false),
+
+                                                    TextInput::make('sub_total')
+                                                        ->prefix('Rs.')
+                                                        ->disabled(),
+
+                                                    TextInput::make('vat_amount')
+                                                        ->prefix('Rs.')
+                                                        ->disabled(),
+
+                                                    TextInput::make('total_with_vat')
+                                                        ->prefix('Rs.')
+                                                        ->disabled(),
+
+                                                    Hidden::make('inventory_item_vat_group_id'),
+
+                                                    Hidden::make('remaining_quantity')
+                                                        ->default(fn ($get) => $get('quantity')),
+
+                                                    Hidden::make('arrived_quantity')
+                                                        ->default(0),
+                                                ]),
                                             ])
-                                            ->columns(1)
                                             ->minItems(1)
                                             ->createItemButtonLabel('Add Order Item')
                                             ->columnSpan('full'),
-                                    ])
-                                    ->columnSpan('full'),
-                            ])
-                            ->columns(1),
+                                    ]),
+                                ]),
+
+                        Tabs\Tab::make('VAT Information')
+                            ->schema([
+                                Section::make('Available VAT Groups')
+                                    ->schema([
+                                        TextInput::make('supplier_vat_rate')
+                                            ->label('VAT Rate')
+                                            ->suffix('%')
+                                            ->disabled()
+                                            ->dehydrated(false), 
+                                    ]),
+                                ]),
                     ])
                     ->columnSpan('full'),
             ]);
+    }
+
+    protected static function recalculate(callable $set, callable $get): void
+    {
+        $qty   = (float) $get('quantity');
+        $price = (float) $get('price');
+        $rate  = (float) $get('vat_rate');
+
+        $subTotal = $qty * $price;
+        $vat      = ($subTotal * $rate) / 100;
+
+        $set('sub_total', round($subTotal, 2));
+        $set('vat_amount', round($vat, 2));
+        $set('total_with_vat', round($subTotal + $vat, 2));
     }
 
     public static function table(Table $table): Table
