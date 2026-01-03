@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class PurchaseOrder extends Model
 {
@@ -14,9 +16,13 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'supplier_id',
-        'wanted_date',
+        'wanted_delivery_date',
+        'promised_delivery_date',
         'special_note',
         'status', 
+        'order_subtotal',
+        'vat_amount',
+        'vat_base',
         'grand_total',
         'remaining_balance', 
         'random_code', 
@@ -35,6 +41,13 @@ class PurchaseOrder extends Model
 
             $po->created_by = Auth::id() ?? 1;
             $po->updated_by = Auth::id() ?? 1;
+
+            // Ensure totals are set before creating
+            $po->order_subtotal = $po->order_subtotal ?? 0;
+            $po->vat_amount     = $po->vat_amount ?? 0;
+            $po->grand_total    = $po->grand_total ?? 0;
+            $po->remaining_balance = $po->grand_total;
+            $po->vat_base       = $po->vat_base ?? 'item_vat';
         });
 
         static::updating(function ($po) {
@@ -44,6 +57,13 @@ class PurchaseOrder extends Model
             if ($po->isDirty('status') && $po->status === 'closed') {
                 $po->remaining_balance = 0;
             }
+
+            // Ensure totals are always filled
+            $po->order_subtotal = $po->order_subtotal ?? 0;
+            $po->vat_amount     = $po->vat_amount ?? 0;
+            $po->grand_total    = $po->grand_total ?? 0;
+            $po->remaining_balance = $po->remaining_balance ?? $po->grand_total;
+            $po->vat_base       = $po->vat_base ?? 'item_vat';
         });
 
         // Recalculate grand total after save
@@ -60,9 +80,9 @@ class PurchaseOrder extends Model
         return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
-    public function items()
+    public function items(): HasMany
     {
-        return $this->hasMany(PurchaseOrderItem::class);
+        return $this->hasMany(\App\Models\PurchaseOrderItem::class);
     }
 
     public function supplierAdvanceInvoices()
@@ -78,6 +98,32 @@ class PurchaseOrder extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function setOrderSubtotalAttribute($value)
+    {
+        $this->attributes['order_subtotal'] = $value ?? 0;
+    }
+
+    public function setVatAmountAttribute($value)
+    {
+        $this->attributes['vat_amount'] = $value ?? 0;
+    }
+
+    public function setGrandTotalAttribute($value)
+    {
+        $this->attributes['grand_total'] = $value ?? 0;
+
+        if (!isset($this->attributes['remaining_balance'])) {
+            $this->attributes['remaining_balance'] = $value;
+        } elseif ($this->attributes['remaining_balance'] == $this->getOriginal('grand_total')) {
+            $this->attributes['remaining_balance'] = $value;
+        }
+    }
+
+    public function setVatBaseAttribute($value)
+    {
+        $this->attributes['vat_base'] = $value ?? 'item_vat';
     }
 
     /**
@@ -111,18 +157,6 @@ class PurchaseOrder extends Model
         }
     }
 
-    public function setGrandTotalAttribute($value)
-    {
-        $this->attributes['grand_total'] = $value;
-
-        if (!isset($this->attributes['remaining_balance'])) {
-            $this->attributes['remaining_balance'] = $value;
-        } elseif (isset($this->attributes['remaining_balance']) && 
-                 $this->attributes['remaining_balance'] == $this->getOriginal('grand_total')) {
-            $this->attributes['remaining_balance'] = $value;
-        }
-    }
-
     /**
      * Activity Log
      */
@@ -133,10 +167,14 @@ class PurchaseOrder extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'supplier_id',
-                'wanted_date',
+                'wanted_delivery_date',
+                'promised_delivery_date',
                 'special_note',
                 'status', 
                 'grand_total',
+                'order_subtotal',
+                'vat_amount',
+                'vat_base',
                 'remaining_balance',
             ])
             ->useLogName('purchase_order')

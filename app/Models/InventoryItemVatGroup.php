@@ -35,6 +35,11 @@ class InventoryItemVatGroup extends Model
         return $this->hasMany(InventoryItem::class, 'inventory_item_vat_group_id', 'id');
     }
 
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class, 'inventory_item_vat_group_id', 'id');
+    }
+
     /* ---------------------------------
      | Scopes
      |----------------------------------*/

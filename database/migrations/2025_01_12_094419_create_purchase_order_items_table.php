@@ -12,18 +12,17 @@ class CreatePurchaseOrderItemsTable extends Migration
             $table->id();
             $table->unsignedBigInteger('purchase_order_id');
             $table->unsignedBigInteger('inventory_item_id');
-            $table->integer('quantity');
-            $table->decimal('price', 10, 2);
+            $table->integer('quantity')->default(0);
+            $table->decimal('price', 10, 2)->default(0);
+            $table->decimal('item_subtotal', 12, 2)->default(0);
+            $table->decimal('item_vat_amount', 12, 2)->default(0);
+            $table->decimal('item_grand_total', 12, 2)->default(0);
             $table->integer('arrived_quantity')->default(0); 
-            $table->integer('remaining_quantity');
-            $table->decimal('total_sale', 12, 2)->virtualAs('price * quantity');
+            $table->integer('remaining_quantity')->default(0);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('purchase_order_id')->references('id')->on('purchase_orders')->onDelete('cascade');
-            $table->foreign('inventory_item_id')->references('id')->on('inventory_items')->onDelete('cascade');
         });
     }
 

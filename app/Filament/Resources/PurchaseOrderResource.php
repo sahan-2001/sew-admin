@@ -126,7 +126,6 @@ class PurchaseOrderResource extends Resource
                                         
                                         DatePicker::make('promised_delivery_date')
                                             ->label('Promised Delivery Date')
-                                            ->required()
                                             ->minDate(now()),
                                             
                                         Textarea::make('special_note')
@@ -147,7 +146,6 @@ class PurchaseOrderResource extends Resource
                                             ->relationship('items')
                                             ->schema([
                                                 Grid::make(3)->schema([
-
                                                     Select::make('inventory_item_id')
                                                         ->label('Item')
                                                         ->relationship('inventoryItem', 'name')
@@ -159,19 +157,17 @@ class PurchaseOrderResource extends Resource
                                                             "{$record->id} | Item Code - {$record->item_code} | Name - {$record->name}"
                                                         )
                                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
-
                                                             $item = InventoryItem::with('vatGroup')->find($state);
-
-                                                            if ($item && $item->vatGroup) {
-                                                                $set('inventory_item_vat_group_id', $item->vatGroup->id);
-                                                                $set('vat_group_name', $item->vatGroup->vat_group_name);
-                                                                $set('vat_rate', $item->vatGroup->vat_rate); // ✅ FIXED
+                                                            
+                                                            if ($item) {
+                                                                // Set the VAT group ID for the item
+                                                                $set('vat_group_name', $item->vatGroup->vat_group_name ?? null);
+                                                                $set('vat_rate', $item->vatGroup->vat_rate ?? 0);
                                                             } else {
-                                                                $set('inventory_item_vat_group_id', null);
                                                                 $set('vat_group_name', null);
-                                                                $set('vat_rate', null);
+                                                                $set('vat_rate', 0);
                                                             }
-
+                                                            
                                                             self::recalculate($set, $get);
                                                         })
                                                         ->required(),
@@ -205,19 +201,21 @@ class PurchaseOrderResource extends Resource
                                                         ->reactive()
                                                         ->dehydrated(false),
 
-                                                    TextInput::make('sub_total')
+                                                    // FIXED: Changed field names to match model
+                                                    TextInput::make('item_subtotal')  // Changed from 'sub_total'
                                                         ->prefix('Rs.')
-                                                        ->disabled(),
+                                                        ->disabled()
+                                                        ->dehydrated(true),
 
-                                                    TextInput::make('vat_amount')
+                                                    TextInput::make('item_vat_amount')  // Changed from 'vat_amount'
                                                         ->prefix('Rs.')
-                                                        ->disabled(),
+                                                        ->disabled()
+                                                        ->dehydrated(true),
 
-                                                    TextInput::make('total_with_vat')
+                                                    TextInput::make('item_grand_total')  // Changed from 'total_with_vat'
                                                         ->prefix('Rs.')
-                                                        ->disabled(),
-
-                                                    Hidden::make('inventory_item_vat_group_id'),
+                                                        ->disabled()
+                                                        ->dehydrated(true),
 
                                                     Hidden::make('remaining_quantity')
                                                         ->default(fn ($get) => $get('quantity')),
@@ -228,21 +226,135 @@ class PurchaseOrderResource extends Resource
                                             ])
                                             ->minItems(1)
                                             ->createItemButtonLabel('Add Order Item')
-                                            ->columnSpan('full'),
+                                            ->columnSpan('full')
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                self::calculateSummary($set, $get);
+                                            }),
                                     ]),
-                                ]),
+                                
+                                // SUMMARY SECTION - ADDED HERE
+                                Section::make('Order Summary')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Grid::make(3)->schema([
+                                                TextInput::make('items_sub_total_sum')
+                                                    ->label('Sub Total of all Items')
+                                                    ->prefix('Rs.')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->default(0.00),
+                                                
+                                                TextInput::make('items_vat_sum')
+                                                    ->label('VAT Total')
+                                                    ->prefix('Rs.')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->default(0.00),
+                                                
+                                                TextInput::make('items_total_with_vat_sum')
+                                                    ->label('Grand Total of all Items')
+                                                    ->prefix('Rs.')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->default(0.00),
+                                            ])->columnSpan(2),
+                                            
+                                            \Filament\Forms\Components\Actions::make([
+                                                \Filament\Forms\Components\Actions\Action::make('refreshSummary')
+                                                    ->icon('heroicon-o-arrow-path')
+                                                    ->color('gray')
+                                                    ->action(function (callable $set, callable $get) {
+                                                        self::calculateSummary($set, $get);
+                                                    })
+                                                    ->tooltip('Refresh summary')
+                                            ])->columnSpan(1)->alignEnd(),
+                                        ]),
+                                    ])
+                                    ->columns(1),
+                            ]),
 
                         Tabs\Tab::make('VAT Information')
                             ->schema([
+
                                 Section::make('Available VAT Groups')
+                                    ->columns(3)
                                     ->schema([
+                                        TextInput::make('items_sub_total_sum')
+                                            ->label('Sub Total of all Items')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(),
+
                                         TextInput::make('supplier_vat_rate')
-                                            ->label('VAT Rate')
+                                            ->label('Supplier VAT Rate')
                                             ->suffix('%')
                                             ->disabled()
-                                            ->dehydrated(false), 
+                                            ->dehydrated(),
+
+                                        TextInput::make('items_vat_sum')
+                                            ->label('Item-wise VAT Total')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(),
                                     ]),
-                                ]),
+
+                                Section::make('Select Wanted VAT Base')
+                                    ->schema([
+                                        Select::make('vat_base')
+                                            ->label('VAT Base')
+                                            ->options([
+                                                'supplier_vat' => 'Supplier VAT Rate (%)',
+                                                'item_vat'     => 'Item-wise VAT Rate (%)',
+                                            ])
+                                            ->default('item_vat')
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(fn (callable $set, callable $get) =>
+                                                self::recalculateFinalSummary($set, $get)
+                                            ),
+                                    ]),
+
+                                Section::make('Final Order Summary Based on Selected VAT Base')
+                                    ->columns(3)
+                                    ->schema([
+                                        TextInput::make('items_sub_total_sum')
+                                            ->label('Sub Total')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        // ITEM Based VAT (saved when item_vat selected)
+                                        TextInput::make('items_vat_sum')
+                                            ->label('Item VAT Amount')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (callable $get) => $get('vat_base') === 'item_vat'),
+
+                                        TextInput::make('items_total_with_vat_sum')
+                                            ->label('Item Grand Total')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (callable $get) => $get('vat_base') === 'item_vat'),
+            
+                                        // SUPPLIER Baced VAT
+                                        TextInput::make('final_vat_amount')
+                                            ->label('Supplier Based VAT Amount')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (callable $get) => $get('vat_base') === 'supplier_vat'),
+
+                                        TextInput::make('final_grand_total')
+                                            ->label('Supplier Based Grand Total')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (callable $get) => $get('vat_base') === 'supplier_vat'),
+                                    ]),
+                            ]),
                     ])
                     ->columnSpan('full'),
             ]);
@@ -256,10 +368,89 @@ class PurchaseOrderResource extends Resource
 
         $subTotal = $qty * $price;
         $vat      = ($subTotal * $rate) / 100;
+        $total    = $subTotal + $vat;
 
-        $set('sub_total', round($subTotal, 2));
-        $set('vat_amount', round($vat, 2));
-        $set('total_with_vat', round($subTotal + $vat, 2));
+        // Set hidden fields that WILL be saved
+        $set('item_subtotal', round($subTotal, 2));      // This saves to DB
+        $set('item_vat_amount', round($vat, 2));         // This saves to DB
+        $set('item_grand_total', round($total, 2));      // This saves to DB
+        
+        // Set display fields (not saved)
+        $set('display_subtotal', round($subTotal, 2));   // Display only
+        $set('display_vat_amount', round($vat, 2));      // Display only
+        $set('display_grand_total', round($total, 2));   // Display only
+        
+        // Recalculate both summaries
+        self::calculateSummary($set, $get);
+        self::recalculateFinalSummary($set, $get);
+    }
+
+    protected static function calculateSummary(callable $set, callable $get): void
+    {
+        $items = $get('items');
+        
+        $subTotalSum = 0;
+        $vatSum = 0;
+        $totalWithVatSum = 0;
+        
+        if (is_array($items)) {
+            foreach ($items as $item) {
+                // FIXED: Using correct field names
+                $subTotalSum += (float) ($item['item_subtotal'] ?? 0);        // Changed from 'sub_total'
+                $vatSum += (float) ($item['item_vat_amount'] ?? 0);           // Changed from 'vat_amount'
+                $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0); // Changed from 'total_with_vat'
+            }
+        }
+        
+        $set('items_sub_total_sum', round($subTotalSum, 2));
+        $set('items_vat_sum', round($vatSum, 2));
+        $set('items_total_with_vat_sum', round($totalWithVatSum, 2));
+        
+        // Also update display fields in VAT tab
+        $set('display_sub_total_sum', round($subTotalSum, 2));
+        $set('display_vat_sum', round($vatSum, 2));
+    }
+
+    protected static function recalculateFinalSummary(callable $set, callable $get): void
+    {
+        $subTotal     = (float) $get('items_sub_total_sum');
+        $itemVat      = (float) $get('items_vat_sum');
+        $itemGrand    = (float) $get('items_total_with_vat_sum');
+        $supplierRate = (float) $get('supplier_vat_rate');
+        $vatBase      = $get('vat_base');
+
+        $supplierVat   = round(($subTotal * $supplierRate) / 100, 2);
+        $supplierTotal = round($subTotal + $supplierVat, 2);
+
+        if ($vatBase === 'item_vat') {
+            $set('final_vat_amount', $itemVat);
+            $set('final_grand_total', $itemGrand);
+        }
+
+        if ($vatBase === 'supplier_vat') {
+            $set('final_vat_amount', $supplierVat);
+            $set('final_grand_total', $supplierTotal);
+        }
+    }
+
+    protected static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['order_subtotal'] = $data['items_sub_total_sum'] ?? 0;
+        $data['vat_amount']     = $data['items_vat_sum'] ?? 0;
+        $data['grand_total']    = $data['items_total_with_vat_sum'] ?? 0;
+        $data['vat_base']       = $data['vat_base'] ?? 'item_vat';
+
+        return $data;
+    }
+
+    protected static function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['order_subtotal'] = $data['items_sub_total_sum'] ?? 0;
+        $data['vat_amount']     = $data['items_vat_sum'] ?? 0;
+        $data['grand_total']    = $data['items_total_with_vat_sum'] ?? 0;
+        $data['vat_base']       = $data['vat_base'] ?? 'item_vat';
+
+        return $data;
     }
 
     public static function table(Table $table): Table

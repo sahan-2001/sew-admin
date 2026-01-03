@@ -19,15 +19,50 @@ class CreatePurchaseOrder extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Generate random code
-        $data['random_code'] = strtoupper(Str::random(16));
+        $data['random_code'] = strtoupper(\Illuminate\Support\Str::random(16));
 
-        // Ensure remaining_balance defaults to grand_total if not provided
-        if (!isset($data['remaining_balance']) && isset($data['grand_total'])) {
-            $data['remaining_balance'] = $data['grand_total'];
+        // Calculate totals from items
+        $items = $data['items'] ?? [];
+
+        $orderSubtotal = 0;
+        $vatAmount     = 0;
+        $grandTotal    = 0;
+
+        foreach ($items as $item) {
+            $quantity = (float) ($item['quantity'] ?? 0);
+            $price    = (float) ($item['price'] ?? 0);
+            $vatRate  = (float) ($item['vat_rate'] ?? 0);
+
+            $subTotal = $quantity * $price;
+            $vat      = ($subTotal * $vatRate) / 100;
+            $total    = $subTotal + $vat;
+
+            $orderSubtotal += $subTotal;
+            $vatAmount     += $vat;
+            $grandTotal    += $total;
+
+            // Ensure hidden fields for each item are set for DB
+            $item['item_subtotal']     = round($subTotal, 2);
+            $item['item_vat_amount']   = round($vat, 2);
+            $item['item_grand_total']  = round($total, 2);
+
+            $data['items'][] = $item; // update back
         }
+
+        // Assign calculated totals to main order
+        $data['order_subtotal']    = round($orderSubtotal, 2);
+        $data['vat_amount']        = round($vatAmount, 2);
+        $data['grand_total']       = round($grandTotal, 2);
+
+        // remaining_balance defaults to grand_total
+        $data['remaining_balance'] = $data['grand_total'];
+
+        // Default VAT base
+        $data['vat_base'] = $data['vat_base'] ?? 'item_vat';
 
         return $data;
     }
+
 
     protected function afterCreate(): void
     {
