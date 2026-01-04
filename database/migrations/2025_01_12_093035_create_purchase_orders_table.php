@@ -15,9 +15,11 @@ class CreatePurchaseOrdersTable extends Migration
             $table->date('promised_delivery_date')->nullable();
             $table->text('special_note')->nullable();
             $table->string('status')->default('planned'); 
-            $table->decimal('grand_total', 12, 2)->default(0);
+            $table->unsignedBigInteger('supplier_vat_group_id')->nullable();
+            $table->decimal('supplier_vat_rate', 5, 2)->default(0)->nullable();
             $table->decimal('order_subtotal', 12, 2)->default(0);
             $table->decimal('vat_amount', 12, 2)->default(0);
+            $table->decimal('grand_total', 12, 2)->default(0);
             $table->text('vat_base')->nullable();
             $table->decimal('remaining_balance', 12, 2)->default(0);
             $table->string('random_code')->nullable(); 

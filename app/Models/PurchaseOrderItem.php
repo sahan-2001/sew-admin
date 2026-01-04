@@ -14,6 +14,8 @@ class PurchaseOrderItem extends Model
     protected $fillable = [
         'purchase_order_id',
         'inventory_item_id',
+        'inventory_vat_group_id',
+        'inventory_vat_rate',
         'quantity',
         'price',
         'item_subtotal',        
@@ -46,13 +48,13 @@ class PurchaseOrderItem extends Model
         // Trigger grand total recalculation after change
         static::saved(function ($model) {
             if ($model->purchaseOrder) {
-                $model->purchaseOrder->recalculateGrandTotal();
+                $model->purchaseOrder->recalculateTotals();
             }
         });
 
         static::deleted(function ($model) {
             if ($model->purchaseOrder) {
-                $model->purchaseOrder->recalculateGrandTotal();
+                $model->purchaseOrder->recalculateTotals();
             }
         });
     }
@@ -61,23 +63,19 @@ class PurchaseOrderItem extends Model
     public function calculateAndSetValues()
     {
         $this->item_subtotal = $this->quantity * $this->price;
-        
-        // Get VAT rate from related inventory item's VAT group
-        $vatRate = 0;
-        if ($this->inventoryItem && $this->inventoryItem->vatGroup) {
-            $vatRate = $this->inventoryItem->vatGroup->vat_rate;
-        } elseif ($this->inventory_item_vat_group_id) {
-            // Try to get VAT rate from the stored ID
-            $vatGroup = \App\Models\InventoryItemVatGroup::find($this->inventory_item_vat_group_id);
-            if ($vatGroup) {
-                $vatRate = $vatGroup->vat_rate;
-            }
-        }
-        
-        $this->item_vat_amount = ($this->item_subtotal * $vatRate) / 100;
-        $this->item_grand_total = $this->item_subtotal + $this->item_vat_amount;
-    }
 
+        // Only calculate item VAT if order is item-based
+        if ($this->purchaseOrder?->vat_base === 'item_vat') {
+            $vatRate = (float) ($this->inventory_vat_rate ?? 0);
+            $this->item_vat_amount  = round(($this->item_subtotal * $vatRate) / 100, 2);
+            $this->item_grand_total = round($this->item_subtotal + $this->item_vat_amount, 2);
+        } else {
+            // Supplier VAT → no item VAT
+            $this->item_vat_amount  = 0;
+            $this->item_grand_total = $this->item_subtotal;
+        }
+    }
+    
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);

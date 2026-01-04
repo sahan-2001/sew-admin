@@ -20,6 +20,8 @@ class PurchaseOrder extends Model
         'promised_delivery_date',
         'special_note',
         'status', 
+        'supplier_vat_group_id',
+        'supplier_vat_rate',
         'order_subtotal',
         'vat_amount',
         'vat_base',
@@ -68,7 +70,7 @@ class PurchaseOrder extends Model
 
         // Recalculate grand total after save
         static::saved(function ($po) {
-            $po->recalculateGrandTotal();
+            $po->recalculateTotals();
         });
     }
 
@@ -93,6 +95,11 @@ class PurchaseOrder extends Model
     public function invoice()
     {
         return $this->hasOne(\App\Models\PurchaseOrderInvoice::class, 'purchase_order_id');
+    }
+
+    public function supplierVatGroup()
+    {
+        return $this->belongsTo(VatGroup::class, 'supplier_vat_group_id');
     }
 
     public function user()
@@ -129,13 +136,26 @@ class PurchaseOrder extends Model
     /**
      * Totals
      */
-    public function recalculateGrandTotal()
+    public function recalculateTotals(): void
     {
-        $oldGrandTotal = $this->grand_total;
-        $this->grand_total = $this->items()->sum('total_sale');
+        $items = $this->items()->get();
+        $subTotal = $items->sum('item_subtotal');
 
-        // Only reset remaining balance if it matches old total
-        if (is_null($this->remaining_balance) || $this->remaining_balance == $oldGrandTotal) {
+        if ($this->vat_base === 'supplier_vat') {
+            $vatAmount  = round(($subTotal * $this->supplier_vat_rate) / 100, 2);
+            $grandTotal = round($subTotal + $vatAmount, 2);
+            $this->vat_amount  = $vatAmount;
+            $this->grand_total = $grandTotal;
+        } else {
+            // Item-based VAT → calculate from items, but do NOT save in purchase_order.vat_amount
+            $this->vat_amount  = 0; 
+            $this->grand_total = $items->sum('item_grand_total');
+        }
+
+        $this->order_subtotal = $subTotal;
+
+        // Keep remaining balance aligned
+        if ($this->remaining_balance == $this->getOriginal('grand_total')) {
             $this->remaining_balance = $this->grand_total;
         }
 
@@ -169,6 +189,8 @@ class PurchaseOrder extends Model
                 'supplier_id',
                 'wanted_delivery_date',
                 'promised_delivery_date',
+                'supplier_vat_group_id',
+                'supplier_vat_rate',
                 'special_note',
                 'status', 
                 'grand_total',

@@ -12,6 +12,8 @@ class CreatePurchaseOrderItemsTable extends Migration
             $table->id();
             $table->unsignedBigInteger('purchase_order_id');
             $table->unsignedBigInteger('inventory_item_id');
+            $table->unsignedBigInteger('inventory_vat_group_id')->nullable();
+            $table->decimal('inventory_vat_rate', 5, 2)->default(0);
             $table->integer('quantity')->default(0);
             $table->decimal('price', 10, 2)->default(0);
             $table->decimal('item_subtotal', 12, 2)->default(0);

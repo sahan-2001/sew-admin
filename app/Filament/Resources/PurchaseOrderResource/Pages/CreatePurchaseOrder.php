@@ -18,106 +18,105 @@ class CreatePurchaseOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Generate random code
-        $data['random_code'] = strtoupper(\Illuminate\Support\Str::random(16));
+        /* ---------------------------------
+         | BASIC DATA
+         |---------------------------------*/
+        $data['random_code'] = strtoupper(Str::random(16));
 
-        // Calculate totals from items
-        $items = $data['items'] ?? [];
+        $items   = $data['items'] ?? [];
+        $vatBase = $data['vat_base'] ?? 'item_vat';
 
         $orderSubtotal = 0;
-        $vatAmount     = 0;
-        $grandTotal    = 0;
+        $itemVatTotal  = 0;
 
-        foreach ($items as $item) {
-            $quantity = (float) ($item['quantity'] ?? 0);
-            $price    = (float) ($item['price'] ?? 0);
-            $vatRate  = (float) ($item['vat_rate'] ?? 0);
+        /* ---------------------------------
+         | ITEM CALCULATIONS
+         |---------------------------------*/
+        foreach ($items as &$item) {
+            $qty   = (float) ($item['quantity'] ?? 0);
+            $price = (float) ($item['price'] ?? 0);
+            $rate  = (float) ($item['vat_rate'] ?? 0);
 
-            $subTotal = $quantity * $price;
-            $vat      = ($subTotal * $vatRate) / 100;
-            $total    = $subTotal + $vat;
+            $subTotal = $qty * $price;
+            $item['item_subtotal'] = round($subTotal, 2);
 
-            $orderSubtotal += $subTotal;
-            $vatAmount     += $vat;
-            $grandTotal    += $total;
+            if ($vatBase === 'item_vat') {
+                $itemVat = ($subTotal * $rate) / 100;
+                $item['item_vat_amount']  = round($itemVat, 2);
+                $item['item_grand_total'] = round($subTotal + $itemVat, 2);
+            } else {
+                $item['item_vat_amount']  = 0;
+                $item['item_grand_total'] = round($subTotal, 2);
+            }
+        }
+        unset($item);
 
-            // Ensure hidden fields for each item are set for DB
-            $item['item_subtotal']     = round($subTotal, 2);
-            $item['item_vat_amount']   = round($vat, 2);
-            $item['item_grand_total']  = round($total, 2);
-
-            $data['items'][] = $item; // update back
+        // Order-level VAT
+        if ($vatBase === 'supplier_vat') {
+            $supplierVatRate = (float) ($data['supplier_vat_rate'] ?? 0);
+            $vatAmount  = round(($orderSubtotal * $supplierVatRate) / 100, 2);
+            $grandTotal = round($orderSubtotal + $vatAmount, 2);
+        } else {
+            $vatAmount  = 0; // do not save item VAT in order
+            $grandTotal = $orderSubtotal + $itemVatTotal;
         }
 
-        // Assign calculated totals to main order
         $data['order_subtotal']    = round($orderSubtotal, 2);
-        $data['vat_amount']        = round($vatAmount, 2);
-        $data['grand_total']       = round($grandTotal, 2);
-
-        // remaining_balance defaults to grand_total
-        $data['remaining_balance'] = $data['grand_total'];
-
-        // Default VAT base
-        $data['vat_base'] = $data['vat_base'] ?? 'item_vat';
+        $data['vat_amount']        = $vatAmount;
+        $data['grand_total']       = $grandTotal;
+        $data['remaining_balance'] = $grandTotal;
 
         return $data;
     }
 
-
+    /* ---------------------------------
+     | AFTER CREATE (EMAIL + QR)
+     |---------------------------------*/
     protected function afterCreate(): void
     {
-        $this->record->loadMissing(['items', 'invoice', 'supplierAdvanceInvoices']);
+        $this->record->loadMissing(['items']);
         $this->record->refresh();
 
-        $email = null;
+        $email = optional($this->record->supplier)->email;
 
-        // Get supplier email
-        if ($this->record->supplier_id) {
-            $supplier = \App\Models\Supplier::find($this->record->supplier_id);
-            if ($supplier && $supplier->email) {
-                $email = $supplier->email;
-            }
+        if (!$email) {
+            return;
         }
 
-        if ($email) {
-            try {
-                // Generate QR code URL
-                $qrCodeData = url('/purchase-orders/' . $this->record->id . '/' . $this->record->random_code);
+        try {
+            $qrData = url('/purchase-orders/' . $this->record->id . '/' . $this->record->random_code);
 
-                // Generate & store SVG QR code
-                $qrCode = new QrCode($qrCodeData);
-                $writer = new SvgWriter();
-                $result = $writer->write($qrCode);
+            $qrCode  = new QrCode($qrData);
+            $writer  = new SvgWriter();
+            $result  = $writer->write($qrCode);
 
-                $qrCodeFilename = 'purchase_qrcode_' . $this->record->id . '.svg';
-                $path = 'public/qrcodes/' . $qrCodeFilename;
+            $filename = 'purchase_qrcode_' . $this->record->id . '.svg';
+            $path     = 'public/qrcodes/' . $filename;
 
-                Storage::makeDirectory('public/qrcodes');
-                Storage::put($path, $result->getString());
+            Storage::makeDirectory('public/qrcodes');
+            Storage::put($path, $result->getString());
 
-                // Send email
-                Mail::to($email)->send(new PurchaseOrderCreatedMail($this->record));
+            Mail::to($email)->send(new PurchaseOrderCreatedMail($this->record));
 
-                // Notify Filament user of success
-                Notification::make()
-                    ->title('Email Sent Successfully')
-                    ->body("Purchase order confirmation has been sent to {$email}.")
-                    ->success()
-                    ->send();
+            Notification::make()
+                ->title('Email Sent Successfully')
+                ->body("Purchase order sent to {$email}")
+                ->success()
+                ->send();
 
-            } catch (\Exception $e) {
-                // Notify Filament user if email sending failed
-                Notification::make()
-                    ->title('Email Sending Failed')
-                    ->body("Could not send email: {$e->getMessage()}")
-                    ->danger()
-                    ->send();
-            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Email Failed')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
         }
     }
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('handle', ['record' => $this->record->getKey()]);
+        return $this->getResource()::getUrl('handle', [
+            'record' => $this->record->getKey()
+        ]);
     }
 }

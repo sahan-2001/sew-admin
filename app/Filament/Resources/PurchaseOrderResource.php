@@ -114,6 +114,9 @@ class PurchaseOrderResource extends Resource
                                             ->suffix('%')
                                             ->disabled()
                                             ->dehydrated(false),
+
+                                        Hidden::make('supplier_vat_group_id'),
+                                        Hidden::make('supplier_vat_rate'),
                                     ])
                                     ->columns(2),
                                     
@@ -158,19 +161,27 @@ class PurchaseOrderResource extends Resource
                                                         )
                                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                                             $item = InventoryItem::with('vatGroup')->find($state);
-                                                            
-                                                            if ($item) {
-                                                                // Set the VAT group ID for the item
-                                                                $set('vat_group_name', $item->vatGroup->vat_group_name ?? null);
-                                                                $set('vat_rate', $item->vatGroup->vat_rate ?? 0);
+
+                                                            if ($item && $item->vatGroup) {
+                                                                // 🔒 SNAPSHOT VALUES (SAVED)
+                                                                $set('inventory_vat_group_id', $item->vatGroup->id);
+                                                                $set('inventory_vat_rate', $item->vatGroup->vat_rate);
+
+                                                                // 🖥 DISPLAY ONLY
+                                                                $set('vat_group_name', $item->vatGroup->vat_group_name);
+                                                                $set('vat_rate', $item->vatGroup->vat_rate);
                                                             } else {
+                                                                $set('inventory_vat_group_id', null);
+                                                                $set('inventory_vat_rate', 0);
                                                                 $set('vat_group_name', null);
                                                                 $set('vat_rate', 0);
                                                             }
-                                                            
+
                                                             self::recalculate($set, $get);
-                                                        })
-                                                        ->required(),
+                                                        }),
+
+                                                    Hidden::make('inventory_vat_group_id'),
+                                                    Hidden::make('inventory_vat_rate'),
 
                                                     TextInput::make('vat_group_name')
                                                         ->label('Item VAT Group')
@@ -371,14 +382,14 @@ class PurchaseOrderResource extends Resource
         $total    = $subTotal + $vat;
 
         // Set hidden fields that WILL be saved
-        $set('item_subtotal', round($subTotal, 2));      // This saves to DB
-        $set('item_vat_amount', round($vat, 2));         // This saves to DB
-        $set('item_grand_total', round($total, 2));      // This saves to DB
+        $set('item_subtotal', round($subTotal, 2));      
+        $set('item_vat_amount', round($vat, 2));         
+        $set('item_grand_total', round($total, 2));      
         
         // Set display fields (not saved)
         $set('display_subtotal', round($subTotal, 2));   // Display only
-        $set('display_vat_amount', round($vat, 2));      // Display only
-        $set('display_grand_total', round($total, 2));   // Display only
+        $set('display_vat_amount', round($vat, 2));      
+        $set('display_grand_total', round($total, 2));   
         
         // Recalculate both summaries
         self::calculateSummary($set, $get);
@@ -396,9 +407,9 @@ class PurchaseOrderResource extends Resource
         if (is_array($items)) {
             foreach ($items as $item) {
                 // FIXED: Using correct field names
-                $subTotalSum += (float) ($item['item_subtotal'] ?? 0);        // Changed from 'sub_total'
-                $vatSum += (float) ($item['item_vat_amount'] ?? 0);           // Changed from 'vat_amount'
-                $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0); // Changed from 'total_with_vat'
+                $subTotalSum += (float) ($item['item_subtotal'] ?? 0);       
+                $vatSum += (float) ($item['item_vat_amount'] ?? 0);           
+                $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0);
             }
         }
         
