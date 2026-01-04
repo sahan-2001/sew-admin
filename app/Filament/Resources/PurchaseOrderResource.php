@@ -321,6 +321,7 @@ class PurchaseOrderResource extends Resource
                                             ->default('item_vat')
                                             ->required()
                                             ->reactive()
+                                            ->disabled(fn ($record) => $record !== null)
                                             ->afterStateUpdated(fn (callable $set, callable $get) =>
                                                 self::recalculateFinalSummary($set, $get)
                                             ),
@@ -474,7 +475,9 @@ class PurchaseOrderResource extends Resource
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('supplier_id')->label('Supplier ID')->searchable(),
-                TextColumn::make('wanted_date')->label('Wanted Date')->date(),
+                TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date')->date(),
+                TextColumn::make('promised_delivery_date')->label('Promised Delivery Date')->date(),
+                TextColumn::make('vat_base')->label('VAT Base')->sortable(),
                 TextColumn::make('status')->label('Status')
                     ->badge()
                     ->colors([

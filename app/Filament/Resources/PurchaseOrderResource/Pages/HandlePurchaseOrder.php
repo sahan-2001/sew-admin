@@ -17,10 +17,17 @@ class HandlePurchaseOrder extends Page
     protected static ?string $title = 'Handle Purchase Order';
 
     public PurchaseOrder $record;
+    public $items = []; 
 
     public function mount(PurchaseOrder $record)
     {
         $this->record = $record;
+        $this->loadItems(); 
+    }
+
+    protected function loadItems()
+    {
+        $this->items = $this->record->items()->with('inventoryItem')->get();
     }
 
     // Release Purchase Order

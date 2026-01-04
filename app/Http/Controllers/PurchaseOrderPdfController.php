@@ -33,13 +33,16 @@ class PurchaseOrderPdfController extends Controller
 
         $purchaseOrderDetails = [
             'id' => $purchase_order->id,
-            'supplier_id' => str_pad($supplier?->supplier_id ?? 0, 5, '0', STR_PAD_LEFT), // padded to 5 digits
+            'supplier_id' => str_pad($supplier?->supplier_id ?? 0, 5, '0', STR_PAD_LEFT), 
             'supplier_name' => $supplier?->name ?? 'N/A',
             'supplier_email' => $supplier?->email ?? 'N/A',
             'supplier_phone' => $supplier?->phone_1 ?? 'N/A',
-            'wanted_date' => $purchase_order->wanted_date,
+            'wanted_delivery_date' => $purchase_order->wanted_delivery_date,
+            'promised_delivery_date' => $purchase_order->promised_delivery_date,
             'status' => $purchase_order->status,
             'created_at' => $purchase_order->created_at->format('Y-m-d H:i:s'),
+            'created_by' => $purchase_order->created_by,
+            'vat_base' => $purchase_order->vat_base, 
         ];
 
         // Fetch purchase order items with inventory details
@@ -72,6 +75,7 @@ class PurchaseOrderPdfController extends Controller
             'grandTotal' => $grandTotal,
             'qrCodePath' => storage_path('app/public/qrcodes/' . $qrCodeFilename),
             'qrCodeData' => $qrCodeData,
+            'purchase_order' => $purchase_order,
         ])->setPaper('a4')->stream('purchase-order-' . $purchase_order->id . '.pdf');
     }
 }
