@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Order</title>
+    <title>Purchase Order {{ $purchaseOrderDetails['id'] }}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header, .footer { text-align: center; }
@@ -25,6 +25,12 @@
         <h1>{{ $companyDetails['name'] }}</h1>
         <p>{{ $companyDetails['address'] }}</p>
         <p>Phone: {{ $companyDetails['phone'] }} | Email: {{ $companyDetails['email'] }}</p>
+    </div>
+
+    <!-- Header -->
+    <div class="report_header">
+        <h1>Purchase Order</h1>
+        <hr>
     </div>
 
     <div class="provider-details">

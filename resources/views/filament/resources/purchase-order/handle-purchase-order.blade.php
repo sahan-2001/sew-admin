@@ -57,6 +57,7 @@
         <div>
             <p><strong>Status:</strong> {{ ucfirst($record->status) }}</p>
             <p><strong>Wanted Date:</strong> {{ $record->wanted_delivery_date }}</p>
+            <p><strong>VAT Base:</strong> {{ $record->vat_base }}</p>
             <p><strong>Special Notes:</strong> {{ $record->special_note ?? '-' }}</p>
 
             @if($record->vat_base === 'supplier_vat')
