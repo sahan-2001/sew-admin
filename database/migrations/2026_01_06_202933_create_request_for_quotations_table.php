@@ -1,0 +1,45 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('request_for_quotations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('supplier_id');
+            $table->date('wanted_delivery_date')->nullable();
+            $table->date('valid_until')->nullable();
+            $table->text('special_note')->nullable();
+            $table->string('status')->default('planned'); 
+            $table->unsignedBigInteger('supplier_vat_group_id')->nullable();
+            $table->decimal('supplier_vat_rate', 5, 2)->default(0)->nullable();
+            
+            $table->decimal('order_subtotal', 12, 2)->default(0);
+            $table->decimal('vat_amount', 12, 2)->default(0);
+            $table->decimal('grand_total', 12, 2)->default(0);
+            $table->text('vat_base')->nullable();
+            $table->decimal('remaining_balance', 12, 2)->default(0);
+            $table->string('random_code')->nullable(); 
+
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
+            $table->timestamps();
+            $table->softDeletes(); 
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('request_for_quotations');
+    }
+};

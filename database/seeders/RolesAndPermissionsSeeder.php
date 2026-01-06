@@ -79,6 +79,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'create purchase quotations']);
         Permission::firstOrCreate(['name' => 'edit purchase quotations']);
         Permission::firstOrCreate(['name' => 'delete purchase quotations']);
+        Permission::firstOrCreate(['name' => 'handle purchase quotations']);
         Permission::firstOrCreate(['name' => 'purchase_quotations.export']);
 
         // Customer order permissions

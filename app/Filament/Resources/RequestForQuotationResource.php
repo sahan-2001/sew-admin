@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\PurchaseQuotationResource\Pages;
+use App\Filament\Resources\RequestForQuotationResource\Pages;
+use App\Filament\Resources\RequestForQuotationResource\RelationManagers;
+use App\Models\RequestForQuotation;
 use App\Models\PurchaseQuotation;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
@@ -14,12 +16,12 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\{EditAction,DeleteAction,Action};
 use Illuminate\Support\Facades\Auth;
 
-class PurchaseQuotationResource extends Resource
+class RequestForQuotationResource extends Resource
 {
-    protected static ?string $model = PurchaseQuotation::class;
+    protected static ?string $model = RequestForQuotation::class;
 
     protected static ?string $navigationGroup = 'Orders';
-    protected static ?string $navigationLabel = 'Purchase Quotations';
+    protected static ?string $navigationLabel = 'Request for Purchase Quotations';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     
@@ -80,6 +82,7 @@ class PurchaseQuotationResource extends Resource
 
                                             TextInput::make('supplier_name')->disabled(),
                                             TextInput::make('supplier_email')->disabled(),
+
                                             TextInput::make('supplier_vat_group_name')
                                                 ->label('Supplier VAT Group')
                                                 ->disabled()
@@ -89,7 +92,8 @@ class PurchaseQuotationResource extends Resource
                                                 ->suffix('%')
                                                 ->disabled()
                                                 ->dehydrated(false),
-                                            Hidden::make('supplier_vat_group_id'),
+
+                                            Hidden::make('supplier_vat_group_id')->dehydrated(true),
                                             Hidden::make('supplier_vat_rate'),
                                         ]),
                                 ]),
@@ -98,7 +102,6 @@ class PurchaseQuotationResource extends Resource
                                 ->columns(2)
                                 ->schema([
                                     DatePicker::make('wanted_delivery_date')->label('Expected Delivery Date')->mindate(now())->dehydrated(true),
-                                    DatePicker::make('promised_delivery_date')->label('Promised Delivery Date')->mindate(now())->dehydrated(true),
                                     Textarea::make('special_note')->label('Remarks')->columnSpan(2),
                                     Hidden::make('status')->default('draft'),
                                 ]),
@@ -409,10 +412,12 @@ class PurchaseQuotationResource extends Resource
             ])
             ->actions([
                 Action::make('handle')
-                    ->label('Handle')
+                    ->label('Handle RFQ')
+                    ->url(fn (RequestForQuotation $record): string => 
+                        RequestForQuotationResource::getUrl('handle', ['record' => $record])
+                    )
                     ->icon('heroicon-o-cog')
-                    ->url(fn ($record) =>
-                        self::getUrl('handle', ['record' => $record->id])),
+                    ->color('primary'),
                 
                 EditAction::make()
                     ->visible(fn ($record) =>
@@ -440,10 +445,10 @@ class PurchaseQuotationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListPurchaseQuotations::route('/'),
-            'create' => Pages\CreatePurchaseQuotation::route('/create'),
-            'edit'   => Pages\EditPurchaseQuotation::route('/{record}/edit'),
-            'handle' => Pages\HandlePurchaseQuotation::route('/{record}/handle'),
+            'index' => Pages\ListRequestForQuotations::route('/'),
+            'create' => Pages\CreateRequestForQuotation::route('/create'),
+            'edit' => Pages\EditRequestForQuotation::route('/{record}/edit'),
+            'handle' => Pages\HandleRequestForQuotation::route('/{record}'),
         ];
     }
 }
