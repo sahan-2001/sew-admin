@@ -14,13 +14,9 @@ class RequestForQuotationItem extends Model
     protected $fillable = [
         'request_for_quotation_id',
         'inventory_item_id',
-        'inventory_vat_group_id',
-        'inventory_vat_rate',
         'quantity',
         'price',
-        'item_subtotal',        
-        'item_vat_amount',      
-        'item_grand_total',     
+        'item_subtotal',
         'created_by',
         'updated_by',
     ];
@@ -30,40 +26,32 @@ class RequestForQuotationItem extends Model
         static::creating(function ($model) {
             $model->created_by = Auth::id();
             $model->updated_by = Auth::id();
-            $model->calculateAndSetValues();
+            $model->calculateSubtotal();
         });
 
         static::updating(function ($model) {
             $model->updated_by = Auth::id();
-            $model->calculateAndSetValues();
+            $model->calculateSubtotal();
         });
 
         static::saved(function ($model) {
-            if ($model->requestForQuotation) {
-                $model->requestForQuotation->recalculateTotals();
-            }
+            $model->requestForQuotation?->recalculateTotals();
         });
 
         static::deleted(function ($model) {
-            if ($model->requestForQuotation) {
-                $model->requestForQuotation->recalculateTotals();
-            }
+            $model->requestForQuotation?->recalculateTotals();
         });
     }
 
-    // Helper method to calculate item values
-    public function calculateAndSetValues()
+    /* -----------------------
+     | HELPER
+     ----------------------- */
+    protected function calculateSubtotal(): void
     {
-        $this->item_subtotal = $this->quantity * $this->price;
+        $qty   = (float) ($this->quantity ?? 0);
+        $price = (float) ($this->price ?? 0);
 
-        if ($this->requestForQuotation?->vat_base === 'item_vat') {
-            $vatRate = (float) ($this->inventory_vat_rate ?? 0);
-            $this->item_vat_amount  = round(($this->item_subtotal * $vatRate) / 100, 2);
-            $this->item_grand_total = round($this->item_subtotal + $this->item_vat_amount, 2);
-        } else {
-            $this->item_vat_amount  = 0;
-            $this->item_grand_total = $this->item_subtotal;
-        }
+        $this->item_subtotal = round($qty * $price, 2);
     }
 
     /* -----------------------
@@ -76,6 +64,6 @@ class RequestForQuotationItem extends Model
 
     public function inventoryItem()
     {
-        return $this->belongsTo(InventoryItem::class, 'inventory_item_id'); 
+        return $this->belongsTo(InventoryItem::class);
     }
 }

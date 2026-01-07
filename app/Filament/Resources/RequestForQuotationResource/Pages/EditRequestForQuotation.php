@@ -13,9 +13,13 @@ class EditRequestForQuotation extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('handle')
-                ->label('Handle Request for Quotation')
-                ->url($this->getResource()::getUrl('handle', ['record' => $this->record])),
+            Action::make('handle')
+                    ->label('Handle RFQ')
+                    ->icon('heroicon-o-cog')
+                    ->color('primary')
+                    ->url(fn (RequestForQuotation $record) =>
+                        RequestForQuotationResource::getUrl('handle', ['record' => $record])
+                    ),
         ];
     }
 }
