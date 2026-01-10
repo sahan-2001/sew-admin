@@ -18,8 +18,6 @@ return new class extends Migration
             $table->unsignedBigInteger('inventory_item_id');
 
             $table->integer('quantity')->default(0);
-            $table->decimal('price', 10, 2)->default(0);
-            $table->decimal('item_subtotal', 12, 2)->default(0);
 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

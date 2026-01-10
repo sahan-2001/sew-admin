@@ -15,8 +15,6 @@ class RequestForQuotationItem extends Model
         'request_for_quotation_id',
         'inventory_item_id',
         'quantity',
-        'price',
-        'item_subtotal',
         'created_by',
         'updated_by',
     ];
@@ -26,32 +24,11 @@ class RequestForQuotationItem extends Model
         static::creating(function ($model) {
             $model->created_by = Auth::id();
             $model->updated_by = Auth::id();
-            $model->calculateSubtotal();
         });
 
         static::updating(function ($model) {
             $model->updated_by = Auth::id();
-            $model->calculateSubtotal();
         });
-
-        static::saved(function ($model) {
-            $model->requestForQuotation?->recalculateTotals();
-        });
-
-        static::deleted(function ($model) {
-            $model->requestForQuotation?->recalculateTotals();
-        });
-    }
-
-    /* -----------------------
-     | HELPER
-     ----------------------- */
-    protected function calculateSubtotal(): void
-    {
-        $qty   = (float) ($this->quantity ?? 0);
-        $price = (float) ($this->price ?? 0);
-
-        $this->item_subtotal = round($qty * $price, 2);
     }
 
     /* -----------------------

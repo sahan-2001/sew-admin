@@ -21,9 +21,6 @@ return new class extends Migration
 
             $table->string('status')->default('draft');
 
-            // Totals (NO VAT)
-            $table->decimal('order_subtotal', 12, 2)->default(0);
-
             $table->string('random_code')->nullable();
 
             $table->unsignedBigInteger('created_by');

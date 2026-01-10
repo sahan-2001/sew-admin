@@ -82,6 +82,20 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'handle purchase quotations']);
         Permission::firstOrCreate(['name' => 'purchase_quotations.export']);
 
+        // Request for Quotation permissions
+        Permission::firstOrCreate(['name' => 'view request for quotations']);
+        Permission::firstOrCreate(['name' => 'create request for quotations']);
+        Permission::firstOrCreate(['name' => 'edit request for quotations']);
+        Permission::firstOrCreate(['name' => 'delete request for quotations']);
+        Permission::firstOrCreate(['name' => 'handle request for quotations']);
+        Permission::firstOrCreate(['name' => 'request_for_quotations.export']);
+
+        Permission::firstOrCreate(['name' => 'approve request for quotation']);
+        Permission::firstOrCreate(['name' => 'send request for quotations']);
+        Permission::firstOrCreate(['name' => 'cancel request for quotations']);
+        Permission::firstOrCreate(['name' => 'reopen request for quotations']);
+        Permission::firstOrCreate(['name' => 'convert request for quotations to draft']);
+
         // Customer order permissions
         Permission::firstOrCreate(['name' => 'view customer orders']);
         Permission::firstOrCreate(['name' => 'create customer orders']);

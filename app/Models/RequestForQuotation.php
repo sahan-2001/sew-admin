@@ -19,7 +19,6 @@ class RequestForQuotation extends Model
         'valid_until',
         'special_note',
         'status',
-        'order_subtotal',
         'random_code',
         'created_by',
         'updated_by',
@@ -36,13 +35,11 @@ class RequestForQuotation extends Model
             $rfq->created_by = Auth::id() ?? 1;
             $rfq->updated_by = Auth::id() ?? 1;
 
-            $rfq->order_subtotal = $rfq->order_subtotal ?? 0;
             $rfq->status         = $rfq->status ?? 'draft';
         });
 
         static::updating(function ($rfq) {
             $rfq->updated_by = Auth::id() ?? $rfq->updated_by;
-            $rfq->order_subtotal = $rfq->order_subtotal ?? 0;
         });
     }
 
@@ -56,7 +53,7 @@ class RequestForQuotation extends Model
 
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');
     }
 
     public function user()
@@ -64,17 +61,6 @@ class RequestForQuotation extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /* -----------------------
-     | TOTALS CALCULATION
-     ----------------------- */
-    public function recalculateTotals(): void
-    {
-        $subTotal = $this->items()->sum('item_subtotal');
-
-        $this->updateQuietly([
-            'order_subtotal' => round($subTotal, 2),
-        ]);
-    }
 
     /* -----------------------
      | ACTIVITY LOG
@@ -90,7 +76,6 @@ class RequestForQuotation extends Model
                 'valid_until',
                 'special_note',
                 'status',
-                'order_subtotal',
             ])
             ->useLogName(self::$logName)
             ->setDescriptionForEvent(function (string $eventName) {

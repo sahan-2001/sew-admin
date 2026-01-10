@@ -7,6 +7,8 @@ use App\Models\RequestForQuotation;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\RequestForQuotationMail;
 
 class HandleRequestForQuotation extends Page
 {
@@ -28,12 +30,6 @@ class HandleRequestForQuotation extends Page
     protected function loadItems()
     {
         $this->items = $this->record->items()->with('inventoryItem')->get();
-    }
-
-    // Send RFQ to Suppliers
-    public function sendRFQ()
-    {
-        $this->updateStatus('sent', 'RFQ Sent', 'The Request for Quotation has been sent to suppliers.');
     }
 
     // Close RFQ
@@ -87,11 +83,46 @@ class HandleRequestForQuotation extends Page
         }
     }
 
+    // Send RFQ to Suppliers
+    public function sendRFQ()
+    {
+        try {
+            // Ensure supplier has email
+            $supplierEmail = $this->record->supplier?->email;
+
+            if (!$supplierEmail) {
+                Notification::make()
+                    ->title('Error')
+                    ->danger()
+                    ->body('Supplier email not found. Cannot send RFQ.')
+                    ->send();
+                return;
+            }
+
+            // Send RFQ email
+            Mail::to($supplierEmail)->send(new RequestForQuotationMail($this->record));
+
+            // Update status to 'sent'
+            $this->updateStatus(
+                'sent',
+                'RFQ Sent',
+                'The Request for Quotation has been sent to the supplier successfully.'
+            );
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Email Failed')
+                ->danger()
+                ->body('Failed to send RFQ email: ' . $e->getMessage())
+                ->send();
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         $actions = [
             // Back to index
-            Action::make('Close')
+            Action::make('close')
                 ->label('Back to RFQs')
                 ->icon('heroicon-o-arrow-left')
                 ->color('primary')
@@ -99,68 +130,94 @@ class HandleRequestForQuotation extends Page
                 ->openUrlInNewTab(false),
         ];
 
-        // Status-based actions
-        if ($this->record->status === 'draft') {
-            $actions[] = Action::make('send_rfq')
-                ->label('Send RFQ')
-                ->color('success')
-                ->icon('heroicon-o-paper-airplane')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Send RFQ')
-                ->modalDescription('Are you sure you want to send this Request for Quotation to suppliers?')
-                ->modalButton('Yes, Send RFQ')
-                ->action(fn () => $this->sendRFQ());
+        switch ($this->record->status) {
+
+            case 'draft':
+                // Approve RFQ
+                $actions[] = Action::make('approve_rfq')
+                    ->label('Approve')
+                    ->color('success')
+                    ->icon('heroicon-o-check')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Approval')
+                    ->modalDescription('Approve this RFQ?')
+                    ->modalButton('Yes, Approve')
+                    ->action(fn () => $this->updateStatus('approved', 'RFQ Approved', 'The RFQ has been approved.'))
+                    ->visible(auth()->user()->can('approve request for quotation'));
+
+                // Cancel RFQ
+                $actions[] = Action::make('cancel_rfq')
+                    ->label('Cancel')
+                    ->color('danger')
+                    ->icon('heroicon-o-x-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Cancel')
+                    ->modalDescription('Cancel this RFQ?')
+                    ->modalButton('Yes, Cancel')
+                    ->action(fn () => $this->updateStatus('cancelled', 'RFQ Cancelled', 'The RFQ has been cancelled.'))
+                    ->visible(auth()->user()->can('cancel request for quotations'));
+                break;
+
+            case 'approved':
+            case 'sent': 
+                // Send RFQ
+                $actions[] = Action::make('send_rfq')
+                    ->label('Send RFQ')
+                    ->color('success')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Send RFQ')
+                    ->modalDescription('Send this RFQ to suppliers?')
+                    ->modalButton('Yes, Send')
+                    ->action(fn () => $this->sendRFQ())
+                    ->visible(auth()->user()->can('send request for quotations'));
+
+                if ($this->record->status === 'approved') {
+                    // Convert back to draft (only for approved)
+                    $actions[] = Action::make('convert_to_draft')
+                        ->label('Convert to Draft')
+                        ->color('secondary')
+                        ->icon('heroicon-o-arrow-path')
+                        ->requiresConfirmation()
+                        ->modalHeading('Confirm Convert')
+                        ->modalDescription('Convert RFQ back to draft?')
+                        ->modalButton('Yes, Convert')
+                        ->action(fn () => $this->updateStatus('draft', 'RFQ Draft', 'The RFQ has been reverted to draft.'))
+                        ->visible(auth()->user()->can('convert request for quotations to draft'));
+                }
+
+                // Complete RFQ and Close RFQ (only for sent)
+                if ($this->record->status === 'sent') {
+                    // Complete RFQ
+                    $actions[] = Action::make('complete_rfq')
+                        ->label('Complete')
+                        ->color('success')
+                        ->icon('heroicon-o-check-circle')
+                        ->requiresConfirmation()
+                        ->modalHeading('Confirm Completion')
+                        ->modalDescription('Mark this RFQ as complete?')
+                        ->modalButton('Yes, Complete')
+                        ->action(fn () => $this->updateStatus('completed', 'RFQ Completed', 'The RFQ has been completed.'));
+
+                }
+                break;
+
+            case 'cancelled':
+                // Reopen RFQ (back to draft)
+                $actions[] = Action::make('reopen_rfq')
+                    ->label('Reopen')
+                    ->color('warning')
+                    ->icon('heroicon-o-lock-open')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Reopen')
+                    ->modalDescription('Reopen this cancelled RFQ and revert to draft?')
+                    ->modalButton('Yes, Reopen')
+                    ->action(fn () => $this->updateStatus('draft', 'RFQ Reopened', 'The RFQ has been reopened and set to draft.'))
+                    ->visible(auth()->user()->can('reopen request for quotations'));
+                break;
         }
 
-        if (in_array($this->record->status, ['sent', 'under_review'])) {
-            $actions[] = Action::make('close_rfq')
-                ->label('Close RFQ')
-                ->color('gray')
-                ->icon('heroicon-o-lock-closed')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Close RFQ')
-                ->modalDescription('Are you sure you want to close this Request for Quotation?')
-                ->modalButton('Yes, Close RFQ')
-                ->action(fn () => $this->closeRFQ());
-        }
-
-        if ($this->record->status === 'closed') {
-            $actions[] = Action::make('reopen_rfq')
-                ->label('Reopen RFQ')
-                ->color('warning')
-                ->icon('heroicon-o-lock-open')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Reopen RFQ')
-                ->modalDescription('Are you sure you want to reopen this Request for Quotation?')
-                ->modalButton('Yes, Reopen RFQ')
-                ->action(fn () => $this->reopenRFQ());
-        }
-
-        if (in_array($this->record->status, ['sent', 'under_review'])) {
-            $actions[] = Action::make('convert_to_draft')
-                ->label('Convert to Draft')
-                ->color('secondary')
-                ->icon('heroicon-o-arrow-path')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Convert to Draft')
-                ->modalDescription('Are you sure you want to convert this RFQ back to draft status?')
-                ->modalButton('Yes, Convert to Draft')
-                ->action(fn () => $this->convertToDraft());
-        }
-
-        if (!in_array($this->record->status, ['closed', 'cancelled'])) {
-            $actions[] = Action::make('cancel_rfq')
-                ->label('Cancel RFQ')
-                ->color('danger')
-                ->icon('heroicon-o-x-circle')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Cancel RFQ')
-                ->modalDescription('Are you sure you want to cancel this Request for Quotation? This action cannot be undone.')
-                ->modalButton('Yes, Cancel RFQ')
-                ->action(fn () => $this->cancelRFQ());
-        }
-
-        // Print PDF
+        // Always allow Print RFQ
         $actions[] = Action::make('print_rfq')
             ->label('Print RFQ')
             ->icon('heroicon-s-printer')
@@ -168,16 +225,7 @@ class HandleRequestForQuotation extends Page
             ->url(fn () => route('request-for-quotation.print', ['rfq' => $this->record->id]))
             ->openUrlInNewTab(true);
 
-        // Generate Purchase Order (if applicable)
-        if ($this->record->status === 'closed') {
-            $actions[] = Action::make('generate_po')
-                ->label('Generate PO')
-                ->color('primary')
-                ->icon('heroicon-o-document-plus')
-                ->url(fn () => route('purchase-order.create-from-rfq', ['rfq' => $this->record->id]))
-                ->openUrlInNewTab(false);
-        }
-
         return $actions;
     }
+
 }

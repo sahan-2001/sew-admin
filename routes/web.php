@@ -216,3 +216,5 @@ Route::get('/purchase-quotation/{purchase_quotation}/pdf', [PurchaseQuotationPdf
 // Request for Quotation Print Route
 Route::get('/rfq/{rfq}/print', [RequestForQuotationController::class, 'print'])
     ->name('request-for-quotation.print');
+Route::post('/rfq/{rfq}/send-email', [RequestForQuotationController::class, 'sendEmail'])
+    ->name('rfq.send-email');

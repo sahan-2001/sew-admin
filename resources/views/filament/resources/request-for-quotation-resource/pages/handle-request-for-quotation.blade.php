@@ -19,8 +19,11 @@
                 @case('sent')
                     bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
                     @break
-                @case('under_review')
+                @case('approved')
                     bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                    @break
+                @case('completed')
+                    bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
                     @break
                 @case('closed')
                     bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
@@ -67,7 +70,7 @@
             </h2>
             <div class="space-y-2">
                 <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Supplier:</span>
+                    <span class="text-gray-600 dark:text-gray-400">Supplier Name:</span>
                     <span class="dark:text-white">{{ $record->supplier->name ?? 'N/A' }}</span>
                 </div>
                 <div class="flex justify-between">
@@ -119,12 +122,6 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                             Quantity
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                            Unit Price (Rs.)
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                            Subtotal (Rs.)
-                        </th>
                     </tr>
                 </thead>
                 
@@ -152,17 +149,6 @@
                             {{ number_format($item->quantity, 0) }}
                             @php $totalQuantity += $item->quantity; @endphp
                         </td>
-                        
-                        <!-- Unit Price -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
-                            {{ number_format($item->price, 2) }}
-                        </td>
-                        
-                        <!-- Subtotal -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white text-right">
-                            {{ number_format($item->item_subtotal, 2) }}
-                            @php $totalAmount += $item->item_subtotal; @endphp
-                        </td>
                     </tr>
                     @empty
                     <tr>
@@ -177,73 +163,11 @@
                     </tr>
                     @endforelse
                     
-                    <!-- Summary Row (if items exist) -->
-                    @if($items->count() > 0)
-                    <tr class="bg-gray-50 dark:bg-gray-700 font-semibold">
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                            Total Items: {{ $items->count() }}
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                            Summary
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white text-right">
-                            {{ number_format($totalQuantity, 0) }}
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white text-right">
-                            -
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white text-right">
-                            {{ number_format($totalAmount, 2) }}
-                        </td>
-                    </tr>
-                    @endif
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Totals Section -->
-    <div class="w-full bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Summary Column -->
-            <div>
-                <h3 class="text-lg font-semibold mb-4 dark:text-white">RFQ Summary</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Total Items:</span>
-                        <span class="font-medium dark:text-white">{{ $items->count() }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Total Quantity:</span>
-                        <span class="font-medium dark:text-white">{{ number_format($totalQuantity, 0) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Status:</span>
-                        <span class="font-medium dark:text-white">{{ ucfirst(str_replace('_', ' ', $record->status)) }}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Financial Column -->
-            <div>
-                <h3 class="text-lg font-semibold mb-4 dark:text-white">Financial Summary</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600 dark:text-gray-400">Items Subtotal:</span>
-                        <span class="font-medium dark:text-white">Rs. {{ number_format($record->order_subtotal, 2) }}</span>
-                    </div>
-                    <div class="border-t dark:border-gray-700 pt-2 mt-2">
-                        <div class="flex justify-between">
-                            <span class="text-lg font-semibold dark:text-white">Total RFQ Value:</span>
-                            <span class="text-lg font-bold dark:text-white">
-                                Rs. {{ number_format($record->order_subtotal, 2) }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Status Progress Bar -->
     <div class="mt-8 w-full">
@@ -253,7 +177,8 @@
                 $statuses = [
                     'draft' => ['label' => 'Draft', 'color' => 'bg-gray-500 dark:bg-gray-600'],
                     'sent' => ['label' => 'Sent to Supplier', 'color' => 'bg-blue-500 dark:bg-blue-600'],
-                    'under_review' => ['label' => 'Under Review', 'color' => 'bg-yellow-500 dark:bg-yellow-600'],
+                    'approved' => ['label' => 'Under Review', 'color' => 'bg-yellow-500 dark:bg-yellow-600'],
+                    'completed' => ['label' => 'Completed', 'color' => 'bg-purple-500 dark:bg-purple-600'],
                     'closed' => ['label' => 'Closed', 'color' => 'bg-green-500 dark:bg-green-600'],
                     'cancelled' => ['label' => 'Cancelled', 'color' => 'bg-red-500 dark:bg-red-600'],
                 ];

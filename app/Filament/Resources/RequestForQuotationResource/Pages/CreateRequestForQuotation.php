@@ -20,28 +20,9 @@ class CreateRequestForQuotation extends CreateRecord
         $data['status']      = 'draft';
 
         $items = $data['items'] ?? [];
-
-        $orderSubtotal = 0;
-
-        /* ------------------------------
-        ITEM CALCULATIONS (NO VAT)
-        ------------------------------ */
-        foreach ($items as &$item) {
-            $qty   = (float) ($item['quantity'] ?? 0);
-            $price = (float) ($item['price'] ?? 0);
-
-            $subTotal = $qty * $price;
-
-            $item['item_subtotal'] = round($subTotal, 2);
-            $orderSubtotal        += $subTotal;
-        }
-        unset($item);
-
-        /* ------------------------------
-        MERGE FINAL DATA
-        ------------------------------ */
+        unset($data['items']);
+        
         $data = array_merge($data, [
-            'order_subtotal' => round($orderSubtotal, 2),
             'status'         => 'draft',
         ]);
 

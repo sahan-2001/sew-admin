@@ -127,101 +127,17 @@ class RequestForQuotationResource extends Resource
                                                 TextInput::make('quantity')
                                                     ->numeric()
                                                     ->required()
-                                                    ->reactive()
-                                                    ->afterStateUpdated(
-                                                        fn ($state, $set, $get) =>
-                                                            self::recalculate($set, $get)
-                                                    ),
-
-                                                TextInput::make('price')
-                                                    ->numeric()
-                                                    ->required()
-                                                    ->reactive()
-                                                    ->prefix('Rs.')
-                                                    ->afterStateUpdated(
-                                                        fn ($state, $set, $get) =>
-                                                            self::recalculate($set, $get)
-                                                    ),
-
-                                                TextInput::make('item_subtotal')
-                                                    ->prefix('Rs.')
-                                                    ->disabled()
-                                                    ->dehydrated(true),
-
-                                                Hidden::make('remaining_quantity')
-                                                    ->default(fn ($get) => $get('quantity')),
-
-                                                Hidden::make('arrived_quantity')
-                                                    ->default(0),
+                                                    ->reactive(),
                                             ]),
                                         ])
                                         ->minItems(1)
                                         ->createItemButtonLabel('Add Item')
-                                        ->columnSpanFull()
-                                        ->reactive()
-                                        ->afterStateUpdated(
-                                            fn ($state, $set, $get) =>
-                                                self::calculateSummary($set, $get)
-                                        ),
-                                ]),
-
-                            Section::make('Order Summary')
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('items_sub_total_sum')
-                                            ->label('Total Quotation Amount')
-                                            ->prefix('Rs.')
-                                            ->disabled()
-                                            ->default(0.00),
-
-                                        \Filament\Forms\Components\Actions::make([
-                                            \Filament\Forms\Components\Actions\Action::make('refreshSummary')
-                                                ->icon('heroicon-o-arrow-path')
-                                                ->color('gray')
-                                                ->action(
-                                                    fn (callable $set, callable $get) =>
-                                                        self::calculateSummary($set, $get)
-                                                ),
-                                        ])->alignEnd(),
-                                    ]),
+                                        ->columnSpanFull(),
                                 ]),
                         ]),
                 ])
                 ->columnSpanFull(),
         ]);
-    }
-
-    protected static function recalculate(callable $set, callable $get): void
-    {
-        $qty   = (float) $get('quantity');
-        $price = (float) $get('price');
-
-        $subTotal = $qty * $price;
-
-        $set('item_subtotal', round($subTotal, 2));
-
-        self::calculateSummary($set, $get);
-    }
-
-    protected static function calculateSummary(callable $set, callable $get): void
-    {
-        $items = $get('items') ?? [];
-
-        $subTotalSum = collect($items)
-            ->sum(fn ($i) => (float) ($i['item_subtotal'] ?? 0));
-
-        $set('items_sub_total_sum', round($subTotalSum, 2));
-    }
-
-    protected static function mutateFormDataBeforeCreate(array $data): array
-    {
-        $data['order_subtotal'] = $data['items_sub_total_sum'] ?? 0;
-        return $data;
-    }
-
-    protected static function mutateFormDataBeforeSave(array $data): array
-    {
-        return self::mutateFormDataBeforeCreate($data);
     }
 
     public static function table(Table $table): Table
