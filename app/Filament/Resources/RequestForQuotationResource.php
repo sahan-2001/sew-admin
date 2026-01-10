@@ -247,7 +247,7 @@ class RequestForQuotationResource extends Resource
                     ->color('primary')
                     ->url(fn (RequestForQuotation $record) =>
                         RequestForQuotationResource::getUrl('handle', ['record' => $record])
-                    ),
+                ),
 
                 EditAction::make()
                     ->visible(fn ($record) =>

@@ -38,6 +38,7 @@ use App\Http\Controllers\OrderTrackingController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\MaterialQCReturnScrapNotePrintController;
 use App\Http\Controllers\PurchaseQuotationPdfController;
+use App\Http\Controllers\RequestForQuotationController;
 use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
@@ -210,3 +211,8 @@ Route::get('/material-qc/{materialQC}/print-return-note',[MaterialQCReturnScrapN
 // Purchase Quotation PDF Route
 Route::get('/purchase-quotation/{purchase_quotation}/pdf', [PurchaseQuotationPdfController::class, 'show'])
     ->name('purchase-quotation.pdf');
+
+
+// Request for Quotation Print Route
+Route::get('/rfq/{rfq}/print', [RequestForQuotationController::class, 'print'])
+    ->name('request-for-quotation.print');

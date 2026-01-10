@@ -49,14 +49,14 @@ class RequestForQuotation extends Model
     /* -----------------------
      | RELATIONSHIPS
      ----------------------- */
-    public function supplier()
-    {
-        return $this->belongsTo(Supplier::class);
-    }
-
     public function items(): HasMany
     {
         return $this->hasMany(RequestForQuotationItem::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function user()
