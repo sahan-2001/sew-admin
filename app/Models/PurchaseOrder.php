@@ -107,6 +107,16 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function paymentTerm()
+    {
+        return $this->belongsTo(PaymentTerm::class);
+    }
+
+    public function deliveryTerm()
+    {
+        return $this->belongsTo(DeliveryTerm::class);
+    }
+
     public function setOrderSubtotalAttribute($value)
     {
         $this->attributes['order_subtotal'] = $value ?? 0;
