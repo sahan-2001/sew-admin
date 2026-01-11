@@ -77,8 +77,19 @@ class CreatePurchaseQuotation extends CreateRecord
      |---------------------------------*/
     protected function afterCreate(): void
     {
-        $this->record->loadMissing(['items']);
+        $this->record->loadMissing(['items', 'rfq']);
         $this->record->refresh();
+
+        // Update RFQ status to "quoted"
+        if ($this->record->rfq) {
+            $this->record->rfq->update([
+                'status' => 'quoted',
+            ]);
+
+            activity()
+                ->performedOn($this->record->rfq)
+                ->log("RFQ #{$this->record->rfq->id} marked as quoted because PQ #{$this->record->id} was created");
+        }
 
         $email = optional($this->record->supplier)->email;
 
@@ -87,14 +98,13 @@ class CreatePurchaseQuotation extends CreateRecord
         }
 
         try {
-            // Example: send notification instead of email if needed
             Notification::make()
                 ->title('Purchase Quotation Created')
-                ->body("Quotation #{$this->record->id} created successfully and assigned to supplier {$email}")
+                ->body("Quotation #{$this->record->id} created successfully and RFQ marked as QUOTED.")
                 ->success()
                 ->send();
 
-            // Optional: send email if you have Mailable set up
+            // Optional email
             // Mail::to($email)->send(new PurchaseQuotationCreatedMail($this->record));
 
         } catch (\Exception $e) {
@@ -105,6 +115,7 @@ class CreatePurchaseQuotation extends CreateRecord
                 ->send();
         }
     }
+
 
     protected function getRedirectUrl(): string
     {

@@ -102,14 +102,37 @@ class HandlePurchaseQuotation extends Page
     protected function updateStatus(string $status, string $notificationTitle = null, string $notificationBody = null)
     {
         try {
+            // Update PQ status
             $this->record->update(['status' => $status]);
-            $this->record->refresh(); // reload fresh data
+            $this->record->refresh();
 
+            // RFQ status handling
+            if (in_array($status, ['approved', 'rejected'])) {
+                $this->record->rfq?->update([
+                    'status' => 'closed',
+                ]);
+
+                activity()
+                    ->performedOn($this->record->rfq)
+                    ->log("RFQ #{$this->record->rfq->id} closed because PQ #{$this->record->id} was {$status}");
+            }
+
+            if ($status === 'draft') {
+                $this->record->rfq?->update([
+                    'status' => 'quoted',
+                ]);
+
+                activity()
+                    ->performedOn($this->record->rfq)
+                    ->log("RFQ #{$this->record->rfq->id} reopened because PQ #{$this->record->id} was reverted to draft");
+            }
+
+            // Log PQ activity
             activity()
                 ->performedOn($this->record)
                 ->log("Purchase Quotation status changed to {$status}");
 
-            // Show notification if titles are provided
+            // Notification
             if ($notificationTitle && $notificationBody) {
                 Notification::make()
                     ->title($notificationTitle)

@@ -215,6 +215,7 @@ class RequestForQuotationResource extends Resource
                         'sent' => 'info',
                         'approved' => 'success',
                         'rejected' => 'danger',
+                        'closed' => 'secondary',
                     ]),
             ])
             ->actions([

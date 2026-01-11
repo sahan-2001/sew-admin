@@ -30,7 +30,7 @@ class PurchaseQuotationResource extends Resource
     
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->can('view Purchase Quotations') ?? false;
+        return Auth::user()?->can('View Purchase Quotations') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -47,7 +47,7 @@ class PurchaseQuotationResource extends Resource
                                         ->label('Select RFQ')
                                         ->options(
                                             RequestForQuotation::query()
-                                                ->where('status', 'approved')
+                                                ->whereIn('status', ['approved', 'sent', 'quoted'])
                                                 ->get()
                                                 ->mapWithKeys(function ($rfq) {
                                                     $createdAt = $rfq->created_at 

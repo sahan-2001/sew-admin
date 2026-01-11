@@ -73,7 +73,6 @@ class HandleRequestForQuotation extends Page
                 ->body($notificationBody)
                 ->send();
 
-            return redirect()->route('filament.resources.request-for-quotations.handle', ['record' => $this->record->id]);
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error')
@@ -143,7 +142,7 @@ class HandleRequestForQuotation extends Page
                     ->modalDescription('Approve this RFQ?')
                     ->modalButton('Yes, Approve')
                     ->action(fn () => $this->updateStatus('approved', 'RFQ Approved', 'The RFQ has been approved.'))
-                    ->visible(auth()->user()->can('approve request for quotation'));
+                    ->visible(auth()->user()->can('Approve Request For Quotation'));
 
                 // Cancel RFQ
                 $actions[] = Action::make('cancel_rfq')
@@ -155,7 +154,7 @@ class HandleRequestForQuotation extends Page
                     ->modalDescription('Cancel this RFQ?')
                     ->modalButton('Yes, Cancel')
                     ->action(fn () => $this->updateStatus('cancelled', 'RFQ Cancelled', 'The RFQ has been cancelled.'))
-                    ->visible(auth()->user()->can('cancel request for quotations'));
+                    ->visible(auth()->user()->can('Cancel Request For Quotations'));
                 break;
 
             case 'approved':
@@ -170,7 +169,7 @@ class HandleRequestForQuotation extends Page
                     ->modalDescription('Send this RFQ to suppliers?')
                     ->modalButton('Yes, Send')
                     ->action(fn () => $this->sendRFQ())
-                    ->visible(auth()->user()->can('send request for quotations'));
+                    ->visible(auth()->user()->can('Send Request For Quotations'));
 
                 if ($this->record->status === 'approved') {
                     // Convert back to draft (only for approved)
@@ -183,22 +182,7 @@ class HandleRequestForQuotation extends Page
                         ->modalDescription('Convert RFQ back to draft?')
                         ->modalButton('Yes, Convert')
                         ->action(fn () => $this->updateStatus('draft', 'RFQ Draft', 'The RFQ has been reverted to draft.'))
-                        ->visible(auth()->user()->can('convert request for quotations to draft'));
-                }
-
-                // Complete RFQ and Close RFQ (only for sent)
-                if ($this->record->status === 'sent') {
-                    // Complete RFQ
-                    $actions[] = Action::make('complete_rfq')
-                        ->label('Complete')
-                        ->color('success')
-                        ->icon('heroicon-o-check-circle')
-                        ->requiresConfirmation()
-                        ->modalHeading('Confirm Completion')
-                        ->modalDescription('Mark this RFQ as complete?')
-                        ->modalButton('Yes, Complete')
-                        ->action(fn () => $this->updateStatus('completed', 'RFQ Completed', 'The RFQ has been completed.'));
-
+                        ->visible(auth()->user()->can('Convert Request For Quotations to Draft'));
                 }
                 break;
 
@@ -213,7 +197,7 @@ class HandleRequestForQuotation extends Page
                     ->modalDescription('Reopen this cancelled RFQ and revert to draft?')
                     ->modalButton('Yes, Reopen')
                     ->action(fn () => $this->updateStatus('draft', 'RFQ Reopened', 'The RFQ has been reopened and set to draft.'))
-                    ->visible(auth()->user()->can('reopen request for quotations'));
+                    ->visible(auth()->user()->can('Reopen Request For Quotations'));
                 break;
         }
 
