@@ -131,6 +131,11 @@ class PurchaseQuotation extends Model
     {
         return $this->belongsTo(Currency::class, 'currency_code_id', 'code');
     }
+    
+    public function purchaseOrder()
+    {
+        return $this->hasOne(PurchaseOrder::class);
+    }
 
     /* -----------------------
      | ATTRIBUTE SETTERS

@@ -92,7 +92,7 @@ class RequestForQuotationResource extends Resource
                                         ]),
                                 ]),
 
-                            Section::make('Quotation Meta')
+                            Section::make('Terms & Methods')
                                 ->columns(2)
                                 ->schema([
                                     Select::make('currency_code_id')

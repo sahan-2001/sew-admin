@@ -16,6 +16,12 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'supplier_id',
+        'purchase_quotation_id',
+        'request_for_quotation_id',
+        'payment_term_id',
+        'delivery_term_id',
+        'delivery_method_id',
+        'currency_code_id',
         'wanted_delivery_date',
         'promised_delivery_date',
         'special_note',
@@ -117,6 +123,16 @@ class PurchaseOrder extends Model
         return $this->belongsTo(DeliveryTerm::class);
     }
 
+    public function purchaseQuotation()
+    {
+        return $this->belongsTo(PurchaseQuotation::class);
+    }
+
+    public function requestForQuotation()
+    {
+        return $this->belongsTo(RequestForQuotation::class);
+    }
+
     public function setOrderSubtotalAttribute($value)
     {
         $this->attributes['order_subtotal'] = $value ?? 0;
@@ -197,6 +213,7 @@ class PurchaseOrder extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'supplier_id',
+                'purchase_quotation_id',
                 'wanted_delivery_date',
                 'promised_delivery_date',
                 'supplier_vat_group_id',

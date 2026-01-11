@@ -55,6 +55,11 @@ class RequestForQuotation extends Model
         return $this->hasMany(RequestForQuotationItem::class);
     }
 
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class, 'request_for_quotation_id');
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');

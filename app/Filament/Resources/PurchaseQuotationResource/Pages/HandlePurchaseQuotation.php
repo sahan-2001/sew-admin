@@ -4,9 +4,14 @@ namespace App\Filament\Resources\PurchaseQuotationResource\Pages;
 
 use App\Filament\Resources\PurchaseQuotationResource;
 use App\Models\PurchaseQuotation;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
+use Illuminate\Support\Facades\DB;
+use App\Filament\Resources\PurchaseOrderResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
+
 
 class HandlePurchaseQuotation extends Page
 {
@@ -76,11 +81,84 @@ class HandlePurchaseQuotation extends Page
 
     public function convertToPO()
     {
-        // Logic to create Purchase Order
+        if ($this->record->status !== 'approved') {
+            Notification::make()
+                ->title('Cannot Convert')
+                ->danger()
+                ->body('Only approved Purchase Quotations can be converted.')
+                ->send();
+            return;
+        }
+
+        if ($this->record->purchaseOrder) {
+            Notification::make()
+                ->title('Already Converted')
+                ->warning()
+                ->body('This Purchase Quotation is already converted to a Purchase Order.')
+                ->send();
+            return;
+        }
+
+        $po = null;
+
+        DB::transaction(function () use (&$po) {
+
+            $po = PurchaseOrder::create([
+                'supplier_id'               => $this->record->supplier_id,
+                'purchase_quotation_id'     => $this->record->id,
+                'request_for_quotation_id'  => $this->record->request_for_quotation_id,
+
+                'payment_term_id'           => $this->record->payment_term_id,
+                'delivery_term_id'          => $this->record->delivery_term_id,
+                'delivery_method_id'        => $this->record->delivery_method_id,
+                'currency_code_id'          => $this->record->currency_code_id,
+
+                'wanted_delivery_date'      => $this->record->wanted_delivery_date,
+                'quotation_date'            => now(),
+                'special_note'              => $this->record->supplier_note,
+
+                'supplier_vat_rate'         => $this->record->supplier_vat_rate,
+                'vat_base'                  => $this->record->vat_base,
+                'order_subtotal'            => $this->record->order_subtotal,
+                'vat_amount'                => $this->record->vat_amount,
+                'grand_total'               => $this->record->grand_total,
+
+                'status'                    => 'planned',
+            ]);
+
+            foreach ($this->record->items as $pqItem) {
+                PurchaseOrderItem::create([
+                    'purchase_order_id'       => $po->id,
+                    'inventory_item_id'       => $pqItem->inventory_item_id,
+                    'inventory_vat_group_id'  => $pqItem->inventory_vat_group_id,
+                    'inventory_vat_rate'      => $pqItem->inventory_vat_rate,
+                    'quantity'                => $pqItem->quantity,
+                    'price'                   => $pqItem->price,
+                    'item_subtotal'           => $pqItem->item_subtotal,
+                    'item_vat_amount'         => $pqItem->item_vat_amount,
+                    'item_grand_total'        => $pqItem->item_grand_total,
+                ]);
+            }
+
+            $this->record->update([
+                'status' => 'converted',
+            ]);
+
+            activity()
+                ->performedOn($po)
+                ->log("Purchase Order #{$po->id} created from Purchase Quotation #{$this->record->id}");
+        });
+
         Notification::make()
-            ->title('PO Created')
+            ->title('Purchase Order Created')
             ->success()
-            ->body('Purchase Order has been created from this PQ.')
+            ->body('Purchase Order has been successfully created from this Purchase Quotation.')
+            ->actions([
+                \Filament\Notifications\Actions\Action::make('open_po')
+                    ->label('Open Purchase Order')
+                    ->url(PurchaseOrderResource::getUrl('handle', ['record' => $po->id]))
+                    ->openUrlInNewTab(false),
+            ])
             ->send();
     }
 

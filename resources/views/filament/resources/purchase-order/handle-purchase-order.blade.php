@@ -49,6 +49,15 @@
         <div>
             <p><strong>Order ID:</strong> {{ str_pad($record->id, 5, '0', STR_PAD_LEFT) }}</p>
             <p><strong>Supplier ID:</strong> {{ str_pad($record->supplier?->supplier_id ?? 0, 5, '0', STR_PAD_LEFT) }}</p>
+            <p><strong>Purchase Quotation ID:</strong> 
+                @if($record->purchaseQuotation)
+                    {{ str_pad($record->purchaseQuotation->id, 5, '0', STR_PAD_LEFT) }}
+                @else
+                    N/A
+                @endif
+            </p>
+            <p><strong>Currency:</strong> {{ $record->currency?->code ?? 'N/A' }}</p>
+            <p><strong>Delivery Term:</strong> {{ $record->cudelivery_term?->name ?? 'N/A' }}</p>
             <p><strong>Supplier:</strong> {{ $record->supplier?->name ?? 'N/A' }}</p>
             <p><strong>Email:</strong> {{ $record->supplier?->email ?? 'N/A' }}</p>
             <p><strong>Phone:</strong> {{ $record->supplier?->phone_1 ?? 'N/A' }}</p>

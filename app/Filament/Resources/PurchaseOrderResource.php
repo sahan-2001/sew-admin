@@ -138,8 +138,62 @@ class PurchaseOrderResource extends Resource
 
                                         Hidden::make('supplier_vat_group_id'),
                                     ])
-                                    ->columns(2)
+                                    ->columns(2),
+
+                            Section::make('Terms & Methods')
+                                ->columns(2)
+                                ->schema([
+                                    Select::make('currency_code_id')
+                                        ->label('Currency')
+                                        ->options(
+                                            fn () => \App\Models\Currency::where('is_active', true)
+                                                ->get()
+                                                ->mapWithKeys(fn ($c) => [
+                                                    $c->id => "{$c->code} | {$c->name}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('payment_term_id')
+                                        ->label('Payment Terms')
+                                        ->options(
+                                            fn () => \App\Models\PaymentTerm::get()
+                                                ->mapWithKeys(fn ($p) => [
+                                                    $p->id => "{$p->name} | {$p->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('delivery_term_id')
+                                        ->label('Delivery Terms')
+                                        ->options(
+                                            fn () => \App\Models\DeliveryTerm::get()
+                                                ->mapWithKeys(fn ($d) => [
+                                                    $d->id => "{$d->name} | {$d->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('delivery_method_id')
+                                        ->label('Delivery Method')
+                                        ->options(
+                                            fn () => \App\Models\DeliveryMethod::get()
+                                                ->mapWithKeys(fn ($m) => [
+                                                    $m->id => "{$m->name} | {$m->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
                                 ]),
+
+                            ]),
 
                         Tabs\Tab::make('Order Items')
                             ->schema([

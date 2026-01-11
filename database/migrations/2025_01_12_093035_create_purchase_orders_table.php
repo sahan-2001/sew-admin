@@ -11,6 +11,8 @@ class CreatePurchaseOrdersTable extends Migration
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('supplier_id');
+            $table->foreignId('request_for_quotation_id')->nullable();
+            $table->foreignId('purchase_quotation_id')->nullable();
             $table->unsignedBigInteger('payment_term_id')->nullable();
             $table->unsignedBigInteger('delivery_term_id')->nullable();
             $table->unsignedBigInteger('delivery_method_id')->nullable();
