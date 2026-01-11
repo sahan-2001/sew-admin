@@ -60,6 +60,11 @@ class RequestForQuotation extends Model
         return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');
     }
 
+    public function rfq()
+    {
+        return $this->hasMany(PurchaseQuotation::class, 'request_for_quotation_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');

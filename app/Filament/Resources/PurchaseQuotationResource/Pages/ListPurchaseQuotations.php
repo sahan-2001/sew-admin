@@ -16,7 +16,7 @@ class ListPurchaseQuotations extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->visible(fn () => auth()->user()->can('create purchase quotations')),
+                ->visible(fn () => auth()->user()->can('Create Purchase Quotations')),
         ];
     }
 }

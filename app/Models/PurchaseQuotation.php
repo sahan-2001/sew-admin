@@ -15,6 +15,7 @@ class PurchaseQuotation extends Model
 
     protected $fillable = [
         'supplier_id',
+        'request_for_quotation_id',
         'payment_term_id',
         'delivery_term_id',
         'delivery_method_id',
@@ -29,10 +30,24 @@ class PurchaseQuotation extends Model
         'vat_amount',
         'vat_base',
         'grand_total',
+        'supplier_quotation_number',
+        'received_date',
+        'estimated_delivery_date',
+        'supplier_note',
+        'image_of_quotation',
         'random_code',
         'created_by',
         'updated_by',
     ];
+
+    protected $casts = [
+        'quotation_date' => 'datetime',
+        'wanted_delivery_date' => 'datetime',
+        'valid_until' => 'datetime',
+        'received_date' => 'datetime',
+        'estimated_delivery_date' => 'datetime',
+    ];
+
 
     protected static function booted()
     {
@@ -82,6 +97,11 @@ class PurchaseQuotation extends Model
         return $this->hasMany(\App\Models\PurchaseQuotationItem::class);
     }
 
+    public function rfq()
+    {
+        return $this->belongsTo(RequestForQuotation::class, 'request_for_quotation_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -109,7 +129,7 @@ class PurchaseQuotation extends Model
 
     public function currencyCode()
     {
-        return $this->belongsTo(CurrencyCode::class, 'currency_code_id', 'code');
+        return $this->belongsTo(Currency::class, 'currency_code_id', 'code');
     }
 
     /* -----------------------
@@ -158,6 +178,7 @@ class PurchaseQuotation extends Model
 
         $this->saveQuietly();
     }
+    
 
     /* -----------------------
      | ACTIVITY LOG

@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('purchase_quotations', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('supplier_id');
+            $table->foreignId('request_for_quotation_id')->nullable();
             $table->unsignedBigInteger('payment_term_id')->nullable();
             $table->unsignedBigInteger('delivery_term_id')->nullable();
             $table->unsignedBigInteger('delivery_method_id')->nullable();
@@ -29,6 +30,13 @@ return new class extends Migration
             $table->decimal('grand_total', 12, 2)->default(0);
             $table->text('vat_base')->nullable();
             $table->decimal('remaining_balance', 12, 2)->default(0);
+
+            $table->string('supplier_quotation_number')->nullable();
+            $table->date('received_date')->nullable();
+            $table->date('estimated_delivery_date')->nullable();
+            $table->text('supplier_note')->nullable();
+            $table->string('image_of_quotation')->nullable(); 
+
             $table->string('random_code')->nullable(); 
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by');

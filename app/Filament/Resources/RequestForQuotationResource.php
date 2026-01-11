@@ -6,6 +6,10 @@ use App\Filament\Resources\RequestForQuotationResource\Pages;
 use App\Models\RequestForQuotation;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
+use App\Models\Currency;
+use App\Models\PaymentTerm;
+use App\Models\DeliveryTerm;
+use App\Models\DeliveryMethod;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
@@ -34,7 +38,7 @@ class RequestForQuotationResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->can('view purchase quotations') ?? false;
+        return Auth::user()?->can('View Request For Quotations') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -43,7 +47,7 @@ class RequestForQuotationResource extends Resource
             Tabs::make('Purchase Quotation')
                 ->tabs([
                     Tabs\Tab::make('Quotation Details')
-                        ->schema([
+                        ->schema([    
                             Section::make('Supplier Information')
                                 ->columns(2)
                                 ->schema([
@@ -218,6 +222,7 @@ class RequestForQuotationResource extends Resource
                     ->label('Handle RFQ')
                     ->icon('heroicon-o-cog')
                     ->color('primary')
+                    ->visible(auth()->user()->can('Handle Request For Quotations'))
                     ->url(fn (RequestForQuotation $record) =>
                         RequestForQuotationResource::getUrl('handle', ['record' => $record])
                 ),
@@ -225,13 +230,13 @@ class RequestForQuotationResource extends Resource
                 EditAction::make()
                     ->visible(fn ($record) =>
                         $record->status === 'draft' &&
-                        auth()->user()->can('edit purchase quotations')
+                        auth()->user()->can('Edit Request For Quotations')
                     ),
 
                 DeleteAction::make()
                     ->visible(fn ($record) =>
                         $record->status === 'draft' &&
-                        auth()->user()->can('delete purchase quotations')
+                        auth()->user()->can('Delete Request For Quotations')
                     ),
             ])
             ->defaultSort('id', 'desc');

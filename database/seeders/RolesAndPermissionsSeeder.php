@@ -74,27 +74,33 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete purchase orders']);
         Permission::firstOrCreate(['name' => 'purchase_orders.export']);
 
-        // Purchase quotation permissions
-        Permission::firstOrCreate(['name' => 'view purchase quotations']);
-        Permission::firstOrCreate(['name' => 'create purchase quotations']);
-        Permission::firstOrCreate(['name' => 'edit purchase quotations']);
-        Permission::firstOrCreate(['name' => 'delete purchase quotations']);
-        Permission::firstOrCreate(['name' => 'handle purchase quotations']);
-        Permission::firstOrCreate(['name' => 'purchase_quotations.export']);
-
         // Request for Quotation permissions
-        Permission::firstOrCreate(['name' => 'view request for quotations']);
-        Permission::firstOrCreate(['name' => 'create request for quotations']);
-        Permission::firstOrCreate(['name' => 'edit request for quotations']);
-        Permission::firstOrCreate(['name' => 'delete request for quotations']);
-        Permission::firstOrCreate(['name' => 'handle request for quotations']);
-        Permission::firstOrCreate(['name' => 'request_for_quotations.export']);
+        Permission::firstOrCreate(['name' => 'View Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Create Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Edit Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Delete Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Handle Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Request For Quotations.export']);
 
-        Permission::firstOrCreate(['name' => 'approve request for quotation']);
-        Permission::firstOrCreate(['name' => 'send request for quotations']);
-        Permission::firstOrCreate(['name' => 'cancel request for quotations']);
-        Permission::firstOrCreate(['name' => 'reopen request for quotations']);
-        Permission::firstOrCreate(['name' => 'convert request for quotations to draft']);
+        Permission::firstOrCreate(['name' => 'Approve Request For Quotation']);
+        Permission::firstOrCreate(['name' => 'Send Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Cancel Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Reopen Request For Quotations']);
+        Permission::firstOrCreate(['name' => 'Convert Request For Quotations to Draft']);
+
+        // Supplier/ Purchase quotation permissions
+        Permission::firstOrCreate(['name' => 'View Purchase Quotations']);
+        Permission::firstOrCreate(['name' => 'Create Purchase Quotations']);    
+        Permission::firstOrCreate(['name' => 'Edit Purchase Quotations']);
+        Permission::firstOrCreate(['name' => 'Delete Purchase Quotations']);
+        Permission::firstOrCreate(['name' => 'Handle Purchase Quotations']);
+        Permission::firstOrCreate(['name' => 'Purchase Quotations.export']);
+
+        Permission::firstOrCreate(['name' => 'Approve Purchase Quotation']);
+        Permission::firstOrCreate(['name' => 'Reject Purchase Quotation']);
+        Permission::firstOrCreate(['name' => 'Convert to Purchase Order from Purchase Quotation']);
+        Permission::firstOrCreate(['name' => 'Convert Back to Draft Purchase Quotation']);
+        Permission::firstOrCreate(['name' => 'Create Rejection Note for Purchase Quotation']);
 
         // Customer order permissions
         Permission::firstOrCreate(['name' => 'view customer orders']);

@@ -6,6 +6,11 @@ use App\Filament\Resources\PurchaseQuotationResource\Pages;
 use App\Models\PurchaseQuotation;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
+use App\Models\Currency;
+use App\Models\PaymentTerm;
+use App\Models\DeliveryTerm;
+use App\Models\DeliveryMethod;
+use App\Models\RequestForQuotation;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
@@ -25,7 +30,7 @@ class PurchaseQuotationResource extends Resource
     
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->can('view purchase quotations') ?? false;
+        return Auth::user()?->can('view Purchase Quotations') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -35,6 +40,34 @@ class PurchaseQuotationResource extends Resource
                 ->tabs([
                     Tabs\Tab::make('Quotation Details')
                         ->schema([
+                            Section::make('Request For Quotation Link')
+                                ->columns(1)
+                                ->schema([
+                                    Select::make('request_for_quotation_id')
+                                        ->label('Select RFQ')
+                                        ->options(
+                                            RequestForQuotation::query()
+                                                ->where('status', 'approved')
+                                                ->get()
+                                                ->mapWithKeys(function ($rfq) {
+                                                    $createdAt = $rfq->created_at 
+                                                        ? $rfq->created_at->format('Y-m-d') 
+                                                        : 'N/A';
+                                                    $deliveryDate = $rfq->wanted_delivery_date 
+                                                        ? date('Y-m-d', strtotime($rfq->wanted_delivery_date)) 
+                                                        : 'N/A';
+                                                    
+                                                    return [
+                                                        $rfq->id => "ID: {$rfq->id} | Created Date: {$createdAt} | Requested Delivery Date : {$deliveryDate}"
+                                                    ];
+                                                })
+                                        )
+                                        ->searchable()
+                                        ->preload()
+                                        ->nullable()
+                                        ->helperText('Optional: Link this Purchase Quotation to an existing RFQ'),
+                                ]),
+                                
                             Section::make('Supplier Information')
                                 ->columns(2)
                                 ->schema([
@@ -101,6 +134,29 @@ class PurchaseQuotationResource extends Resource
                                     DatePicker::make('promised_delivery_date')->label('Promised Delivery Date')->mindate(now())->dehydrated(true),
                                     Textarea::make('special_note')->label('Remarks')->columnSpan(2),
                                     Hidden::make('status')->default('draft'),
+                                ]),
+
+                            Section::make('Supplier Quotation Details')
+                                ->columns(2)
+                                ->schema([
+                                    TextInput::make('supplier_quotation_number')
+                                        ->label('Supplier Quotation Number'),
+
+                                    DatePicker::make('received_date')
+                                        ->label('Received Date')
+                                        ->maxDate(now()),
+
+                                    DatePicker::make('estimated_delivery_date')
+                                        ->label('Estimated Delivery Date'),
+
+                                    \Filament\Forms\Components\FileUpload::make('image_of_quotation')
+                                        ->label('Quotation Image')
+                                        ->image()
+                                        ->maxSize(1024),
+                                    
+                                    Textarea::make('supplier_note')
+                                        ->label('Notes')
+                                        ->columnSpan(2),
                                 ]),
                         ]),
 
@@ -411,13 +467,14 @@ class PurchaseQuotationResource extends Resource
                 Action::make('handle')
                     ->label('Handle')
                     ->icon('heroicon-o-cog')
+                    ->visible(auth()->user()->can('Handle Purchase Quotations'))
                     ->url(fn ($record) =>
                         self::getUrl('handle', ['record' => $record->id])),
                 
                 EditAction::make()
                     ->visible(fn ($record) =>
                         $record->status === 'draft' &&
-                        auth()->user()->can('edit purchase quotations')
+                        auth()->user()->can('Edit Purchase Quotations')
                     ),
 
                 Action::make('print_pdf')
@@ -431,7 +488,7 @@ class PurchaseQuotationResource extends Resource
                 DeleteAction::make()
                     ->visible(fn ($record) =>
                         $record->status === 'draft' &&
-                        auth()->user()->can('delete purchase quotations')
+                        auth()->user()->can('Delete Purchase Quotations')
                     ),
             ])
             ->defaultSort('id', 'desc');
