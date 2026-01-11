@@ -14,7 +14,7 @@ class RequestForQuotationController extends Controller
     public function print(RequestForQuotation $rfq)
     {
         // Load relationships
-        $rfq->load('supplier', 'user', 'items.inventoryItem');
+        $rfq->load('supplier', 'user', 'items.inventoryItem', 'paymentTerm', 'deliveryTerm', 'deliveryMethod', 'currency');
 
         // Fetch company details
         $company = Company::first();
@@ -43,6 +43,10 @@ class RequestForQuotationController extends Controller
             'status' => $rfq->status,
             'created_at' => $rfq->created_at->format('Y-m-d H:i:s'),
             'created_by' => $rfq->user?->name ?? 'N/A',
+            'payment_term' => $rfq->paymentTerm ? "{$rfq->paymentTerm->name} | {$rfq->paymentTerm->description}": 'N/A',
+            'delivery_term' => $rfq->deliveryTerm ? "{$rfq->deliveryTerm->name} | {$rfq->deliveryTerm->description}": 'N/A',
+            'delivery_method' => $rfq->deliveryMethod ? "{$rfq->deliveryMethod->name} | {$rfq->deliveryMethod->description}": 'N/A',
+            'currency' => $rfq->currency ? "{$rfq->currency->code} | {$rfq->currency->name}": 'N/A',
         ];
 
         // Calculate totals

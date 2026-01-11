@@ -17,7 +17,7 @@ class DeliveryMethod extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
-    public function rfqs()
+    public function requestForQuotations()
     {
         return $this->hasMany(RequestForQuotation::class);
     }

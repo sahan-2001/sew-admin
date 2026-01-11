@@ -15,6 +15,10 @@ class PurchaseQuotation extends Model
 
     protected $fillable = [
         'supplier_id',
+        'payment_term_id',
+        'delivery_term_id',
+        'delivery_method_id',
+        'currency_code_id',
         'wanted_delivery_date',
         'quotation_date',
         'valid_until',
@@ -86,6 +90,26 @@ class PurchaseQuotation extends Model
     public function supplierVatGroup()
     {
         return $this->belongsTo(VatGroup::class, 'supplier_vat_group_id');
+    }
+
+    public function paymentTerm()
+    {
+        return $this->belongsTo(PaymentTerm::class, 'payment_term_id');
+    }
+    
+    public function deliveryTerm()
+    {
+        return $this->belongsTo(DeliveryTerm::class, 'delivery_term_id');
+    }
+
+    public function deliveryMethod()
+    {
+        return $this->belongsTo(DeliveryMethod::class, 'delivery_method_id');
+    }
+
+    public function currencyCode()
+    {
+        return $this->belongsTo(CurrencyCode::class, 'currency_code_id', 'code');
     }
 
     /* -----------------------

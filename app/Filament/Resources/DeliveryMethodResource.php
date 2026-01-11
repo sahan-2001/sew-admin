@@ -22,7 +22,7 @@ class DeliveryMethodResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'Delivery Methods';
-    protected static ?string $navigationGroup = 'Delivery Terms & Methods';
+    protected static ?string $navigationGroup = 'Settings';
 
     public static function form(Form $form): Form
     {

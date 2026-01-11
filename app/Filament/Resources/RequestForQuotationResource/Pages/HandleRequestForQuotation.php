@@ -23,7 +23,7 @@ class HandleRequestForQuotation extends Page
 
     public function mount(RequestForQuotation $record)
     {
-        $this->record = $record->load('supplier', 'user', 'items.inventoryItem'); 
+        $this->record = $record->load('supplier', 'user', 'items.inventoryItem', 'paymentTerm', 'deliveryTerm', 'deliveryMethod', 'currency'); 
         $this->loadItems();
     }
 

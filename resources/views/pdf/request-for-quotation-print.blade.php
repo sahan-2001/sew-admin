@@ -214,8 +214,32 @@
         
         <!-- Delivery Information -->
         <div class="delivery-info">
-            <strong>Required Delivery Date:</strong> {{ $rfqDetails['wanted_delivery_date'] }}<br>
-            <strong>RFQ Valid Until:</strong> {{ $rfqDetails['valid_until'] ?? 'To be specified' }}
+            <table style="width:100%; border:none;">
+                <tr>
+                    <td style="border:none;"><strong>Required Delivery Date</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['wanted_delivery_date'] }}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>RFQ Valid Until</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['valid_until'] ?? 'To be specified' }}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Payment Term</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['payment_term'] }}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Delivery Term</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['delivery_term'] }}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Delivery Method</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['delivery_method'] }}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Currency</strong></td>
+                    <td style="border:none;">{{ $rfqDetails['currency'] }}</td>
+                </tr>
+            </table>
         </div>
         
         <!-- Items Table -->

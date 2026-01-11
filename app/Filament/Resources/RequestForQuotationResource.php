@@ -64,18 +64,17 @@ class RequestForQuotationResource extends Resource
                                                 ->label('Supplier')
                                                 ->options(
                                                     Supplier::query()
-                                                        ->pluck('name', 'supplier_id')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($s) => [
+                                                            $s->supplier_id => "{$s->supplier_id} | {$s->name}"
+                                                        ])
+                                                        ->toArray()
                                                 )
                                                 ->searchable()
                                                 ->preload()
                                                 ->live()
-                                                ->getOptionLabelUsing(
-                                                    fn ($value): ?string =>
-                                                        Supplier::find($value)
-                                                            ?->tap(fn ($s) => "{$s->supplier_id} | {$s->name}")
-                                                )
                                                 ->afterStateUpdated(function ($state, callable $set) {
-                                                    $supplier = Supplier::find($state);
+                                                    $supplier = Supplier::where('supplier_id', $state)->first();
 
                                                     if ($supplier) {
                                                         $set('supplier_name', $supplier->name);
@@ -89,6 +88,60 @@ class RequestForQuotationResource extends Resource
                                         ]),
                                 ]),
 
+                            Section::make('Quotation Meta')
+                                ->columns(2)
+                                ->schema([
+                                    Select::make('currency_code_id')
+                                        ->label('Currency')
+                                        ->options(
+                                            fn () => \App\Models\Currency::where('is_active', true)
+                                                ->get()
+                                                ->mapWithKeys(fn ($c) => [
+                                                    $c->id => "{$c->code} | {$c->name}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('payment_term_id')
+                                        ->label('Expected Payment Terms')
+                                        ->options(
+                                            fn () => \App\Models\PaymentTerm::get()
+                                                ->mapWithKeys(fn ($p) => [
+                                                    $p->id => "{$p->name} | {$p->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('delivery_term_id')
+                                        ->label('Expected Delivery Terms')
+                                        ->options(
+                                            fn () => \App\Models\DeliveryTerm::get()
+                                                ->mapWithKeys(fn ($d) => [
+                                                    $d->id => "{$d->name} | {$d->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+
+                                    Select::make('delivery_method_id')
+                                        ->label('Expected Delivery Method')
+                                        ->options(
+                                            fn () => \App\Models\DeliveryMethod::get()
+                                                ->mapWithKeys(fn ($m) => [
+                                                    $m->id => "{$m->name} | {$m->description}"
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->searchable()
+                                        ->preload(),
+                                ]),
+
+                                    
                             Section::make('Quotation Meta')
                                 ->columns(2)
                                 ->schema([
@@ -144,9 +197,13 @@ class RequestForQuotationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('RFQ No')->sortable(),
+                TextColumn::make('id')
+                    ->label('RFQ No')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
                 TextColumn::make('supplier.name')->label('Supplier')->searchable(),
-                TextColumn::make('order_subtotal')->money('LKR'),
+                TextColumn::make('currency_code_id')->label('Currency')->searchable(),
                 TextColumn::make('status')
                     ->badge()
                     ->colors([

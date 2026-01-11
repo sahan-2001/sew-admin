@@ -15,6 +15,10 @@ class RequestForQuotation extends Model
 
     protected $fillable = [
         'supplier_id',
+        'payment_term_id',
+        'delivery_term_id',
+        'delivery_method_id',
+        'currency_code_id',
         'wanted_delivery_date',
         'valid_until',
         'special_note',
@@ -61,6 +65,25 @@ class RequestForQuotation extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function paymentTerm()
+    {
+        return $this->belongsTo(PaymentTerm::class, 'payment_term_id');
+    }
+
+    public function deliveryTerm()
+    {
+        return $this->belongsTo(DeliveryTerm::class, 'delivery_term_id');
+    }
+
+    public function deliveryMethod()
+    {
+        return $this->belongsTo(DeliveryMethod::class, 'delivery_method_id');
+    }
+    
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_code_id', 'id');
+    }
 
     /* -----------------------
      | ACTIVITY LOG
