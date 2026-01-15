@@ -218,3 +218,19 @@ Route::get('/rfq/{rfq}/print', [RequestForQuotationController::class, 'print'])
     ->name('request-for-quotation.print');
 Route::post('/rfq/{rfq}/send-email', [RequestForQuotationController::class, 'sendEmail'])
     ->name('rfq.send-email');
+
+
+Route::post('/change-site', function () {
+    session([
+        'site_id' => request('site_id'),
+    ]);
+
+    session()->forget([
+        'filters',
+        'selected_warehouse',
+        'selected_location',
+    ]);
+
+    // Redirect back to where the request came from
+    return redirect()->back();
+})->name('site.change');
