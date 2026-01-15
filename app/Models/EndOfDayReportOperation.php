@@ -46,18 +46,31 @@ class EndOfDayReportOperation extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            // Set site_id from session
+
+            // Auto set full name
+            $model->full_name = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
+
+            // Auto set site
             if (session()->has('site_id')) {
                 $model->site_id = session('site_id');
             }
 
+            // Audit fields
             if (auth()->check()) {
                 $model->created_by = auth()->id();
                 $model->updated_by = auth()->id();
             }
         });
+
         static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+
+            // Keep full name updated
+            $model->full_name = trim(($model->first_name ?? '') . ' ' . ($model->last_name ?? ''));
+
+            // Audit field
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
+            }
         });
     }
 

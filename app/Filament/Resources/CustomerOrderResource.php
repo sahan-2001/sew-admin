@@ -288,6 +288,7 @@ class CustomerOrderResource extends Resource
                     ->icon('heroicon-o-cog')
                     ->color('primary')
                     ->url(fn (CustomerOrder $record): string => static::getUrl('handle', ['record' => $record])),
+                    
                 EditAction::make()
                     ->visible(fn ($record) => auth()->user()->can('edit customer orders') &&
                         $record->status === 'planned'),

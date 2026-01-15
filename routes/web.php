@@ -39,6 +39,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\MaterialQCReturnScrapNotePrintController;
 use App\Http\Controllers\PurchaseQuotationPdfController;
 use App\Http\Controllers\RequestForQuotationController;
+use App\Http\Controllers\EmployeeOfferLetterController;
 use App\Models\AssignDailyOperation;
 use App\Models\SupplierAdvanceInvoice;
 use Illuminate\Http\Request;  
@@ -234,3 +235,10 @@ Route::post('/change-site', function () {
     // Redirect back to where the request came from
     return redirect()->back();
 })->name('site.change');
+
+
+
+// Employee Routes
+Route::get('/employees/{employee}/offer-letter', [EmployeeOfferLetterController::class, 'generate'])
+    ->name('employees.offer-letter')
+    ->middleware(['auth']); 
