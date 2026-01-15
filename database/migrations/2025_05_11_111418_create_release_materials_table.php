@@ -8,6 +8,7 @@ class CreateReleaseMaterialsTable extends Migration
     public function up()
     {
         Schema::create('release_materials', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('order_type'); // 'customer_order' or 'sample_order'
             $table->unsignedBigInteger('order_id');

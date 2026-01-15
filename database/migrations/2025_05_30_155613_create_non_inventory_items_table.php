@@ -12,6 +12,7 @@ return new class extends Migration
         public function up(): void
     {
         Schema::create('non_inventory_items', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('item_id')->nullable();
             $table->string('name');

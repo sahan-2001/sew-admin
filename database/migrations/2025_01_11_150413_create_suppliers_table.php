@@ -14,6 +14,7 @@ class CreateSuppliersTable extends Migration
     public function up()
     {
         Schema::create('suppliers', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id('supplier_id'); 
             $table->string('name')->nullable();
             $table->string('shop_name')->nullable();

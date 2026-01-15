@@ -14,6 +14,7 @@ class CreateCustomersTable extends Migration
     public function up()
     {
         Schema::create('customers', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id('customer_id');
             $table->string('name')->nullable();
             $table->string('shop_name')->nullable();

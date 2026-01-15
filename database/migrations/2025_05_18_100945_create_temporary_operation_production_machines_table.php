@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('temporary_operation_production_machines', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('temporary_operation_id')->constrained()->onDelete('cascade')->index('temp_op_machine_temp_op_id_foreign');;
             $table->foreignId('production_machine_id')->constrained()->onDelete('cascade')->index('temp_op_machine_machine_id_foreign');

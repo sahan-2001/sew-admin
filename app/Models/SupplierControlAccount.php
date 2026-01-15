@@ -11,6 +11,7 @@ class SupplierControlAccount extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'supplier_id',
 
         // Core Payables
@@ -148,12 +149,20 @@ class SupplierControlAccount extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id() ?? 1;
-            $model->updated_by = auth()->id() ?? 1;
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
+        
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id() ?? $model->updated_by;
+            $model->updated_by = auth()->id();
         });
     }
 }

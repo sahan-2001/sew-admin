@@ -8,6 +8,7 @@ class CreateEnterInvWastePerformancesTable extends Migration
     public function up()
     {
         Schema::create('enter_inv_waste_performances', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('enter_performance_record_id');
             $table->decimal('waste', 10, 2);

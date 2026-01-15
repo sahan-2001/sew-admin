@@ -12,6 +12,7 @@ class PurchaseOrderItem extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'purchase_order_id',
         'inventory_item_id',
         'inventory_vat_group_id',
@@ -30,30 +31,38 @@ class PurchaseOrderItem extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
-            
-            // Calculate values before saving
-            $model->calculateAndSetValues();
-            
-            // Set remaining quantity equal to quantity
-            $model->remaining_quantity = $model->quantity;
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            $model->created_by = Auth::id() ?? 1;
+            $model->updated_by = Auth::id() ?? 1;
+
+            if (method_exists($model, 'calculateAndSetValues')) {
+                $model->calculateAndSetValues();
+            }
+
+            if (isset($model->quantity) && isset($model->remaining_quantity)) {
+                $model->remaining_quantity = $model->quantity;
+            }
         });
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id();
-            $model->calculateAndSetValues();
+            $model->updated_by = Auth::id() ?? $model->updated_by;
+
+            if (method_exists($model, 'calculateAndSetValues')) {
+                $model->calculateAndSetValues();
+            }
         });
 
-        // Trigger grand total recalculation after change
         static::saved(function ($model) {
-            if ($model->purchaseOrder) {
+            if (method_exists($model, 'purchaseOrder') && $model->purchaseOrder) {
                 $model->purchaseOrder->recalculateTotals();
             }
         });
 
         static::deleted(function ($model) {
-            if ($model->purchaseOrder) {
+            if (method_exists($model, 'purchaseOrder') && $model->purchaseOrder) {
                 $model->purchaseOrder->recalculateTotals();
             }
         });

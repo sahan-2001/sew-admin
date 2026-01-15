@@ -14,6 +14,7 @@ class RequestForQuotation extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'supplier_id',
         'payment_term_id',
         'delivery_term_id',
@@ -31,6 +32,11 @@ class RequestForQuotation extends Model
     protected static function booted()
     {
         static::creating(function ($rfq) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+            
             // Generate random 16-digit numeric code
             $rfq->random_code = collect(range(1, 16))
                 ->map(fn () => mt_rand(0, 9))

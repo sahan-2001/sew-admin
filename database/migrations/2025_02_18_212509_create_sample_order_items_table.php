@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sample_order_items', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id(); 
             $table->unsignedBigInteger('sample_order_id'); 
             $table->string('item_name');

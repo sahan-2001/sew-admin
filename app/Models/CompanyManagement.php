@@ -19,6 +19,7 @@ class CompanyManagement extends Model
      * @var array<string>
      */
     protected $fillable = [
+        'site_id',
         'company_id',
         'user_id',
         'position',
@@ -66,14 +67,6 @@ class CompanyManagement extends Model
     }
 
     /**
-     * Relationship to User who last updated the record
-     */
-    public function updatedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    /**
      * Scope for specific positions
      */
     public function scopePosition($query, $position)
@@ -92,5 +85,24 @@ class CompanyManagement extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

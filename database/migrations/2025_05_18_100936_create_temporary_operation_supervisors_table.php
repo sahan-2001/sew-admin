@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('temporary_operation_supervisors', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('temporary_operation_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');

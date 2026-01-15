@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('supplier_advance_invoices', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('purchase_order_id')->constrained()->onDelete('cascade');
             $table->foreignId('supplier_id')->constrained('suppliers', 'supplier_id')->onDelete('cascade');

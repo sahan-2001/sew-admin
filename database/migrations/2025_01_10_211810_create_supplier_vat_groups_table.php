@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('supplier_vat_groups', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
 
             $table->string('code')->unique();

@@ -7,6 +7,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('assign_daily_operations', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('order_type');
             $table->unsignedBigInteger('order_id');

@@ -11,6 +11,7 @@ class ProductionMachine extends Model
     use LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'name',
         'description',
         'purchased_date',
@@ -33,16 +34,36 @@ class ProductionMachine extends Model
     protected static function booted()
     {
         static::creating(function ($machine) {
+            // Calculate costs
             $machine->total_initial_cost = $machine->purchased_cost + ($machine->additional_cost ?? 0);
             $machine->net_present_value = $machine->total_initial_cost - ($machine->cumulative_depreciation ?? 0);
-            $machine->created_by = auth()->id();
-            $machine->updated_by = auth()->id();
+
+            // Audit fields
+            if (auth()->check()) {
+                $machine->created_by = auth()->id();
+                $machine->updated_by = auth()->id();
+            }
+
+            // Optional: assign site_id if exists
+            if (isset($machine->site_id) && session()->has('site_id')) {
+                $machine->site_id = session('site_id');
+            }
+
+            // Optional: generate barcode if empty
+            if (isset($machine->barcode_id) && empty($machine->barcode_id)) {
+                $machine->barcode_id = uniqid('CUT');
+            }
         });
 
         static::updating(function ($machine) {
+            // Recalculate costs
             $machine->total_initial_cost = $machine->purchased_cost + ($machine->additional_cost ?? 0);
             $machine->net_present_value = $machine->total_initial_cost - ($machine->cumulative_depreciation ?? 0);
-            $machine->updated_by = auth()->id();
+
+            // Update audit
+            if (auth()->check()) {
+                $machine->updated_by = auth()->id();
+            }
         });
     }
 

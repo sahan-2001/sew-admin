@@ -13,6 +13,7 @@ class PurchaseOrderInvoice extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'purchase_order_id',
         'register_arrival_id',
         'supplier_id',
@@ -77,22 +78,50 @@ class PurchaseOrderInvoice extends Model
 
     protected static function booted()
     {
-        static::creating(function ($invoice) {
-            $invoice->created_by = auth()->id();
-            $invoice->updated_by = auth()->id();
-
-            $invoice->random_code = '';
-            for ($i = 0; $i < 16; $i++) {
-                $invoice->random_code .= mt_rand(0, 9);
+        static::creating(function ($model) {
+            // Set site_id automatically if column exists
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
             }
 
-            if (is_null($invoice->due_payment_for_now)) {
-                $invoice->due_payment_for_now = $invoice->due_payment ?? 0;
+            // Set created_by and updated_by
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            } else {
+                $model->created_by = $model->created_by ?? 1;
+                $model->updated_by = $model->updated_by ?? 1;
+            }
+
+            // Generate random_code if column exists
+            if (isset($model->random_code) && empty($model->random_code)) {
+                $model->random_code = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $model->random_code .= mt_rand(0, 9);
+                }
+            }
+
+            // Invoice-specific: initialize due_payment_for_now
+            if (isset($model->due_payment_for_now) && is_null($model->due_payment_for_now)) {
+                $model->due_payment_for_now = $model->due_payment ?? 0;
+            }
+
+            // Optional: other balances / totals / machine cost logic if columns exist
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
             }
         });
 
-        static::updating(function ($invoice) {
-            $invoice->updated_by = auth()->id();
+        static::updating(function ($model) {
+            // Update updated_by
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
+            }
+
+            // Optional recalculations
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
         });
     }
 

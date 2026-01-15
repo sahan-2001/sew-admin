@@ -9,6 +9,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('assign_daily_operation_labels', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('assign_daily_operation_id')->constrained()->cascadeOnDelete();
             $table->foreignId('cutting_label_id')->constrained()->cascadeOnDelete();

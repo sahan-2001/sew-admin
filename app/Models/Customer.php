@@ -16,6 +16,7 @@ class Customer extends Model
     protected $primaryKey = 'customer_id';
 
     protected $fillable = [
+        'site_id',
         'name',
         'shop_name',
         'address_line_1',
@@ -64,8 +65,15 @@ class Customer extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

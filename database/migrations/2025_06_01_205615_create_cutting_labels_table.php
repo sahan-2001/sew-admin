@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cutting_labels', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('cutting_record_id')->constrained();
             $table->enum('order_type', ['customer_order', 'sample_order']);

@@ -12,6 +12,7 @@ class SupplierAdvanceInvoice extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'purchase_order_id',
         'supplier_id', // Changed from provider_id
         'status',
@@ -71,15 +72,6 @@ class SupplierAdvanceInvoice extends Model
         return $this->hasMany(SuppAdvInvoicePayment::class);
     }
 
-    public function createdBy()
-    {
-        return $this->belongsTo(\App\Models\User::class, 'created_by');
-    }
-
-    public function updatedBy()
-    {
-        return $this->belongsTo(\App\Models\User::class, 'updated_by');
-    }
 
     protected static function booted()
     {

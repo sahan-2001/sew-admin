@@ -8,6 +8,7 @@ class CreateCustomerAdvanceInvoicesTable extends Migration
     public function up()
     {
         Schema::create('customer_advance_invoices', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('order_type'); 
             $table->unsignedBigInteger('order_id');

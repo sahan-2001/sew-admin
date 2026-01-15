@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('end_of_day_reports', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->date('operated_date');
             $table->unsignedInteger('recorded_operations_count')->default(0);

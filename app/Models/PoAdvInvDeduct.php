@@ -13,6 +13,7 @@ class PoAdvInvDeduct extends Model
     protected $table = 'po_adv_inv_deduct';
     
     protected $fillable = [
+        'site_id',
         'purchase_order_invoice_id',
         'advance_invoice_id',
         'deduction_amount',
@@ -43,9 +44,17 @@ class PoAdvInvDeduct extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
+        
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();

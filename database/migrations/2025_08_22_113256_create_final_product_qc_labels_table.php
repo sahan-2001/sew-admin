@@ -8,6 +8,7 @@ return new class extends Migration {
     public function up()
     {
         Schema::create('final_product_qc_labels', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('final_product_qc_id')->constrained()->cascadeOnDelete();;
             $table->unsignedBigInteger('cutting_label_id');

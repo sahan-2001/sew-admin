@@ -15,6 +15,7 @@ class Warehouse extends Model
 
     // Defining the fillable properties to allow mass assignment
     protected $fillable = [
+        'site_id',
         'name',
         'address_line_1',
         'address_line_2',
@@ -84,9 +85,17 @@ class Warehouse extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
+        
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();

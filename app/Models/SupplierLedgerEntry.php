@@ -11,6 +11,7 @@ class SupplierLedgerEntry extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'entry_code',
         'supplier_id',
         'chart_of_account_id',
@@ -50,13 +51,23 @@ class SupplierLedgerEntry extends Model
         return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
 
-    public function creator()
+    protected static function booted()
     {
-        return $this->belongsTo(User::class, 'created_by');
-    }
+        static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
 
-    public function updater()
-    {
-        return $this->belongsTo(User::class, 'updated_by');
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+        });
+        
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

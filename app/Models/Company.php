@@ -12,7 +12,7 @@ class Company extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'name', 'address_line_1', 'address_line_2', 'address_line_3',
+        'site_id', 'name', 'address_line_1', 'address_line_2', 'address_line_3',
         'city', 'postal_code', 'country', 'primary_phone', 'secondary_phone',
         'email', 'started_date', 'special_notes', 'updated_by',
     ];
@@ -45,5 +45,24 @@ class Company extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 }

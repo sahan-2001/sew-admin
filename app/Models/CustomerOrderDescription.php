@@ -14,7 +14,7 @@ class CustomerOrderDescription extends Model
 
     protected $table = 'customer_order_descriptions';
 
-    protected $fillable = ['customer_order_id', 'item_name', 'variation_name', 'quantity', 'price', 'note', 'total', 'is_variation', 'created_by', 'updated_by'];
+    protected $fillable = ['site_id', 'customer_order_id', 'item_name', 'variation_name', 'quantity', 'price', 'note', 'total', 'is_variation', 'created_by', 'updated_by'];
 
     public function customerOrder()
     {
@@ -66,8 +66,15 @@ class CustomerOrderDescription extends Model
         });
 
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

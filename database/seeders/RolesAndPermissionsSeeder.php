@@ -9,353 +9,230 @@ use App\Models\User;
 use App\Models\Company; 
 use App\Models\CompanyOwner;
 use App\Models\Category;
+use App\Models\Site;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run()
     {
+        // Get the first active site
+        $site = Site::where('is_active', true)->first();
+        if (!$site) {
+            $this->command->error('No active site found. Please create a site first.');
+            return;
+        }
+
         // Clear the cache of permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // User permissions
-        Permission::firstOrCreate(['name' => 'view users']);
-        Permission::firstOrCreate(['name' => 'create users']);
-        Permission::firstOrCreate(['name' => 'edit users']);
-        Permission::firstOrCreate(['name' => 'delete users']);
-        Permission::firstOrCreate(['name' => 'approve requests']);
-        Permission::firstOrCreate(['name' => 'users.import']);
-        Permission::firstOrCreate(['name' => 'users.export']);
+        // ================= PERMISSIONS =================
+        $permissions = [
+            // User permissions
+            'view users', 'create users', 'edit users', 'delete users', 'approve requests', 'users.import', 'users.export',
 
-        // Customer request permissions
-        Permission::firstOrCreate(['name' => 'view supplier requests']);
-        Permission::firstOrCreate(['name' => 'create supplier requests']);
-        Permission::firstOrCreate(['name' => 'edit supplier requests']);
-        Permission::firstOrCreate(['name' => 'delete supplier requests']);
-        Permission::firstOrCreate(['name' => 'approve supplier requests']);
-        Permission::firstOrCreate(['name' => 'reject supplier requests']);
+            // Customer request permissions
+            'view supplier requests', 'create supplier requests', 'edit supplier requests', 'delete supplier requests', 
+            'approve supplier requests', 'reject supplier requests',
+            
+            // Supplier permissions
+            'view suppliers', 'create suppliers', 'edit suppliers', 'delete suppliers', 'suppliers.import', 'suppliers.export',
+            
+            // Customer permissions
+            'view customers', 'create customers', 'edit customers', 'delete customers', 'customers.import', 'customers.export',
+            
+            // Customer request permissions
+            'view customer requests', 'create customer requests', 'edit customer requests', 'delete customer requests',
+            'approve customer requests', 'reject customer requests',
+            
+            // Inventory item permissions
+            'view inventory items', 'create inventory items', 'edit inventory items', 'delete inventory items',
+            'add new category', 'inventory.import', 'inventory.export',
+            
+            // Purchase order permissions
+            'view purchase orders', 'create purchase orders', 'edit purchase orders', 'delete purchase orders',
+            'purchase_orders.export',
+            
+            // Request for Quotation permissions
+            'View Request For Quotations','Create Request For Quotations','Edit Request For Quotations','Delete Request For Quotations',
+            'Handle Request For Quotations','Request For Quotations.export','Approve Request For Quotation','Send Request For Quotations',
+            'Cancel Request For Quotations','Reopen Request For Quotations','Convert Request For Quotations to Draft',
+            
+            // Supplier/ Purchase quotation permissions
+            'View Purchase Quotations','Create Purchase Quotations','Edit Purchase Quotations','Delete Purchase Quotations',
+            'Handle Purchase Quotations','Purchase Quotations.export','Approve Purchase Quotation','Reject Purchase Quotation',
+            'Convert to Purchase Order from Purchase Quotation','Convert Back to Draft Purchase Quotation','Create Rejection Note for Purchase Quotation',
+            
+            // Customer order permissions
+            'view customer orders','create customer orders','edit customer orders','delete customer orders','customer_orders.export',
+            
+            // Sample order permissions
+            'view sample orders','create sample orders','edit sample orders','delete sample orders','sample orders.export',
+            
+            // Warehouse permissions
+            'view warehouses','create warehouses','edit warehouses','delete warehouses','warehouses.export',
+            
+            // Inventory Location permissions
+            'view inventory locations','create inventory locations','edit inventory locations','delete inventory locations',
+            'inventory location.import','inventory location.export',
+            
+            // Third Party Services permissions
+            'view third party services','create third party services','edit third party services','delete third party services',
+            'third party services.export','create third party service payments',
+            
+            // Production Machines permissions
+            'view production machines','create production machines','edit production machines','delete production machines',
+            'production machines.import','production machines.export',
+            
+            // Production Line Operations permissions
+            'view workstations','create workstations','edit workstations','delete workstations','workstations.export',
+            
+            // Production Line permissions
+            'view production lines','create production lines','edit production lines','delete production lines',
+            'production lines.import','production-lines.export',
+            
+            // Register Arrival permissions
+            'view register arrivals','create register arrivals','re-correct register arrivals',
+            
+            // Release Material permissions
+            'view release materials','create release materials','re-correct release materials','release materials.export',
+            
+            // Material QC permissions
+            'view material qc','create material qc','re-correct material qc',
+            
+            // Activity log permissions
+            'view self activity logs','view other users activity logs',
+            
+            // Change daily for production data 
+            'select_previous_performance_dates','select_next_operation_dates',
+            
+            // view audit columns
+            'view audit columns',
+            
+            // Customer advance invoices
+            'view cus_adv_invoice','create cus_adv_invoices','delete cus_adv_invoice','cus_adv_invoice.export',
+            
+            // Cutting stations
+            'view cutting stations','create cutting stations','edit cutting stations','delete cutting stations','cutting_station.export',
+            
+            // Cutting records
+            'view cutting records','recorrect cutting records','create cutting records','cutting_record.export',
+            
+            // Assign daily operation
+            'view assign daily operations','create assign daily operations','edit assign daily operations','assign daily operation.export',
+            
+            // Enter performance records
+            'view performace records','create performace records','performance_record.export',
+            
+            // End of day reports
+            'view end of day reports','create end of day reports','end_of_day_report.export',
+            
+            // Material QC reports
+            'create material qc records','material qc.export',
+            
+            // Final products QC reports
+            'view product qc records','create product qc records','product qc.export',
+            
+            // Non-Inventory items
+            'view non inventory items','create non inventory items','non inventory item.export',
+            
+            // Purchase order invoices
+            'view purchase order invoices','create purchase order invoices','purchase_order_invoices.export','pay purchase order invoice',
+            
+            // Purchase order Advance invoices
+            'view supplier advance invoices','supplier advance invoices.export','create supplier advance invoices','pay supp adv invoice',
+            
+            // Stocks
+            'view stocks','create emergency stocks','stocks.import','stock.export',
+            
+            // Temporary Operations
+            'view temporary operations','create temporary operations','temporary operations.export',
+            
+            // Change dates for CO/SO expences/discounts
+            'view order discount','view order expences','edit order discount','edit order expences','delete order discount','delete order expences',
+            'backdate order discount','future order discount',
+            
+            // Change dates for payments
+            'Allow Backdated Payments','Allow Future Payments',
+            
+            // Company settings
+            'view company settings','edit company settings',
+        ];
 
-        // Supplier permissions
-        Permission::firstOrCreate(['name' => 'view suppliers']);
-        Permission::firstOrCreate(['name' => 'create suppliers']);
-        Permission::firstOrCreate(['name' => 'edit suppliers']);
-        Permission::firstOrCreate(['name' => 'delete suppliers']);
-        Permission::firstOrCreate(['name' => 'suppliers.import']);
-        Permission::firstOrCreate(['name' => 'suppliers.export']);
-        
-        // Customer permissions
-        Permission::firstOrCreate(['name' => 'view customers']);
-        Permission::firstOrCreate(['name' => 'create customers']);
-        Permission::firstOrCreate(['name' => 'edit customers']);
-        Permission::firstOrCreate(['name' => 'delete customers']);
-        Permission::firstOrCreate(['name' => 'customers.import']);
-        Permission::firstOrCreate(['name' => 'customers.export']);
+        foreach ($permissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'site_id' => $site->id]);
+        }
 
-        // Customer request permissions
-        Permission::firstOrCreate(['name' => 'view customer requests']);
-        Permission::firstOrCreate(['name' => 'create customer requests']);
-        Permission::firstOrCreate(['name' => 'edit customer requests']);
-        Permission::firstOrCreate(['name' => 'delete customer requests']);
-        Permission::firstOrCreate(['name' => 'approve customer requests']);
-        Permission::firstOrCreate(['name' => 'reject customer requests']);
+        // ================= ROLES =================
+        $admin = Role::firstOrCreate(['name' => 'admin', 'site_id' => $site->id]);
+        $manager = Role::firstOrCreate(['name' => 'manager', 'site_id' => $site->id]);
+        $employee = Role::firstOrCreate(['name' => 'employee', 'site_id' => $site->id]);
+        $superuser = Role::firstOrCreate(['name' => 'superuser', 'site_id' => $site->id]);  
+        $supervisor = Role::firstOrCreate(['name' => 'supervisor', 'site_id' => $site->id]);
+        $qc = Role::firstOrCreate(['name' => 'Quality Control', 'site_id' => $site->id]);
 
-        // Inventory item permissions
-        Permission::firstOrCreate(['name' => 'view inventory items']);
-        Permission::firstOrCreate(['name' => 'create inventory items']);
-        Permission::firstOrCreate(['name' => 'edit inventory items']);
-        Permission::firstOrCreate(['name' => 'delete inventory items']);
-        Permission::firstOrCreate(['name' => 'add new category']);
-        Permission::firstOrCreate(['name' => 'inventory.import']);
-        Permission::firstOrCreate(['name' => 'inventory.export']);
-
-        // Purchase order permissions
-        Permission::firstOrCreate(['name' => 'view purchase orders']);
-        Permission::firstOrCreate(['name' => 'create purchase orders']);
-        Permission::firstOrCreate(['name' => 'edit purchase orders']);
-        Permission::firstOrCreate(['name' => 'delete purchase orders']);
-        Permission::firstOrCreate(['name' => 'purchase_orders.export']);
-
-        // Request for Quotation permissions
-        Permission::firstOrCreate(['name' => 'View Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Create Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Edit Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Delete Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Handle Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Request For Quotations.export']);
-
-        Permission::firstOrCreate(['name' => 'Approve Request For Quotation']);
-        Permission::firstOrCreate(['name' => 'Send Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Cancel Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Reopen Request For Quotations']);
-        Permission::firstOrCreate(['name' => 'Convert Request For Quotations to Draft']);
-
-        // Supplier/ Purchase quotation permissions
-        Permission::firstOrCreate(['name' => 'View Purchase Quotations']);
-        Permission::firstOrCreate(['name' => 'Create Purchase Quotations']);    
-        Permission::firstOrCreate(['name' => 'Edit Purchase Quotations']);
-        Permission::firstOrCreate(['name' => 'Delete Purchase Quotations']);
-        Permission::firstOrCreate(['name' => 'Handle Purchase Quotations']);
-        Permission::firstOrCreate(['name' => 'Purchase Quotations.export']);
-
-        Permission::firstOrCreate(['name' => 'Approve Purchase Quotation']);
-        Permission::firstOrCreate(['name' => 'Reject Purchase Quotation']);
-        Permission::firstOrCreate(['name' => 'Convert to Purchase Order from Purchase Quotation']);
-        Permission::firstOrCreate(['name' => 'Convert Back to Draft Purchase Quotation']);
-        Permission::firstOrCreate(['name' => 'Create Rejection Note for Purchase Quotation']);
-
-        // Customer order permissions
-        Permission::firstOrCreate(['name' => 'view customer orders']);
-        Permission::firstOrCreate(['name' => 'create customer orders']);
-        Permission::firstOrCreate(['name' => 'edit customer orders']);
-        Permission::firstOrCreate(['name' => 'delete customer orders']);
-        Permission::firstOrCreate(['name' => 'customer_orders.export']);
-
-        // Sample order permissions
-        Permission::firstOrCreate(['name' => 'view sample orders']);
-        Permission::firstOrCreate(['name' => 'create sample orders']);
-        Permission::firstOrCreate(['name' => 'edit sample orders']);
-        Permission::firstOrCreate(['name' => 'delete sample orders']);
-        Permission::firstOrCreate(['name' => 'sample orders.export']);
-
-        // Warehouse permissions
-        Permission::firstOrCreate(['name' => 'view warehouses']);
-        Permission::firstOrCreate(['name' => 'create warehouses']);
-        Permission::firstOrCreate(['name' => 'edit warehouses']);
-        Permission::firstOrCreate(['name' => 'delete warehouses']);
-        Permission::firstOrCreate(['name' => 'warehouses.export']);
-
-        // Inventory Location permissions
-        Permission::firstOrCreate(['name' => 'view inventory locations']);
-        Permission::firstOrCreate(['name' => 'create inventory locations']);
-        Permission::firstOrCreate(['name' => 'edit inventory locations']);
-        Permission::firstOrCreate(['name' => 'delete inventory locations']);
-        Permission::firstOrCreate(['name' => 'inventory location.import']);
-        Permission::firstOrCreate(['name' => 'inventory location.export']);
-
-        // Third Party Services permissions
-        Permission::firstOrCreate(['name' => 'view third party services']);
-        Permission::firstOrCreate(['name' => 'create third party services']);
-        Permission::firstOrCreate(['name' => 'edit third party services']);
-        Permission::firstOrCreate(['name' => 'delete third party services']);
-        Permission::firstOrCreate(['name' => 'third party services.export']);
-        Permission::firstOrCreate(['name' => 'create third party service payments']);
-
-        // Production Machines permissions
-        Permission::firstOrCreate(['name' => 'view production machines']);
-        Permission::firstOrCreate(['name' => 'create production machines']);
-        Permission::firstOrCreate(['name' => 'edit production machines']);
-        Permission::firstOrCreate(['name' => 'delete production machines']);
-        Permission::firstOrCreate(['name' => 'production machines.import']);
-        Permission::firstOrCreate(['name' => 'production machines.export']);
-
-        // Production Line Operations permissions
-        Permission::firstOrCreate(['name' => 'view workstations']);
-        Permission::firstOrCreate(['name' => 'create workstations']);
-        Permission::firstOrCreate(['name' => 'edit workstations']);
-        Permission::firstOrCreate(['name' => 'delete workstations']);
-        Permission::firstOrCreate(['name' => 'workstations.export']);
-
-        // Production Line permissions
-        Permission::firstOrCreate(['name' => 'view production lines']);
-        Permission::firstOrCreate(['name' => 'create production lines']);
-        Permission::firstOrCreate(['name' => 'edit production lines']);
-        Permission::firstOrCreate(['name' => 'delete production lines']);
-        Permission::firstOrCreate(['name' => 'production lines.import']);
-        Permission::firstOrCreate(['name' => 'production-lines.export']);
-
-        // Register Arrival permissions
-        Permission::firstOrCreate(['name' => 'view register arrivals']);
-        Permission::firstOrCreate(['name' => 'create register arrivals']);
-        Permission::firstOrCreate(['name' => 're-correct register arrivals']);
-
-        // Release Material permissions
-        Permission::firstOrCreate(['name' => 'view release materials']);
-        Permission::firstOrCreate(['name' => 'create release materials']);
-        Permission::firstOrCreate(['name' => 're-correct release materials']);
-        Permission::firstOrCreate(['name' => 'release materials.export']);
-
-        // Material QC permissions
-        Permission::firstOrCreate(['name' => 'view material qc']);
-        Permission::firstOrCreate(['name' => 'create material qc']);
-        Permission::firstOrCreate(['name' => 're-correct material qc']);
-
-        // Activity log permissions
-        Permission::firstOrCreate(['name' => 'view self activity logs']);
-        Permission::firstOrCreate(['name' => 'view other users activity logs']);
-
-        // Change daily for production data 
-        Permission::firstOrCreate(['name' => 'select_previous_performance_dates']);
-        Permission::firstOrCreate(['name' => 'select_next_operation_dates']);
-
-        // view audit columns
-        Permission::firstOrCreate(['name' => 'view audit columns']);
-
-        // Customer advance invoices
-        Permission::firstOrCreate(['name' => 'view cus_adv_invoice']);
-        Permission::firstOrCreate(['name' => 'create cus_adv_invoices']);
-        Permission::firstOrCreate(['name' => 'delete cus_adv_invoice']);
-        Permission::firstOrCreate(['name' => 'cus_adv_invoice.export']);
-        Permission::firstOrCreate(['name' => 'create cus_adv_invoices']);
-
-        // Cutting stations
-        Permission::firstOrCreate(['name' => 'view cutting stations']);
-        Permission::firstOrCreate(['name' => 'create cutting stations']);
-        Permission::firstOrCreate(['name' => 'edit cutting stations']);
-        Permission::firstOrCreate(['name' => 'delete cutting stations']);
-        Permission::firstOrCreate(['name' => 'cutting_station.export']);
-        
-        // Cutting records
-        Permission::firstOrCreate(['name' => 'view cutting records']);
-        Permission::firstOrCreate(['name' => 'recorrect cutting records']);
-        Permission::firstOrCreate(['name' => 'create cutting records']);
-        Permission::firstOrCreate(['name' => 'cutting_record.export']);
-
-        // Assign daily operation
-        Permission::firstOrCreate(['name' => 'view assign daily operations']);
-        Permission::firstOrCreate(['name' => 'create assign daily operations']);
-        Permission::firstOrCreate(['name' => 'edit assign daily operations']);
-        Permission::firstOrCreate(['name' => 'assign daily operation.export']);
-
-        // Enter performance records
-        Permission::firstOrCreate(['name' => 'view performace records']);
-        Permission::firstOrCreate(['name' => 'create performace records']);
-        Permission::firstOrCreate(['name' => 'performance_record.export']);
-
-        // End of day reports
-        Permission::firstOrCreate(['name' => 'view end of day reports']);
-        Permission::firstOrCreate(['name' => 'create end of day reports']);
-        Permission::firstOrCreate(['name' => 'end_of_day_report.export']);
-
-        // Material QC reports
-        Permission::firstOrCreate(['name' => 'create material qc records']);
-        Permission::firstOrCreate(['name' => 'material qc.export']);
-
-        // Final products QC reports
-        Permission::firstOrCreate(['name' => 'view product qc records']);
-        Permission::firstOrCreate(['name' => 'create product qc records']);
-        Permission::firstOrCreate(['name' => 'product qc.export']);
-
-        // Non-Inventory items
-        Permission::firstOrCreate(['name' => 'view non inventory items']);
-        Permission::firstOrCreate(['name' => 'create non inventory items']);
-        Permission::firstOrCreate(['name' => 'non inventory item.export']);
-
-        // Purchase order invoices
-        Permission::firstOrCreate(['name' => 'view purchase order invoices']);
-        Permission::firstOrCreate(['name' => 'create purchase order invoices']);
-        Permission::firstOrCreate(['name' => 'purchase_order_invoices.export']);
-        Permission::firstOrCreate(['name' => 'pay purchase order invoice']);
-
-        // Purchase order Advance invoices
-        Permission::firstOrCreate(['name' => 'view supplier advance invoices']);
-        Permission::firstOrCreate(['name' => 'supplier advance invoices.export']);
-        Permission::firstOrCreate(['name' => 'create supplier advance invoices']);
-        Permission::firstOrCreate(['name' => 'pay supp adv invoice']);
-
-        // Stocks
-        Permission::firstOrCreate(['name' => 'view stocks']);
-        Permission::firstOrCreate(['name' => 'create emergency stocks']);
-        Permission::firstOrCreate(['name' => 'stocks.import']);
-        Permission::firstOrCreate(['name' => 'stock.export']);
-
-        // Temporary Operations
-        Permission::firstOrCreate(['name' => 'view temporary operations']);
-        Permission::firstOrCreate(['name' => 'create temporary operations']);
-        Permission::firstOrCreate(['name' => 'temporary operations.export']);
-
-        // Change dates for CO/SO expences/discounts
-        Permission::firstOrCreate(['name' => 'view order discount']);
-        Permission::firstOrCreate(['name' => 'view order expences']);
-
-        Permission::firstOrCreate(['name' => 'edit order discount']);
-        Permission::firstOrCreate(['name' => 'edit order expences']);
-        Permission::firstOrCreate(['name' => 'delete order discount']);
-        Permission::firstOrCreate(['name' => 'delete order expences']);
-
-        Permission::firstOrCreate(['name' => 'backdate order discount']);
-        Permission::firstOrCreate(['name' => 'future order discount']);
-
-        // Change dates for payments
-        Permission::firstOrCreate(['name' => 'Allow Backdated Payments']);
-        Permission::firstOrCreate(['name' => 'Allow Future Payments']);
-
-        // Company settings
-        Permission::firstOrCreate(['name' => 'view company settings']);
-        Permission::firstOrCreate(['name' => 'edit company settings']);
-
-
-
-        // Roles
-        $admin = Role::firstOrCreate(['name' => 'admin']);
-        $manager = Role::firstOrCreate(['name' => 'manager']);
-        $employee = Role::firstOrCreate(['name' => 'employee']);
-        $superuser = Role::firstOrCreate(['name' => 'superuser']);  
-        $supervisor = Role::firstOrCreate(['name' => 'supervisor']);
-        $qc = Role::firstOrCreate(['name' => 'Quality Control']);
-
-        // Assign permissions to roles
+        // Assign all permissions to the admin role
         $admin->givePermissionTo(Permission::all());
+
+        // Manager & Employee limited permissions
         $manager->givePermissionTo(['view users', 'create users', 'edit users', 'approve requests']);
         $employee->givePermissionTo(['view users']);
 
-        // Create specific position roles
-        $positions = [
-            'GM' => 'General Manager',
-            'FIN' => 'Finance Manager',
-            'QC' => 'Quality Controller',
-            'TECH' => 'Technician',
-            'CUT_SUP' => 'Cutting Supervisor',
-            'SEW_SUP' => 'Sewing Line Supervisor',
-        ]; 
+        // ================= DEFAULT SUPERUSER =================
+        $superuserUser = User::firstOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'admin',
+                'password' => bcrypt('12345678'), 
+                'phone_1' => 123456789, 
+                'nic' => 123456789,
+                'address_line_1' => 'Default Address',
+                'city' => 'Default City',
+                'site_id' => $site->id,
+            ]
+        );
+        $superuserUser->assignRole('admin'); // Assign admin role
 
-        // Create a Superuser and assign role
-        $superuser = User::firstOrCreate([
-            'email' => 'admin@example.com',
-        ], [
-            'name' => 'admin',
-            'password' => bcrypt('12345678'), 
-            'phone_1' => 123456789, 
-            'nic' => 123456789,
-            'address_line_1' => 'Default Address',
-            'city' => 'Default City',
-        ]);
+        // ================= COMPANY & OWNER =================
+        $company = Company::firstOrCreate(
+            ['name' => 'Textile Manufacturing Co.'],
+            [
+                'address_line_1' => '123 Industrial Zone',
+                'address_line_2' => 'Garment Street',
+                'address_line_3' => '',
+                'city' => 'Colombo',
+                'postal_code' => '01000',
+                'country' => 'Sri Lanka',
+                'primary_phone' => '+94112345678',
+                'secondary_phone' => '+94112345679',
+                'email' => 'owner@textileco.com',
+                'started_date' => '2010-01-15',
+                'special_notes' => 'Leading textile manufacturer since 2010',
+                'site_id' => $site->id,
+            ]
+        );
 
-        // Create the main company
-        $company = Company::firstOrCreate([
-            'name' => 'Textile Manufacturing Co.',
-            'address_line_1' => '123 Industrial Zone',
-            'address_line_2' => 'Garment Street',
-            'address_line_3' => '',
-            'city' => 'Colombo',
-            'postal_code' => '01000',
-            'country' => 'Sri Lanka',
-            'primary_phone' => '+94112345678',
-            'secondary_phone' => '+94112345679',
-            'email' => 'owner@textileco.com',
-            'started_date' => '2010-01-15',
-            'special_notes' => 'Leading textile manufacturer since 2010',
-        ]);
+        CompanyOwner::firstOrCreate(
+            ['company_id' => $company->id],
+            [
+                'name' => 'Mr. Rajapakse',
+                'address_line_1' => '456 Owners Avenue',
+                'address_line_2' => 'Highland Gardens',
+                'address_line_3' => '',
+                'city' => 'Colombo',
+                'postal_code' => '01002',
+                'country' => 'Sri Lanka',
+                'phone_1' => '+94119876543',
+                'phone_2' => '+94119876544',
+                'email' => 'owner@textileco.com',
+                'joined_date' => '2010-01-15',
+                'site_id' => $site->id,
+            ]
+        );
 
-        // Create the company owner
-        CompanyOwner::firstOrCreate([
-            'company_id' => $company->id,
-            'name' => 'Mr. Rajapakse',
-            'address_line_1' => '456 Owners Avenue',
-            'address_line_2' => 'Highland Gardens',
-            'address_line_3' => '',
-            'city' => 'Colombo',
-            'postal_code' => '01002',
-            'country' => 'Sri Lanka',
-            'phone_1' => '+94119876543',
-            'phone_2' => '+94119876544',
-            'email' => 'owner@textileco.com',
-            'joined_date' => '2010-01-15',
-        ]);
-        
-        // Create Default categories
-        Category::firstOrCreate(['name' => 'Waste Item']);
-        Category::firstOrCreate(['name' => 'By Products']);
-        
-        // // Assign all permissions to the superuser role
-        $superuser->assignRole('admin');  // Assigning the superuser role
+        // ================= DEFAULT CATEGORIES =================
+        Category::firstOrCreate(['name' => 'Waste Item', 'site_id' => $site->id]);
+        Category::firstOrCreate(['name' => 'By Products', 'site_id' => $site->id]);
+
+        $this->command->info('Roles, permissions, default user, company, and categories seeded for site ID: ' . $site->id);
     }
 }

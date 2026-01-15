@@ -11,6 +11,7 @@ class CreateThirdPartyServicesTable extends Migration
     public function up()
     {
         Schema::create('third_party_services', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('supplier_id');
             $table->foreign('supplier_id')

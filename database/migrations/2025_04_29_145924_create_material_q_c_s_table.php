@@ -9,6 +9,7 @@ class CreateMaterialQCsTable extends Migration
     public function up()
     {
         Schema::create('material_qcs', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('purchase_order_id');
             $table->unsignedBigInteger('item_id');

@@ -15,6 +15,7 @@ class RegisterArrival extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'purchase_order_id',
         'location_id',
         'received_date',
@@ -64,9 +65,17 @@ class RegisterArrival extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
+        
 
         static::updating(function ($model) {
             $model->updated_by = auth()->id();

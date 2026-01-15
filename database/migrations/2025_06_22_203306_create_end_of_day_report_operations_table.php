@@ -9,24 +9,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('end_of_day_report_operations', function (Blueprint $table) {
-    $table->engine = 'InnoDB';
+            $table->engine = 'InnoDB';
 
-    $table->id();
-    
-    $table->foreignId('end_of_day_report_id');
-    $table->foreignId('enter_performance_record_id')->nullable();
-    $table->foreignId('assign_daily_operation_id')->nullable();
-    $table->foreignId('operation_line_id')->nullable();
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
+            $table->id();
+            
+            $table->foreignId('end_of_day_report_id');
+            $table->foreignId('enter_performance_record_id')->nullable();
+            $table->foreignId('assign_daily_operation_id')->nullable();
+            $table->foreignId('operation_line_id')->nullable();
 
-    $table->foreignId('temporary_operation_id')->nullable();
+            $table->foreignId('temporary_operation_id')->nullable();
 
-    $table->unsignedBigInteger('created_by')->nullable();
-    $table->unsignedBigInteger('updated_by')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
 
-    $table->timestamps();
-    $table->softDeletes();
-});
-
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 
     public function down(): void

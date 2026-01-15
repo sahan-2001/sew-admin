@@ -15,6 +15,7 @@ class CustomerOrder extends Model
     protected $primaryKey = 'order_id';
 
     protected $fillable = [
+        'site_id',
         'name',
         'wanted_delivery_date',
         'customer_id',
@@ -29,18 +30,50 @@ class CustomerOrder extends Model
 
     protected static function booted()
     {
-        static::creating(function ($order) {
-            $order->random_code = '';
-            for ($i = 0; $i < 16; $i++) {
-                $order->random_code .= mt_rand(0, 9);
+        static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
             }
 
-            $order->created_by = auth()->id();
-            $order->updated_by = auth()->id();
+            // Set created_by and updated_by
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+
+            // Generate 16-digit random_code if the column exists
+            if (isset($model->random_code)) {
+                $model->random_code = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $model->random_code .= mt_rand(0, 9);
+                }
+            }
+
+            // Calculate balances if columns exist
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+            // Update updated_by
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
+            }
+
+            // Optional: recalc balances on update
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
 
         static::saved(function ($model) {

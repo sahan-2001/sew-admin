@@ -11,6 +11,7 @@ class PurchaseQuotationItem extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'purchase_quotation_id',
         'inventory_item_id',
         'inventory_vat_group_id',
@@ -27,6 +28,10 @@ class PurchaseQuotationItem extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+            
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
             

@@ -11,6 +11,7 @@ class CuttingQualityControl extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'cutting_record_id',
         'qc_user_id',
         'inspected_quantity',
@@ -40,8 +41,15 @@ class CuttingQualityControl extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

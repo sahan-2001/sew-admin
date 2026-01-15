@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('currencies', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('code', 3)->unique();     // USD, EUR, LKR
             $table->string('name');                  // US Dollar, Sri Lankan Rupee

@@ -10,6 +10,7 @@ class EnterServicePerformance extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'enter_performance_record_id',
         'service_id',
         'service_process_id',
@@ -32,8 +33,15 @@ class EnterServicePerformance extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

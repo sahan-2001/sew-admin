@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('request_for_quotations', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
 
             $table->unsignedBigInteger('supplier_id');

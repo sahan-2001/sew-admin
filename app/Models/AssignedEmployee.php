@@ -8,7 +8,7 @@ class AssignedEmployee extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['user_id', 'assign_daily_operation_line_id', 'created_by','updated_by',];
+    protected $fillable = ['site_id', 'user_id', 'assign_daily_operation_line_id', 'created_by','updated_by',];
 
     public function line()
     {
@@ -18,8 +18,15 @@ class AssignedEmployee extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

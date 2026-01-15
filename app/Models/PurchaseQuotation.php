@@ -14,6 +14,7 @@ class PurchaseQuotation extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'supplier_id',
         'request_for_quotation_id',
         'payment_term_id',
@@ -51,36 +52,99 @@ class PurchaseQuotation extends Model
 
     protected static function booted()
     {
-        static::creating(function ($pq) {
-            // Random code
-            $pq->random_code = '';
-            for ($i = 0; $i < 16; $i++) {
-                $pq->random_code .= mt_rand(0, 9);
+        static::creating(function ($model) {
+            //  Set site_id automatically
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
             }
 
-            $pq->created_by = Auth::id() ?? 1;
-            $pq->updated_by = Auth::id() ?? 1;
+            //  Set audit fields
+            $model->created_by = Auth::id() ?? $model->created_by ?? 1;
+            $model->updated_by = Auth::id() ?? $model->updated_by ?? 1;
 
-            $pq->order_subtotal = $pq->order_subtotal ?? 0;
-            $pq->vat_amount     = $pq->vat_amount ?? 0;
-            $pq->grand_total    = $pq->grand_total ?? 0;
-            $pq->vat_base       = $pq->vat_base ?? 'item_vat';
-            $pq->status         = $pq->status ?? 'draft';
+            //  Random code
+            if (isset($model->random_code) && empty($model->random_code)) {
+                $model->random_code = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $model->random_code .= mt_rand(0, 9);
+                }
+            }
+
+            //  Barcode ID
+            if (isset($model->barcode_id) && empty($model->barcode_id)) {
+                $model->barcode_id = uniqid('CUT');
+            }
+
+            //  Totals (PO/PQ/Invoice)
+            if (isset($model->order_subtotal)) {
+                $model->order_subtotal    = $model->order_subtotal ?? 0;
+                $model->vat_amount        = $model->vat_amount ?? 0;
+                $model->grand_total       = $model->grand_total ?? 0;
+                $model->remaining_balance = $model->grand_total ?? 0;
+                $model->vat_base          = $model->vat_base ?? 'item_vat';
+                $model->status            = $model->status ?? 'draft';
+            }
+
+            //  Machine cost calculations
+            if (isset($model->purchased_cost)) {
+                $model->total_initial_cost = $model->purchased_cost + ($model->additional_cost ?? 0);
+                $model->net_present_value  = $model->total_initial_cost - ($model->cumulative_depreciation ?? 0);
+            }
+
+            //  Line items remaining quantity
+            if (isset($model->quantity) && isset($model->remaining_quantity)) {
+                $model->remaining_quantity = $model->quantity;
+            }
+
+            //  Debit/credit balances
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
 
-        static::updating(function ($pq) {
-            $pq->updated_by = Auth::id() ?? $pq->updated_by;
+        static::updating(function ($model) {
+            $model->updated_by = Auth::id() ?? $model->updated_by ?? 1;
 
-            // Ensure totals are always filled
-            $pq->order_subtotal = $pq->order_subtotal ?? 0;
-            $pq->vat_amount     = $pq->vat_amount ?? 0;
-            $pq->grand_total    = $pq->grand_total ?? 0;
-            $pq->vat_base       = $pq->vat_base ?? 'item_vat';
+            // Recalculate totals or balances on update
+            if (isset($model->order_subtotal)) {
+                $model->order_subtotal    = $model->order_subtotal ?? 0;
+                $model->vat_amount        = $model->vat_amount ?? 0;
+                $model->grand_total       = $model->grand_total ?? 0;
+                $model->remaining_balance = $model->remaining_balance ?? $model->grand_total;
+                $model->vat_base          = $model->vat_base ?? 'item_vat';
+            }
+
+            if (isset($model->purchased_cost)) {
+                $model->total_initial_cost = $model->purchased_cost + ($model->additional_cost ?? 0);
+                $model->net_present_value  = $model->total_initial_cost - ($model->cumulative_depreciation ?? 0);
+            }
+
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
+
+            // Update remaining quantity for line items if needed
+            if (isset($model->quantity) && isset($model->remaining_quantity) && $model->remaining_quantity === null) {
+                $model->remaining_quantity = $model->quantity;
+            }
         });
 
-        // Recalculate totals after save
-        static::saved(function ($pq) {
-            $pq->recalculateTotals();
+        static::saved(function ($model) {
+            if (method_exists($model, 'recalculateTotals')) {
+                $model->recalculateTotals();
+            }
+        });
+
+        static::deleted(function ($model) {
+            if (method_exists($model, 'recalculateTotals')) {
+                $model->recalculateTotals();
+            }
         });
     }
 

@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('purchase_quotations', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('supplier_id');
             $table->foreignId('request_for_quotation_id')->nullable();

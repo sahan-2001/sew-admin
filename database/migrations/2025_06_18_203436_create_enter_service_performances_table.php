@@ -8,6 +8,7 @@ class CreateEnterServicePerformancesTable extends Migration
     public function up()
     {
         Schema::create('enter_service_performances', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('enter_performance_record_id');
             $table->unsignedBigInteger('service_id');

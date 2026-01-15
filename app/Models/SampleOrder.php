@@ -21,6 +21,7 @@ class SampleOrder extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
+        'site_id',
         'name',
         'customer_id',
         'wanted_delivery_date',
@@ -41,6 +42,11 @@ class SampleOrder extends Model
     protected static function booted()
     {
         static::creating(function ($sampleOrder) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+            
             $sampleOrder->random_code = '';
             for ($i = 0; $i < 16; $i++) {
                 $sampleOrder->random_code .= mt_rand(0, 9);

@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('workstations', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('production_line_id')->constrained();
             $table->string('name');

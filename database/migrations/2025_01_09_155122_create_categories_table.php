@@ -9,6 +9,7 @@ class CreateCategoriesTable extends Migration
     public function up()
     {
         Schema::create('categories', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade')->nullable();
             $table->id();
             $table->string('name')->unique();
             $table->unsignedBigInteger('created_by')->nullable(); // Add created_by field

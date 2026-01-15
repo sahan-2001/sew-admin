@@ -15,6 +15,7 @@ class CustomerAdvanceInvoice extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'order_type',
         'order_id',
         'customer_id',
@@ -57,8 +58,15 @@ class CustomerAdvanceInvoice extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
         });
 
         static::updating(function ($model) {

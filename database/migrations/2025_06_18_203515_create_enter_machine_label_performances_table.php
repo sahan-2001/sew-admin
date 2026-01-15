@@ -8,6 +8,7 @@ class CreateEnterMachineLabelPerformancesTable extends Migration
     public function up()
     {
         Schema::create('enter_machine_label_performances', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('enter_performance_record_id');
             $table->unsignedBigInteger('cutting_label_id');

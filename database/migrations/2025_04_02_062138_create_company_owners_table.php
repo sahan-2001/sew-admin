@@ -13,6 +13,7 @@ return new class extends Migration
     {
         // database/migrations/xxxx_xx_xx_create_company_owners_table.php
         Schema::create('company_owners', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade')->nullable();
             $table->id();
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
             $table->string('name');

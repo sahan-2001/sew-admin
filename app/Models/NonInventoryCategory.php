@@ -13,6 +13,7 @@ class NonInventoryCategory extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'name',
         'created_by',
     ];
@@ -34,9 +35,23 @@ class NonInventoryCategory extends Model
             );
     }
 
-    public function createdBy()
+    protected static function booted()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
     }
 
     public function nonInventoryItems()

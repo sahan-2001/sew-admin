@@ -7,6 +7,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('assign_daily_operation_lines', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('assign_daily_operation_id');
             $table->unsignedBigInteger('production_line_id');

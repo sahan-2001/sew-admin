@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('temporary_operations', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('order_type');
             $table->foreignId('order_id');

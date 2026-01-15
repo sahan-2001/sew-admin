@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customer_control_accounts', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
 
             // Link to Customer

@@ -9,6 +9,7 @@ return new class extends Migration {
     public function up()
     {
         Schema::create('final_product_qcs', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('final_product_qc_id')->constrained()->cascadeOnDelete();
             $table->foreignId('cutting_label_id')->constrained()->cascadeOnDelete();

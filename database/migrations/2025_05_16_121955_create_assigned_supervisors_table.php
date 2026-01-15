@@ -7,6 +7,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('assigned_supervisors', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('assign_daily_operation_line_id');

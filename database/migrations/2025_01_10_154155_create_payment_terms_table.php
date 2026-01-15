@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payment_terms', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('name'); // e.g., "Net 30", "Advance 50% + 50% on delivery"
             $table->text('description')->nullable(); // optional details

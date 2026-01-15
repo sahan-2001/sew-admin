@@ -9,6 +9,7 @@ class CreateGeneralLedgerEntriesTable extends Migration
     public function up()
     {
         Schema::create('general_ledger_entries', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('entry_code')->nullable();
 

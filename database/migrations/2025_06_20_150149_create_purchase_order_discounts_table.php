@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('purchase_order_discounts', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('purchase_order_invoice_id')->constrained()->cascadeOnDelete();
             $table->string('description');

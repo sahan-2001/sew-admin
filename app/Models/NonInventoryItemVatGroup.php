@@ -13,6 +13,7 @@ class NonInventoryItemVatGroup extends Model
     protected $table = 'non_inventory_item_vat_groups';
 
     protected $fillable = [
+        'site_id',
         'code',
         'vat_group_name',
         'vat_rate',
@@ -50,8 +51,14 @@ class NonInventoryItemVatGroup extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
             if (auth()->check()) {
                 $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
             }
         });
 

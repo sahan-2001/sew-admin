@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('delivery_methods', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('name'); // e.g., "Courier", "Air Freight", "Sea Freight"
             $table->text('description')->nullable(); // optional details

@@ -9,6 +9,7 @@ class CreateSupplierRequestsTable extends Migration
     public function up()
     {
         Schema::create('supplier_requests', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('name');
             $table->string('shop_name');

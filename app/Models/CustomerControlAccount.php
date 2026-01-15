@@ -15,6 +15,7 @@ class CustomerControlAccount extends Model
     protected $table = 'customer_control_accounts';
 
     protected $fillable = [
+        'site_id',
         'customer_id',
 
         // Account mappings
@@ -80,26 +81,44 @@ class CustomerControlAccount extends Model
     public function cogsAccount() { return $this->belongsTo(ChartOfAccount::class, 'cogs_account_id'); }
     public function inventoryAccount() { return $this->belongsTo(ChartOfAccount::class, 'inventory_account_id'); }
 
-    // -------------------------------
-    // Auto-fill Created By / Updated By
-    // -------------------------------
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            // Set created_by and updated_by from authenticated user
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
 
             // Calculate balances
-            $model->balance = $model->debit_total - $model->credit_total;
-            $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+            // Update updated_by when a model is updated
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
+            }
 
-            // Recalculate balances
-            $model->balance = $model->debit_total - $model->credit_total;
-            $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            // Optional: recalc balances on update
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
 
         static::saved(function ($model) {

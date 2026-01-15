@@ -9,6 +9,7 @@ class CreateInventoryItemsTable extends Migration
     public function up()
     {
         Schema::create('inventory_items', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->string('item_code')->unique();
             $table->string('name');

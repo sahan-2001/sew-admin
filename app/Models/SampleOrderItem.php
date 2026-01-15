@@ -16,6 +16,7 @@ class SampleOrderItem extends Model
 
     // Define fields that should be mass assignable
     protected $fillable = [
+        'site_id',
         'sample_order_id',
         'item_name',
         'variation_name',
@@ -67,6 +68,11 @@ class SampleOrderItem extends Model
         });
 
         static::creating(function ($model) {
+            // Set site_id from session
+            if (session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+            
             $model->created_by = auth()->id();
             $model->updated_by = auth()->id();
         });

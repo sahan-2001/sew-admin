@@ -13,6 +13,7 @@ return new class extends Migration
     {
         // database/migrations/xxxx_xx_xx_create_companies_table.php
         Schema::create('companies', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade')->nullable();
             $table->id();
             $table->string('name');
             $table->string('address_line_1');

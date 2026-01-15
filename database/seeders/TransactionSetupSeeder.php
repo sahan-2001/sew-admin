@@ -4,11 +4,19 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\ChartOfAccount;
+use App\Models\Site;
 
 class TransactionSetupSeeder extends Seeder
 {
     public function run()
     {
+        // Get the first active site
+        $site = Site::where('is_active', true)->first();
+        if (!$site) {
+            $this->command->error('No active site found. Please create a site first.');
+            return;
+        }
+
         $accounts = [
             // ================= ASSETS =================
             [
@@ -89,7 +97,7 @@ class TransactionSetupSeeder extends Seeder
             $accountType = strtolower($acc['account_type']);
 
             ChartOfAccount::updateOrCreate(
-                ['code' => $acc['code']],
+                ['code' => $acc['code'], 'site_id' => $site->id],
                 [
                     'name' => $acc['name'],
                     'account_type' => $accountType,
@@ -101,8 +109,11 @@ class TransactionSetupSeeder extends Seeder
                         : 'income_statement',
                     'description' => $acc['name'],
                     'status' => 'Active',
+                    'site_id' => $site->id, 
                 ]
             );
         }
+
+        $this->command->info('Chart of Accounts created/updated successfully for site ID: ' . $site->id);
     }
 }

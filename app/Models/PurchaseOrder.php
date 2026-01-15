@@ -15,6 +15,7 @@ class PurchaseOrder extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'site_id',
         'supplier_id',
         'purchase_quotation_id',
         'request_for_quotation_id',
@@ -40,43 +41,101 @@ class PurchaseOrder extends Model
 
     protected static function booted()
     {
-        // Automatically set creator/updater and random code
-        static::creating(function ($po) {
-            $po->random_code = '';
-            for ($i = 0; $i < 16; $i++) {
-                $po->random_code .= mt_rand(0, 9);
+        static::creating(function ($model) {
+            // Set site_id if column exists
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
             }
 
-            $po->created_by = Auth::id() ?? 1;
-            $po->updated_by = Auth::id() ?? 1;
-
-            // Ensure totals are set before creating
-            $po->order_subtotal = $po->order_subtotal ?? 0;
-            $po->vat_amount     = $po->vat_amount ?? 0;
-            $po->grand_total    = $po->grand_total ?? 0;
-            $po->remaining_balance = $po->grand_total;
-            $po->vat_base       = $po->vat_base ?? 'item_vat';
-        });
-
-        static::updating(function ($po) {
-            $po->updated_by = Auth::id() ?? $po->updated_by;
-
-            // If closing, set remaining balance to 0
-            if ($po->isDirty('status') && $po->status === 'closed') {
-                $po->remaining_balance = 0;
+            //  Set created_by / updated_by
+            if (auth()->check()) {
+                $model->created_by = Auth::id();
+                $model->updated_by = Auth::id();
+            } else {
+                $model->created_by = $model->created_by ?? 1;
+                $model->updated_by = $model->updated_by ?? 1;
             }
 
-            // Ensure totals are always filled
-            $po->order_subtotal = $po->order_subtotal ?? 0;
-            $po->vat_amount     = $po->vat_amount ?? 0;
-            $po->grand_total    = $po->grand_total ?? 0;
-            $po->remaining_balance = $po->remaining_balance ?? $po->grand_total;
-            $po->vat_base       = $po->vat_base ?? 'item_vat';
+            //  Generate random_code if column exists
+            if (isset($model->random_code) && empty($model->random_code)) {
+                $model->random_code = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $model->random_code .= mt_rand(0, 9);
+                }
+            }
+
+            //  Generate barcode_id if column exists
+            if (isset($model->barcode_id) && empty($model->barcode_id)) {
+                $model->barcode_id = uniqid('CUT');
+            }
+
+            // Handle debit/credit balances if columns exist
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
+
+            //  Handle order totals if columns exist
+            if (isset($model->order_subtotal)) {
+                $model->order_subtotal     = $model->order_subtotal ?? 0;
+                $model->vat_amount         = $model->vat_amount ?? 0;
+                $model->grand_total        = $model->grand_total ?? 0;
+                $model->remaining_balance  = $model->grand_total;
+                $model->vat_base           = $model->vat_base ?? 'item_vat';
+            }
+
+            //  Handle machine cost calculations if columns exist
+            if (isset($model->purchased_cost)) {
+                $model->total_initial_cost   = $model->purchased_cost + ($model->additional_cost ?? 0);
+                $model->net_present_value    = $model->total_initial_cost - ($model->cumulative_depreciation ?? 0);
+            }
         });
 
-        // Recalculate grand total after save
-        static::saved(function ($po) {
-            $po->recalculateTotals();
+        static::updating(function ($model) {
+            // Update audit
+            if (auth()->check()) {
+                $model->updated_by = Auth::id();
+            }
+
+            // Recalculate balances if applicable
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
+
+            // Recalculate order totals if applicable
+            if (isset($model->order_subtotal)) {
+                $model->order_subtotal     = $model->order_subtotal ?? 0;
+                $model->vat_amount         = $model->vat_amount ?? 0;
+                $model->grand_total        = $model->grand_total ?? 0;
+                $model->remaining_balance  = $model->remaining_balance ?? $model->grand_total;
+
+                // Optional: if status changed to closed
+                if ($model->isDirty('status') && $model->status === 'closed') {
+                    $model->remaining_balance = 0;
+                }
+
+                $model->vat_base = $model->vat_base ?? 'item_vat';
+            }
+
+            // Recalculate machine costs if applicable
+            if (isset($model->purchased_cost)) {
+                $model->total_initial_cost = $model->purchased_cost + ($model->additional_cost ?? 0);
+                $model->net_present_value  = $model->total_initial_cost - ($model->cumulative_depreciation ?? 0);
+            }
+        });
+
+        // Optional: after save, recalc totals if the model has recalculateTotals method
+        static::saved(function ($model) {
+            if (method_exists($model, 'recalculateTotals')) {
+                $model->recalculateTotals();
+            }
         });
     }
 

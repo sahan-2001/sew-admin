@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('po_adv_inv_deduct', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('purchase_order_invoice_id')->constrained()->cascadeOnDelete();
             $table->foreignId('advance_invoice_id')->constrained('supplier_advance_invoices')->cascadeOnDelete();

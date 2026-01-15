@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('third_party_service_payments', function (Blueprint $table) {
+            $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('third_party_service_id')->constrained()->onDelete('cascade');
             $table->unsignedBigInteger('supplier_id');

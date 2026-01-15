@@ -11,6 +11,7 @@ class CuttingLabel extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'site_id',
         'cutting_record_id',
         'order_type',
         'order_id',
@@ -56,17 +57,54 @@ class CuttingLabel extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
-            
-            // Ensure barcode_id is set if not provided
-            if (empty($model->barcode_id)) {
+            // Set site_id from session if column exists
+            if (isset($model->site_id) && session()->has('site_id')) {
+                $model->site_id = session('site_id');
+            }
+
+            // Set created_by and updated_by
+            if (auth()->check()) {
+                $model->created_by = auth()->id();
+                $model->updated_by = auth()->id();
+            }
+
+            // Generate barcode_id if empty
+            if (isset($model->barcode_id) && empty($model->barcode_id)) {
                 $model->barcode_id = uniqid('CUT');
+            }
+
+            // Generate 16-digit random code if needed
+            if (isset($model->random_code)) {
+                $model->random_code = '';
+                for ($i = 0; $i < 16; $i++) {
+                    $model->random_code .= mt_rand(0, 9);
+                }
+            }
+
+            // Calculate balances if applicable
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
             }
         });
 
         static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+            // Update updated_by
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
+            }
+
+            // Optional: recalc balances on update
+            if (isset($model->debit_total) && isset($model->credit_total)) {
+                $model->balance = $model->debit_total - $model->credit_total;
+            }
+
+            if (isset($model->debit_total_vat) && isset($model->credit_total_vat)) {
+                $model->balance_vat = $model->debit_total_vat - $model->credit_total_vat;
+            }
         });
     }
 }
