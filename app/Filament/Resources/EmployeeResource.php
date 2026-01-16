@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\EmployeeResource\Pages;
 use App\Filament\Resources\EmployeeResource\RelationManagers;
 use App\Models\Employee;
+use App\Models\EpfEtfGroup;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -50,6 +51,8 @@ class EmployeeResource extends Resource
                                 'female' => 'Female',
                                 'other' => 'Other',
                             ]),
+                        
+                        Toggle::make('is_active')->default(true),
                     ])->columns(3),
 
                 Forms\Components\Section::make('Contact Information')
@@ -73,12 +76,26 @@ class EmployeeResource extends Resource
 
                         TextInput::make('designation')->required(),
                         TextInput::make('department')->required(),
+                    ])->columns(2),
 
+                Forms\Components\Section::make('Salary & EPF/ETF Details')
+                    ->schema([
                         TextInput::make('basic_salary')
                             ->numeric()
                             ->prefix('Rs.'),
-
-                        Toggle::make('is_active')->default(true),
+                        
+                        Select::make('epf_etf_group_id')
+                            ->label('EPF/ETF Group')
+                            ->options(function () {
+                                return EpfEtfGroup::where('is_active', true)
+                                    ->where('site_id', session('site_id'))
+                                    ->get()
+                                    ->mapWithKeys(function ($group) {
+                                        return [$group->id => $group->id . ' | ' . $group->name];
+                                    })
+                                    ->toArray();
+                            })
+                            ->searchable(),
                     ])->columns(3),
             ]);
     }
@@ -136,6 +153,7 @@ class EmployeeResource extends Resource
             'create' => Pages\CreateEmployee::route('/create'),
             'edit' => Pages\EditEmployee::route('/{record}/edit'),
             'handle' => Pages\HandleEmployee::route('/{record}/handle'),
+            'epf-etf' => Pages\EmployeeEpfEtf::route('/epf-etf'),
         ];
     }
 }

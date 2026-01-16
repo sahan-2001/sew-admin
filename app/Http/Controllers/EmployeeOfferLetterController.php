@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EpfEtfGroup;
 use App\Models\Company;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -36,6 +37,12 @@ class EmployeeOfferLetterController extends Controller
             'department' => $employee->department,
             'joined_date' => $employee->joined_date,
             'basic_salary' => $employee->basic_salary,
+            'epfEtfGroup' => $employee->epfEtfGroup ? [
+                'name' => $employee->epfEtfGroup->name,
+                'epf_employee_percentage' => $employee->epfEtfGroup->epf_employee_percentage,
+                'epf_employer_percentage' => $employee->epfEtfGroup->epf_employer_percentage,
+                'etf_employer_percentage' => $employee->epfEtfGroup->etf_employer_percentage,
+            ] : null,
         ];
 
         // Generate QR Code (e.g., link to employee profile)

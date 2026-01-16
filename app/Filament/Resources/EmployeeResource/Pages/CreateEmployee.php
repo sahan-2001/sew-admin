@@ -16,14 +16,6 @@ class CreateEmployee extends CreateRecord
     {
         $employee = $this->record;
 
-        // 1️⃣ Generate Offer Letter PDF
-        $pdf = Pdf::loadView('pdf.employee-offer-letter', [
-            'employee' => $employee,
-        ]);
-
-        $fileName = "offer_letters/{$employee->employee_code}.pdf";
-        Storage::disk('public')->put($fileName, $pdf->output());
-
         // 2️⃣ Show Notification with Employee Code and Download Link
         Notification::make()
             ->title('Employee Created Successfully')

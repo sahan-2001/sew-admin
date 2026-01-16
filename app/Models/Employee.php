@@ -28,6 +28,7 @@ class Employee extends Model
         'designation',
         'department',
         'basic_salary',
+        'epf_etf_group_id',
         'is_active',
         'created_by',
         'updated_by',
@@ -91,5 +92,10 @@ class Employee extends Model
     public function site()
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function epfEtfGroup()
+    {
+        return $this->belongsTo(EpfEtfGroup::class, 'epf_etf_group_id');
     }
 }

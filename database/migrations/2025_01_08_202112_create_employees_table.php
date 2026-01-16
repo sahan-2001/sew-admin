@@ -29,6 +29,8 @@ return new class extends Migration {
             $table->string('designation')->nullable();
             $table->string('department')->nullable();
             $table->decimal('basic_salary', 12, 2)->nullable();
+
+            $table->foreignId('epf_etf_group_id')->nullable()->constrained('epf_etf_groups')->nullOnDelete();
             $table->boolean('is_active')->default(true);
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

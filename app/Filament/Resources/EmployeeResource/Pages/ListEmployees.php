@@ -13,6 +13,12 @@ class ListEmployees extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('epf_etf')
+                ->label('EPF / ETF Group Settings')
+                ->color('info')
+                ->icon('heroicon-o-banknotes')
+                ->url(fn () => EmployeeResource::getUrl('epf-etf')),
+            
             Actions\CreateAction::make(),
         ];
     }
