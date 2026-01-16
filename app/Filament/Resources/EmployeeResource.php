@@ -30,6 +30,11 @@ class EmployeeResource extends Resource
     protected static ?string $label = 'Employee';
     protected static ?string $pluralLabel = 'Employees';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view employees') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -136,13 +141,18 @@ class EmployeeResource extends Resource
                 Tables\Actions\Action::make('handle')
                     ->label('View / Manage')
                     ->icon('heroicon-o-cog')  
-                    ->url(fn (Employee $record): string => static::getUrl('handle', ['record' => $record])),
+                    ->url(fn (Employee $record): string => static::getUrl('handle', ['record' => $record]))
+                    ->visible(fn () => auth()->user()?->can('Manage Employee Profile')),
 
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('Edit Employee Record')),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn () => auth()->user()?->can('Delete Employee Record')),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn () => auth()->user()?->can('Delete Employee Record')),
             ]);
     }
 

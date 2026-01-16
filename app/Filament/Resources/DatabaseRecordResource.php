@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\DynamicModelImport;
 use App\Exports\DynamicModelExport;
+use Illuminate\Support\Facades\Auth;
 
 
 class DatabaseRecordResource extends Resource
@@ -22,6 +23,11 @@ class DatabaseRecordResource extends Resource
     protected static ?string $navigationLabel = 'Database Records';
     protected static ?string $navigationIcon = 'heroicon-o-circle-stack';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view database records') ?? false;
+    }
+    
     public static function table(Table $table): Table
     {
         $models = collect(config('database-records.models'));

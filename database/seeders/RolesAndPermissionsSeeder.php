@@ -156,19 +156,31 @@ class RolesAndPermissionsSeeder extends Seeder
             
             // Company settings
             'view company settings','edit company settings',
+
+            // Employee management
+            'view employees', 'create employees', 'edit employees', 'delete employees', 'Manage Employee Profile', 'Manage EPF ETF Groups',
+
+            // Delivery terms
+            'view delivery terms', 'create delivery terms', 'edit delivery terms', 'delete delivery terms',
+
+            // Delivery methods
+            'view delivery methods', 'create delivery methods', 'edit delivery methods', 'delete delivery methods',
+
+            // Payment terms
+            'view payment terms', 'create payment terms', 'edit payment terms', 'delete payment terms',
         ];
 
         foreach ($permissions as $perm) {
-            Permission::firstOrCreate(['name' => $perm, 'site_id' => $site->id]);
+            Permission::firstOrCreate(['name' => $perm]);
         }
 
         // ================= ROLES =================
-        $admin = Role::firstOrCreate(['name' => 'admin', 'site_id' => $site->id]);
-        $manager = Role::firstOrCreate(['name' => 'manager', 'site_id' => $site->id]);
-        $employee = Role::firstOrCreate(['name' => 'employee', 'site_id' => $site->id]);
-        $superuser = Role::firstOrCreate(['name' => 'superuser', 'site_id' => $site->id]);  
-        $supervisor = Role::firstOrCreate(['name' => 'supervisor', 'site_id' => $site->id]);
-        $qc = Role::firstOrCreate(['name' => 'Quality Control', 'site_id' => $site->id]);
+        $admin = Role::firstOrCreate(['name' => 'admin']);
+        $manager = Role::firstOrCreate(['name' => 'manager']);
+        $employee = Role::firstOrCreate(['name' => 'employee']);
+        $superuser = Role::firstOrCreate(['name' => 'superuser']);  
+        $supervisor = Role::firstOrCreate(['name' => 'supervisor']);
+        $qc = Role::firstOrCreate(['name' => 'Quality Control']);
 
         // Assign all permissions to the admin role
         $admin->givePermissionTo(Permission::all());

@@ -11,7 +11,9 @@ use App\Filament\Resources\PurchaseOrderResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
-
+use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Facades\Auth;
 
 class HandlePurchaseQuotation extends Page
 {
@@ -104,6 +106,7 @@ class HandlePurchaseQuotation extends Page
         DB::transaction(function () use (&$po) {
 
             $po = PurchaseOrder::create([
+                'site_id'                  => session('site_id'),
                 'supplier_id'               => $this->record->supplier_id,
                 'purchase_quotation_id'     => $this->record->id,
                 'request_for_quotation_id'  => $this->record->request_for_quotation_id,
@@ -128,6 +131,7 @@ class HandlePurchaseQuotation extends Page
 
             foreach ($this->record->items as $pqItem) {
                 PurchaseOrderItem::create([
+                    'site_id'                  => session('site_id'),
                     'purchase_order_id'       => $po->id,
                     'inventory_item_id'       => $pqItem->inventory_item_id,
                     'inventory_vat_group_id'  => $pqItem->inventory_vat_group_id,
@@ -185,8 +189,8 @@ class HandlePurchaseQuotation extends Page
             $this->record->refresh();
 
             // RFQ status handling
-            if (in_array($status, ['approved', 'rejected'])) {
-                $this->record->rfq?->update([
+            if ($this->record->rfq) {
+                $this->record->rfq->update([
                     'status' => 'closed',
                 ]);
 
@@ -195,8 +199,8 @@ class HandlePurchaseQuotation extends Page
                     ->log("RFQ #{$this->record->rfq->id} closed because PQ #{$this->record->id} was {$status}");
             }
 
-            if ($status === 'draft') {
-                $this->record->rfq?->update([
+            if ($status === 'draft' && $this->record->rfq) {
+                $this->record->rfq->update([
                     'status' => 'quoted',
                 ]);
 

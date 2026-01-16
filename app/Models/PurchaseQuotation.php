@@ -53,14 +53,16 @@ class PurchaseQuotation extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            //  Set site_id automatically
-            if (isset($model->site_id) && session()->has('site_id')) {
+            // Only set site_id if session has it
+            if (session()->has('site_id')) {
                 $model->site_id = session('site_id');
+            } else {
+                // Throw an exception instead of inserting invalid data
+                throw new \Exception('No active site selected. Cannot create this record.');
             }
 
-            //  Set audit fields
-            $model->created_by = Auth::id() ?? $model->created_by ?? 1;
-            $model->updated_by = Auth::id() ?? $model->updated_by ?? 1;
+            $model->created_by = Auth::id();
+            $model->updated_by = Auth::id();
 
             //  Random code
             if (isset($model->random_code) && empty($model->random_code)) {

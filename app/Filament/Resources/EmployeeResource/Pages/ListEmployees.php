@@ -17,9 +17,11 @@ class ListEmployees extends ListRecords
                 ->label('EPF / ETF Group Settings')
                 ->color('info')
                 ->icon('heroicon-o-banknotes')
-                ->url(fn () => EmployeeResource::getUrl('epf-etf')),
+                ->url(fn () => EmployeeResource::getUrl('epf-etf'))
+                ->visible(fn () => auth()->user()?->can('Manage EPF ETF Groups')),
             
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->visible(fn () => auth()->user()?->can('Create Employees')),
         ];
     }
 }

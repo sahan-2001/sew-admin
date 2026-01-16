@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
 
 class DeliveryMethodResource extends Resource
 {
@@ -24,6 +25,11 @@ class DeliveryMethodResource extends Resource
     protected static ?string $navigationLabel = 'Delivery Methods';
     protected static ?string $navigationGroup = 'Settings';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view delivery methods') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

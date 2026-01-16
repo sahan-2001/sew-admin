@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class PurchaseQuotationItem extends Model
 {
@@ -28,12 +29,16 @@ class PurchaseQuotationItem extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            if (isset($model->site_id) && session()->has('site_id')) {
+            // Only set site_id if session has it
+            if (session()->has('site_id')) {
                 $model->site_id = session('site_id');
+            } else {
+                // Throw an exception instead of inserting invalid data
+                throw new \Exception('No active site selected. Cannot create this record.');
             }
-            
-            $model->created_by = auth()->id();
-            $model->updated_by = auth()->id();
+
+            $model->created_by = Auth::id();
+            $model->updated_by = Auth::id();
             
             // Calculate values before saving
             $model->calculateAndSetValues();

@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
 
 class DeliveryTermResource extends Resource
 {
@@ -24,6 +25,11 @@ class DeliveryTermResource extends Resource
     protected static ?string $navigationLabel = 'Delivery Terms';
     protected static ?string $navigationGroup = 'Settings';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->can('view delivery terms') ?? false;
+    }
+    
     public static function form(Form $form): Form
     {
         return $form
