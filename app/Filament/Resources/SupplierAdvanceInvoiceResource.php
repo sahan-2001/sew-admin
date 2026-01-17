@@ -501,6 +501,10 @@ class SupplierAdvanceInvoiceResource extends Resource
                             'payment_method' => $data['payment_method'],
                             'payment_reference' => $data['payment_reference'] ?? null,
                             'notes' => $data['notes'] ?? null,
+                            'paid_by' => Auth::id(),
+                            'paid_at' => now(),
+                            'created_by' => Auth::id(),
+                            'updated_by' => Auth::id(),
                         ]);
 
                         $record->update([
@@ -509,6 +513,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                             'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
                             'paid_date' => today(),
                             'paid_via' => $data['payment_method'],
+                            'updated_by' => Auth::id(),
                         ]);
 
                         if ($record->purchase_order_id) {
@@ -516,13 +521,10 @@ class SupplierAdvanceInvoiceResource extends Resource
                                 ->decrement('remaining_balance', $paymentAmount);
                         }
 
-                        //  Update provider balance
-                        if ($record->provider_type === 'supplier') {
-                            \App\Models\Supplier::where('supplier_id', $record->provider_id)->decrement('outstanding_balance', $paymentAmount);
-                        } elseif ($record->provider_type === 'customer') {
-                            \App\Models\Customer::where('customer_id', $record->provider_id)->increment('remaining_balance', $paymentAmount);
-                        }
-                        
+                        //  Update Supplier balance
+                        \App\Models\Supplier::where('supplier_id', $record->supplier_id)
+                            ->decrement('outstanding_balance', $paymentAmount);
+
                         Notification::make()
                             ->title('Payment Recorded Successfully')
                             ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
@@ -546,6 +548,99 @@ class SupplierAdvanceInvoiceResource extends Resource
         ->defaultSort('id', 'desc') 
         ->recordUrl(null);
     }
+
+    protected function createPaymentLedgerEntries(SupplierAdvanceInvoice $invoice, float $paymentAmount)
+    {
+        $entryCode = 'SUP_ADV_PAY_' . now()->format('YmdHis');
+        $now = now();
+        $userId = Auth::id();
+
+        $supplierControl = \App\Models\SupplierControlAccount::find($invoice->supplier_control_account_id);
+
+        if (!$supplierControl || !$supplierControl->supplier_advance_account_id) {
+            throw new \Exception('Supplier advance account not configured.');
+        }
+
+        $advanceAccountId = $supplierControl->supplier_advance_account_id;
+
+        // 1️⃣ Supplier Ledger
+        \App\Models\SupplierLedgerEntry::create([
+            'site_id' => $invoice->site_id,
+            'entry_code' => $entryCode,
+            'supplier_id' => $invoice->supplier_id,
+            'chart_of_account_id' => null,
+            'entry_date' => $now,
+            'debit' => 0,
+            'credit' => $paymentAmount,
+            'transaction_name' => 'Supplier Advance Payment',
+            'description' => "Payment ID: {$invoice->id}",
+            'invoice_id' => $invoice->id,
+            'purchase_order_id' => $invoice->purchase_order_id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        \App\Models\SupplierLedgerEntry::create([
+            'site_id' => $invoice->site_id,
+            'entry_code' => $entryCode,
+            'supplier_id' => null,
+            'chart_of_account_id' => $advanceAccountId,
+            'entry_date' => $now,
+            'debit' => $paymentAmount,
+            'credit' => 0,
+            'transaction_name' => 'Supplier Advance Payment',
+            'description' => "Payment ID: {$invoice->id}",
+            'invoice_id' => $invoice->id,
+            'purchase_order_id' => $invoice->purchase_order_id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        // 2️⃣ General Ledger
+        \App\Models\GeneralLedgerEntry::create([
+            'site_id' => $invoice->site_id,
+            'entry_code' => $entryCode,
+            'account_id' => $advanceAccountId,
+            'control_account_record_id' => null,
+            'entry_date' => $now,
+            'debit' => 0,
+            'credit' => $paymentAmount,
+            'transaction_name' => 'Supplier Advance Payment',
+            'description' => "Payment ID: {$invoice->id}",
+            'source_table' => 'supplier_advance_invoices',
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        \App\Models\GeneralLedgerEntry::create([
+            'site_id' => $invoice->site_id,
+            'entry_code' => $entryCode,
+            'account_id' => null,
+            'control_account_record_id' => $supplierControl->id,
+            'entry_date' => $now,
+            'debit' => $paymentAmount,
+            'credit' => 0,
+            'transaction_name' => 'Supplier Advance Payment',
+            'description' => "Payment ID: {$invoice->id}",
+            'source_table' => 'supplier_advance_invoices',
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+
+        // 3️⃣ Update Totals
+        \App\Models\ChartOfAccount::where('id', $advanceAccountId)->update([
+            'credit_total' => \DB::raw("credit_total + $paymentAmount"),
+            'credit_total_vat' => \DB::raw("credit_total_vat + $paymentAmount"),
+        ]);
+
+        $supplierControl->update([
+            'debit_total' => $supplierControl->debit_total + $paymentAmount,
+            'debit_total_vat' => $supplierControl->debit_total_vat + $paymentAmount,
+        ]);
+    }
+
 
     public static function getRelations(): array
     {

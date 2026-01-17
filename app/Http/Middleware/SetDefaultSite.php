@@ -17,12 +17,17 @@ class SetDefaultSite
             return $next($request);
         }
 
+        // ✅ Superuser/admin bypass
+        if ($user->hasRole('admin') || $user->hasRole('superuser')) {
+            return $next($request);
+        }
+
         // Get active sites user can access
         $accessibleSites = $user->sites()
             ->where('is_active', true)
             ->get();
 
-        // ❌ No sites assigned
+        // ❌ No sites assigned → abort
         if ($accessibleSites->isEmpty()) {
             abort(403, 'No site access assigned.');
         }

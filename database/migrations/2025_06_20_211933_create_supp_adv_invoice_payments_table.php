@@ -20,6 +20,10 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->foreignId('paid_by')->constrained('users');
             $table->timestamp('paid_at');
+
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            
             $table->timestamps();
             $table->softDeletes();
         });

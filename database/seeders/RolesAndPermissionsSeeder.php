@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use App\Models\SiteUser;
 use App\Models\Company; 
 use App\Models\CompanyOwner;
 use App\Models\Category;
@@ -203,6 +204,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
         $superuserUser->assignRole('admin'); // Assign admin role
+
 
         // ================= COMPANY & OWNER =================
         $company = Company::firstOrCreate(

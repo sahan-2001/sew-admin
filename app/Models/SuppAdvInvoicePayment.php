@@ -22,6 +22,8 @@ class SuppAdvInvoicePayment extends Model
         'notes',
         'paid_by',
         'paid_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [

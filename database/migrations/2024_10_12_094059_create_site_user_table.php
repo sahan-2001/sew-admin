@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('site_user', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('site_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('site_id')->constrained()->cascadeOnDelete()->nullable();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
