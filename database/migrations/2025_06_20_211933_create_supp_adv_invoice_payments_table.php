@@ -16,6 +16,7 @@ return new class extends Migration
             $table->decimal('remaining_amount_before', 15, 2);
             $table->decimal('remaining_amount_after', 15, 2);
             $table->string('payment_method')->default('cash');
+            $table->foreignId('credit_account_id')->nullable()->constrained('cash_bank_control_accounts')->cascadeOnDelete();
             $table->string('payment_reference')->nullable();
             $table->text('notes')->nullable();
             $table->foreignId('paid_by')->constrained('users');

@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             SiteSeeder::class,
             RolesAndPermissionsSeeder::class,
             TransactionSetupSeeder::class,
+            MasterDataSeeder::class,
         ]);
     }
 }

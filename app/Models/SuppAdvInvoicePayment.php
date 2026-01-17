@@ -18,6 +18,7 @@ class SuppAdvInvoicePayment extends Model
         'remaining_amount_before',
         'remaining_amount_after',
         'payment_method',
+        'credit_account_id',
         'payment_reference',
         'notes',
         'paid_by',
@@ -36,6 +37,11 @@ class SuppAdvInvoicePayment extends Model
     public function supplierAdvanceInvoice()
     {
         return $this->belongsTo(SupplierAdvanceInvoice::class);
+    }
+
+    public function creditAccount()
+    {
+        return $this->belongsTo(Account::class, 'credit_account_id');
     }
 
     public function paidBy()

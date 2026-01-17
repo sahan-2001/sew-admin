@@ -12,43 +12,45 @@ class SetDefaultSite
     {
         $user = auth()->user();
 
-        // Skip if not logged in
         if (!$user) {
             return $next($request);
         }
 
-        // ✅ Superuser/admin bypass
+        // Superuser/admin bypass
         if ($user->hasRole('admin') || $user->hasRole('superuser')) {
+            // Optionally set site_id to first site for consistency
+            if (!session()->has('site_id')) {
+                $firstSite = \App\Models\Site::first();
+                if ($firstSite) {
+                    session(['site_id' => $firstSite->id]);
+                }
+            }
             return $next($request);
         }
 
         // Get active sites user can access
-        $accessibleSites = $user->sites()
-            ->where('is_active', true)
-            ->get();
+        $accessibleSites = $user->sites()->where('is_active', true)->get();
 
-        // ❌ No sites assigned → abort
         if ($accessibleSites->isEmpty()) {
-            abort(403, 'No site access assigned.');
+            session()->flash('no_site_access', 'No site access assigned. Contact admin.');
+            return $next($request);
         }
 
-        // ✅ Session already set → validate it
-        if (session()->has('site_id')) {
-            if ($accessibleSites->contains('id', session('site_id'))) {
-                return $next($request);
-            }
-
-            // Invalid site → clear
-            session()->forget('site_id');
-        }
-
-        // ✅ Only ONE site → auto select
+        // ✅ Only ONE site → auto select session
         if ($accessibleSites->count() === 1) {
             session(['site_id' => $accessibleSites->first()->id]);
             return $next($request);
         }
 
-        // 🔁 Multiple sites → redirect to selector
+        // ✅ Validate session site_id
+        if (session()->has('site_id')) {
+            if ($accessibleSites->contains('id', session('site_id'))) {
+                return $next($request);
+            }
+            session()->forget('site_id'); // invalid → clear
+        }
+
+        // Multiple sites → redirect to selector
         if (!$request->routeIs('sites.select')) {
             return redirect()->route('sites.select');
         }

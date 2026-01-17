@@ -66,6 +66,12 @@ class GeneralLedgerEntry extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function getAccountLabelAttribute()
+    {
+        return "{$this->control_account_code} - {$this->control_account_name}";
+    }
+
+
     /**
      * Automatically assign created_by and updated_by
      */

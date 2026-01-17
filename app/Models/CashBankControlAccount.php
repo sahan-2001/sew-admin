@@ -96,4 +96,5 @@ class CashBankControlAccount extends Model
     {
         return ($this->currency ?? 'LKR') . ' ' . number_format($this->balance_vat, 2);
     }
+
 }

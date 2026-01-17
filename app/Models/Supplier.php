@@ -106,6 +106,17 @@ class Supplier extends Model
         return $this->hasMany(\App\Models\ThirdPartyService::class, 'supplier_id');
     }
 
+    public function purchaseOrders()
+    {
+        return $this->hasMany(\App\Models\PurchaseOrder::class, 'supplier_id');
+    }
+
+    public function supplierVatGroup()
+    {
+        return $this->belongsTo(\App\Models\SupplierVatGroup::class, 'supplier_vat_group_id');
+    }
+    
+
     protected static $logName = 'supplier';
 
     /**

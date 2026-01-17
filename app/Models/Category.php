@@ -11,9 +11,9 @@ class Category extends Model
 {
     use HasFactory, LogsActivity;
 
-    protected $fillable = ['site_id','name', 'created_by']; // Add created_by to fillable fields
+    protected $fillable = ['site_id','name', 'created_by', 'updated_by']; // Add created_by and updated_by to fillable fields
 
-    protected static $logAttributes = ['name', 'created_by']; // Log the created_by field
+    protected static $logAttributes = ['name', 'created_by', 'updated_by']; // Log the created_by and updated_by fields
     protected static $logName = 'category';
 
     /**
@@ -49,6 +49,10 @@ class Category extends Model
                 $model->created_by = auth()->id();
                 $model->updated_by = auth()->id();
             }
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
         });
     }
 }

@@ -15,6 +15,8 @@ class SupplierLedgerEntry extends Model
         'entry_code',
         'supplier_id',
         'chart_of_account_id',
+        'vat_control_account_id',
+        'cash_bank_control_account_id',
         'entry_date',
         'debit',
         'credit',
@@ -50,6 +52,20 @@ class SupplierLedgerEntry extends Model
     {
         return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
+
+    public function vatControlAccount()
+    {
+        return $this->belongsTo(ControlAccount::class, 'vat_control_account_id');
+    }
+
+    public function cashBankControlAccount()
+    {
+        return $this->belongsTo(ControlAccount::class, 'cash_bank_control_account_id');
+    }
+
+     /**
+     * Automatically assign created_by and updated_by
+     */ 
 
     protected static function booted()
     {

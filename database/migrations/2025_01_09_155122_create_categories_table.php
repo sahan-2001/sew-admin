@@ -13,7 +13,8 @@ class CreateCategoriesTable extends Migration
             $table->id();
             $table->string('name')->unique();
             $table->unsignedBigInteger('created_by')->nullable(); // Add created_by field
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null'); // Add foreign key constraint
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null'); 
+            $table->unsignedBigInteger('updated_by')->nullable(); 
             $table->timestamps();
         });
     }

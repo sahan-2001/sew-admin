@@ -6,6 +6,7 @@ use App\Filament\Resources\SupplierAdvanceInvoiceResource\Pages;
 use App\Models\SupplierAdvanceInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\SuppAdvInvoicePayment;
+use App\Models\CashBankControlAccount;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -354,17 +355,31 @@ class SupplierAdvanceInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('Sup ADV. Invoice ID')->sortable()->searchable()
+                TextColumn::make('id')
+                    ->label('Sup ADV. Invoice ID')
+                    ->sortable()
+                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('purchase_order_id')->label('Purchase Order ID')->sortable()->searchable()
+
+                TextColumn::make('purchase_order_id')
+                    ->label('Purchase Order ID')
+                    ->sortable()
+                    ->searchable()
                     ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('paid_amount')->label('Paid Amount')->sortable()
+
+                TextColumn::make('paid_amount')
+                    ->label('Paid Amount')
+                    ->sortable()
                     ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
-                TextColumn::make('remaining_amount')->label('Remaining Amount')->sortable()
+
+                TextColumn::make('remaining_amount')
+                    ->label('Remaining Amount')
+                    ->sortable()
                     ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
+
                 TextColumn::make('status')->label('Status')->sortable(),
-                ...(
-                Auth::user()->can('view audit columns')
+
+                ...(Auth::user()->can('view audit columns')
                     ? [
                         TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
                         TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
@@ -372,7 +387,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                         TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
                     ]
                     : []
-                    ),
+                ),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -381,7 +396,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                         'pending' => 'Pending',
                         'partially_paid' => 'Partially Paid',
                         'paid' => 'Paid',
-                        'deducted' => 'deducted',
+                        'deducted' => 'Deducted',
                     ])
                     ->searchable(),
 
@@ -401,19 +416,19 @@ class SupplierAdvanceInvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('viewPdf')
-                ->label('View PDF')
-                ->color('success')
-                ->icon('heroicon-o-eye')
-                ->url(fn (SupplierAdvanceInvoice $record): string => route('supplier-advance-invoices.pdf', $record))
-                ->openUrlInNewTab(),
-                
+                    ->label('View PDF')
+                    ->color('success')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (SupplierAdvanceInvoice $record): string => route('supplier-advance-invoices.pdf', $record))
+                    ->openUrlInNewTab(),
+
                 Tables\Actions\Action::make('pay')
                     ->label('Pay')
                     ->color('primary')
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (SupplierAdvanceInvoice $record): bool =>
                         auth()->user()?->can('pay supp adv invoice') &&
-                        in_array($record->status, ['pending', 'partially_paid', 'paid']) && 
+                        in_array($record->status, ['pending', 'partially_paid', 'paid']) &&
                         $record->remaining_amount > 0
                     )
                     ->form([
@@ -422,16 +437,16 @@ class SupplierAdvanceInvoiceResource extends Resource
                             ->schema([
                                 Placeholder::make('current_remaining_amount')
                                     ->label('Remaining Amount')
-                                    ->content(fn (SupplierAdvanceInvoice $record): string => 
+                                    ->content(fn (SupplierAdvanceInvoice $record): string =>
                                         'Rs. ' . number_format((float) $record->remaining_amount, 2)
                                     ),
-                                
+
                                 Placeholder::make('current_paid_amount')
                                     ->label('Already Paid Amount')
-                                    ->content(fn (SupplierAdvanceInvoice $record): string => 
+                                    ->content(fn (SupplierAdvanceInvoice $record): string =>
                                         'Rs. ' . number_format((float) $record->paid_amount, 2)
                                     ),
-                                
+
                                 TextInput::make('payment_amount')
                                     ->label('Enter Payment Amount')
                                     ->required()
@@ -439,7 +454,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                     ->suffix('Rs.')
                                     ->live()
                                     ->rules([
-                                        fn (SupplierAdvanceInvoice $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                        fn (SupplierAdvanceInvoice $record): \Closure => function ($attribute, $value, \Closure $fail) use ($record) {
                                             $amount = (float) $value;
 
                                             if ($amount <= 0) {
@@ -448,14 +463,13 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             }
 
                                             if ($amount > $record->remaining_amount) {
-                                                $fail('Payment amount cannot exceed the invoice remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
+                                                $fail('Payment amount cannot exceed invoice remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
                                             }
 
                                             if ($record->purchase_order_id) {
                                                 $poRemaining = \App\Models\PurchaseOrder::find($record->purchase_order_id)?->remaining_balance ?? 0;
-
                                                 if ($amount > $poRemaining) {
-                                                    $fail('Payment amount cannot exceed the Purchase Order remaining balance of Rs. ' . number_format($poRemaining, 2));
+                                                    $fail('Payment cannot exceed PO remaining balance of Rs. ' . number_format($poRemaining, 2));
                                                 }
                                             }
                                         },
@@ -472,16 +486,37 @@ class SupplierAdvanceInvoiceResource extends Resource
                                     ])
                                     ->default('cash')
                                     ->required(),
-                                
+
+                                Select::make('credit_account_id')
+                                    ->label('Credit Account (Cash / Bank)')
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->options(function () {
+                                        return CashBankControlAccount::query()
+                                            ->where('is_active', true)
+                                            ->where('site_id', session('site_id'))
+                                            ->orderBy('account_type')
+                                            ->orderBy('name')
+                                            ->get()
+                                            ->mapWithKeys(fn ($acc) => [
+                                                $acc->id => 
+                                                    "{$acc->code} | {$acc->name} ({$acc->account_type}) | Balance: " .
+                                                    number_format($acc->balance ?? 0, 2),
+                                            ]);
+                                    })
+                                    ->helperText('Select the cash or bank account used for this payment'),
+
+
                                 TextInput::make('payment_reference')
                                     ->label('Payment Reference/Transaction ID')
                                     ->placeholder('Enter reference number if applicable'),
-                                
+
                                 Textarea::make('notes')
                                     ->label('Payment Notes')
                                     ->placeholder('Any additional notes about this payment')
                                     ->columnSpanFull(),
-                                
+
                                 Placeholder::make('logged_user')
                                     ->label('Payment will be recorded by')
                                     ->content(fn (): string => Auth::user()->name . ' (ID: ' . Auth::id() . ')')
@@ -489,124 +524,127 @@ class SupplierAdvanceInvoiceResource extends Resource
                             ]),
                     ])
                     ->action(function (SupplierAdvanceInvoice $record, array $data) {
-                        $paymentAmount = (float) $data['payment_amount'];
-                        $remainingBefore = $record->remaining_amount;
-                        $remainingAfter = $remainingBefore - $paymentAmount;
+                        \DB::transaction(function () use ($record, $data) {
+                            $paymentAmount = (float) $data['payment_amount'];
+                            $remainingBefore = $record->remaining_amount;
+                            $remainingAfter = $remainingBefore - $paymentAmount;
 
-                        $payment = SuppAdvInvoicePayment::create([
-                            'supplier_advance_invoice_id' => $record->id,
-                            'payment_amount' => $paymentAmount,
-                            'remaining_amount_before' => $remainingBefore,
-                            'remaining_amount_after' => $remainingAfter,
-                            'payment_method' => $data['payment_method'],
-                            'payment_reference' => $data['payment_reference'] ?? null,
-                            'notes' => $data['notes'] ?? null,
-                            'paid_by' => Auth::id(),
-                            'paid_at' => now(),
-                            'created_by' => Auth::id(),
-                            'updated_by' => Auth::id(),
-                        ]);
+                            // 1️⃣ Create payment record
+                            $payment = SuppAdvInvoicePayment::create([
+                                'supplier_advance_invoice_id' => $record->id,
+                                'payment_amount' => $paymentAmount,
+                                'remaining_amount_before' => $remainingBefore,
+                                'remaining_amount_after' => $remainingAfter,
+                                'payment_method' => $data['payment_method'],
+                                'credit_account_id' => $data['credit_account_id'], // use selected account from form
+                                'payment_reference' => $data['payment_reference'] ?? null,
+                                'notes' => $data['notes'] ?? null,
+                                'paid_by' => Auth::id(),
+                                'paid_at' => now(),
+                                'created_by' => Auth::id(),
+                                'updated_by' => Auth::id(),
+                            ]);
 
-                        $record->update([
-                            'paid_amount' => $record->paid_amount + $paymentAmount,
-                            'remaining_amount' => $remainingAfter,
-                            'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
-                            'paid_date' => today(),
-                            'paid_via' => $data['payment_method'],
-                            'updated_by' => Auth::id(),
-                        ]);
+                            // 2️⃣ Update invoice
+                            $record->update([
+                                'paid_amount' => $record->paid_amount + $paymentAmount,
+                                'remaining_amount' => $remainingAfter,
+                                'status' => $remainingAfter <= 0 ? 'paid' : 'partially_paid',
+                                'paid_date' => today(),
+                                'paid_via' => $data['payment_method'],
+                                'updated_by' => Auth::id(),
+                            ]);
 
-                        if ($record->purchase_order_id) {
-                            \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
-                                ->decrement('remaining_balance', $paymentAmount);
-                        }
+                            // 3️⃣ Update Purchase Order remaining balance
+                            if ($record->purchase_order_id) {
+                                \App\Models\PurchaseOrder::where('id', $record->purchase_order_id)
+                                    ->decrement('remaining_balance', $paymentAmount);
+                            }
 
-                        //  Update Supplier balance
-                        \App\Models\Supplier::where('supplier_id', $record->supplier_id)
-                            ->decrement('outstanding_balance', $paymentAmount);
+                            // 4️⃣ Update Supplier balance
+                            \App\Models\Supplier::where('supplier_id', $record->supplier_id)
+                                ->decrement('outstanding_balance', $paymentAmount);
 
-                        Notification::make()
-                            ->title('Payment Recorded Successfully')
-                            ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded. Click below to open the receipt.")
-                            ->success()
-                            ->actions([
-                                Action::make('viewReceipt')
-                                    ->label('View Receipt PDF')
-                                    ->url(route('supplier-advance.payment-receipt', [
-                                        'invoice' => $record->id,
-                                        'payment' => $payment->id,
-                                    ]))
-                                    ->openUrlInNewTab(),
-                            ])
-                            ->send();
+                            // 5️⃣ Create ledger entries
+                            static::createPaymentLedgerEntries($record, $paymentAmount, $data['credit_account_id']);
+
+                            // 6️⃣ Notification
+                            Notification::make()
+                                ->title('Payment Recorded Successfully')
+                                ->body("Payment of Rs. " . number_format($paymentAmount, 2) . " has been recorded.")
+                                ->success()
+                                ->send();
+                        });
                     }),
-
 
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn ($record) => $record->status !== 'pending')
             ])
-        ->defaultSort('id', 'desc') 
-        ->recordUrl(null);
+            ->defaultSort('id', 'desc')
+            ->recordUrl(null);
     }
 
-    protected function createPaymentLedgerEntries(SupplierAdvanceInvoice $invoice, float $paymentAmount)
-    {
+
+    protected static function createPaymentLedgerEntries(SupplierAdvanceInvoice $invoice, float $paymentAmount, int $creditAccountId) {
+
         $entryCode = 'SUP_ADV_PAY_' . now()->format('YmdHis');
         $now = now();
         $userId = Auth::id();
 
-        $supplierControl = \App\Models\SupplierControlAccount::find($invoice->supplier_control_account_id);
+        // Supplier Control Account
+        $supplierControl = SupplierControlAccount::find($invoice->supplier_control_account_id);
+        if (!$supplierControl) throw new \Exception('Supplier control account not found.');
 
-        if (!$supplierControl || !$supplierControl->supplier_advance_account_id) {
-            throw new \Exception('Supplier advance account not configured.');
-        }
+        // Cash/Bank Control Account
+        $cashBankAccount = CashBankControlAccount::find($creditAccountId);
+        if (!$cashBankAccount) throw new \Exception('Selected cash/bank account does not exist.');
 
-        $advanceAccountId = $supplierControl->supplier_advance_account_id;
-
-        // 1️⃣ Supplier Ledger
+        // Debit – Supplier
         \App\Models\SupplierLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
             'supplier_id' => $invoice->supplier_id,
             'chart_of_account_id' => null,
             'entry_date' => $now,
-            'debit' => 0,
-            'credit' => $paymentAmount,
+            'debit' => $paymentAmount,
+            'credit' => 0,
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Payment ID: {$invoice->id}",
+            'description' => "Advance Invoice ID: {$invoice->id}",
             'invoice_id' => $invoice->id,
             'purchase_order_id' => $invoice->purchase_order_id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
+        // Credit – Cash / Bank
         \App\Models\SupplierLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
             'supplier_id' => null,
-            'chart_of_account_id' => $advanceAccountId,
+            'cash_bank_control_account_id' => $cashBankAccount->id,
             'entry_date' => $now,
-            'debit' => $paymentAmount,
-            'credit' => 0,
+            'debit' => 0,
+            'credit' => $paymentAmount,
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Payment ID: {$invoice->id}",
+            'description' => "Advance Invoice ID: {$invoice->id}",
             'invoice_id' => $invoice->id,
             'purchase_order_id' => $invoice->purchase_order_id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
-        // 2️⃣ General Ledger
+        // General Ledger
         \App\Models\GeneralLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
-            'account_id' => $advanceAccountId,
-            'control_account_record_id' => null,
+            'account_id' => null,
+            'Control_account_table' => 'supplier_control_accounts', 
+            'control_account_record_id' => $supplierControl->id,
             'entry_date' => $now,
-            'debit' => 0,
-            'credit' => $paymentAmount,
+            'debit' => $paymentAmount,
+            'credit' => 0,
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Payment ID: {$invoice->id}",
+            'description' => "Advance Payment | Invoice ID: {$invoice->id}",
             'source_table' => 'supplier_advance_invoices',
             'source_id' => $invoice->id,
             'created_by' => $userId,
@@ -617,29 +655,27 @@ class SupplierAdvanceInvoiceResource extends Resource
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
             'account_id' => null,
-            'control_account_record_id' => $supplierControl->id,
+            'Control_account_table' => 'cash_bank_control_account', 
+            'control_account_record_id' => $cashBankAccount->id,
             'entry_date' => $now,
-            'debit' => $paymentAmount,
-            'credit' => 0,
+            'debit' => 0,
+            'credit' => $paymentAmount,
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Payment ID: {$invoice->id}",
+            'description' => "Cash/Bank Payment | Invoice ID: {$invoice->id}",
             'source_table' => 'supplier_advance_invoices',
             'source_id' => $invoice->id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
-        // 3️⃣ Update Totals
-        \App\Models\ChartOfAccount::where('id', $advanceAccountId)->update([
-            'credit_total' => \DB::raw("credit_total + $paymentAmount"),
-            'credit_total_vat' => \DB::raw("credit_total_vat + $paymentAmount"),
-        ]);
+        // Update totals
+        $supplierControl->increment('debit_total', $paymentAmount);
+        $supplierControl->increment('debit_total_vat', $paymentAmount);
 
-        $supplierControl->update([
-            'debit_total' => $supplierControl->debit_total + $paymentAmount,
-            'debit_total_vat' => $supplierControl->debit_total_vat + $paymentAmount,
-        ]);
+        $cashBankAccount->increment('credit_balance', $paymentAmount);
+        $cashBankAccount->decrement('balance', $paymentAmount);
     }
+
 
 
     public static function getRelations(): array
