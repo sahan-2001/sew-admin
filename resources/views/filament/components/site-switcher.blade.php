@@ -11,7 +11,12 @@
             focus:outline-none focus:ring-2 focus:ring-primary-500
         "
     >
-        @foreach(\App\Models\Site::where('is_active', true)->get() as $site)
+        @foreach(
+            \App\Models\Site::where('is_active', true)
+                ->whereHas('users', fn ($q) => $q->where('users.id', auth()->id()))
+                ->get()
+            as $site
+        )
             <option value="{{ $site->id }}" @selected(session('site_id') == $site->id)>
                 {{ $site->name }}
             </option>

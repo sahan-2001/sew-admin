@@ -221,21 +221,23 @@ Route::post('/rfq/{rfq}/send-email', [RequestForQuotationController::class, 'sen
     ->name('rfq.send-email');
 
 
-Route::post('/change-site', function () {
-    session([
-        'site_id' => request('site_id'),
+// Set Default Site Middleware is applied in Kernel.php
+Route::post('/change-site', function (Request $request) {
+    $request->validate([
+        'site_id' => 'required|exists:sites,id',
     ]);
 
-    session()->forget([
-        'filters',
-        'selected_warehouse',
-        'selected_location',
-    ]);
+    $user = auth()->user();
 
-    // Redirect back to where the request came from
+    // Check user has access to this site
+    if (!$user->sites()->where('sites.id', $request->site_id)->exists()) {
+        abort(403, 'You do not have access to this site.');
+    }
+
+    session(['site_id' => $request->site_id]);
+
     return redirect()->back();
-})->name('site.change');
-
+})->name('site.change')->middleware('auth');
 
 
 // Employee Routes

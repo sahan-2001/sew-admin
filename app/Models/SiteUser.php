@@ -3,15 +3,27 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
 
-class Site extends Model
+class SiteUser extends Model
 {
+    protected $table = 'site_user';
+
     protected $fillable = [
-        'name',
-        'code',
-        'is_active',
+        'site_id',
+        'user_id',
+        'created_by',
+        'updated_by',
     ];
+
+    public function site()
+    {
+        return $this->belongsTo(Site::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     protected static function booted()
     {
@@ -25,10 +37,4 @@ class Site extends Model
             $model->updated_by = auth()->id();
         });
     }
-
-    public function users()
-    {
-        return $this->belongsToMany(User::class, 'site_user');
-    }
-
 }

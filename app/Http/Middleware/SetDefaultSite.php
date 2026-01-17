@@ -3,53 +3,49 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use App\Models\Site;
 use Illuminate\Http\Request;
+use App\Models\Site;
 
 class SetDefaultSite
 {
     public function handle(Request $request, Closure $next)
     {
-        // First, try to set default site if none is selected
-        if (!session()->has('site_id')) {
-            $site = Site::where('is_active', true)->first();
-            
-            if ($site) {
-                session(['site_id' => $site->id]);
-            } else {
-                // If no active site exists at all
-                if ($request->route()->getName() !== 'sites.select' && 
-                    !$request->is('sites*')) {
-                    return redirect()->route('sites.select')
-                        ->with('error', 'No active sites available. Please configure a site first.');
-                }
-            }
+        $user = auth()->user();
+
+        // Skip if not logged in
+        if (!$user) {
+            return $next($request);
         }
-        
-        // Verify the selected site still exists and is active
+
+        // Get active sites user can access
+        $accessibleSites = $user->sites()
+            ->where('is_active', true)
+            ->get();
+
+        // ❌ No sites assigned
+        if ($accessibleSites->isEmpty()) {
+            abort(403, 'No site access assigned.');
+        }
+
+        // ✅ Session already set → validate it
         if (session()->has('site_id')) {
-            $site = Site::where('id', session('site_id'))
-                ->where('is_active', true)
-                ->first();
-            
-            if (!$site) {
-                // Clear invalid site_id from session
-                session()->forget('site_id');
-                
-                // Try to find another active site
-                $newSite = Site::where('is_active', true)->first();
-                
-                if ($newSite) {
-                    session(['site_id' => $newSite->id]);
-                } else {
-                    // No active sites available
-                    if ($request->route()->getName() !== 'sites.select' && 
-                        !$request->is('sites*')) {
-                        return redirect()->route('sites.select')
-                            ->with('error', 'The selected site is no longer available. Please select another site.');
-                    }
-                }
+            if ($accessibleSites->contains('id', session('site_id'))) {
+                return $next($request);
             }
+
+            // Invalid site → clear
+            session()->forget('site_id');
+        }
+
+        // ✅ Only ONE site → auto select
+        if ($accessibleSites->count() === 1) {
+            session(['site_id' => $accessibleSites->first()->id]);
+            return $next($request);
+        }
+
+        // 🔁 Multiple sites → redirect to selector
+        if (!$request->routeIs('sites.select')) {
+            return redirect()->route('sites.select');
         }
 
         return $next($request);

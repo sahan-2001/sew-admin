@@ -93,4 +93,10 @@ class User extends Authenticatable
             $model->updated_by = auth()->id();
         });
     }
+
+    public function sites()
+    {
+        return $this->belongsToMany(Site::class, 'site_user');
+    }
+
 }

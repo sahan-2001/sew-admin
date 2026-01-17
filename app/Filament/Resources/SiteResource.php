@@ -88,6 +88,7 @@ class SiteResource extends Resource
             'index' => Pages\ListSites::route('/'),
             'create' => Pages\CreateSite::route('/create'),
             'edit' => Pages\EditSite::route('/{record}/edit'),
+            'site-users' => Pages\SiteUsers::route('/site-users'),
         ];
     }
 }
