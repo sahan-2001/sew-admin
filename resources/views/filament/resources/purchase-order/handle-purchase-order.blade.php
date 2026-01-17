@@ -138,6 +138,73 @@
         <p>Grand Total: Rs. {{ number_format($record->grand_total, 2) }}</p>
     </div>
 
+    @if($supplierAdvanceInvoices->isNotEmpty())
+    <x-filament::section
+        heading="Supplier Advance Invoices"
+        icon="heroicon-o-banknotes"
+        class="mt-6"
+    >
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border rounded-lg">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Invoice #</th>
+                        <th class="px-3 py-2 text-left">Supplier</th>
+                        <th class="px-3 py-2 text-right">Grand Total</th>
+                        <th class="px-3 py-2 text-right">Paid</th>
+                        <th class="px-3 py-2 text-right">Remaining</th>
+                        <th class="px-3 py-2 text-center">Status</th>
+                        <th class="px-3 py-2 text-center">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($supplierAdvanceInvoices as $invoice)
+                        <tr class="border-t">
+                            <td class="px-3 py-2">
+                                {{ str_pad($invoice->id, 5, '0', STR_PAD_LEFT) }}
+                            </td>
+
+                            <td class="px-3 py-2">
+                                {{ $invoice->supplier?->name }}
+                            </td>
+
+                            <td class="px-3 py-2 text-right">
+                                {{ number_format($invoice->grand_total, 2) }}
+                            </td>
+
+                            <td class="px-3 py-2 text-right text-green-600">
+                                {{ number_format($invoice->paid_amount, 2) }}
+                            </td>
+
+                            <td class="px-3 py-2 text-right text-red-600">
+                                {{ number_format($invoice->remaining_amount, 2) }}
+                            </td>
+
+                            <td class="px-3 py-2 text-center">
+                                <x-filament::badge
+                                    :color="match($invoice->status) {
+                                        'pending' => 'warning',
+                                        'partial' => 'info',
+                                        'paid' => 'success',
+                                        default => 'gray',
+                                    }"
+                                >
+                                    {{ ucfirst($invoice->status) }}
+                                </x-filament::badge>
+                            </td>
+
+                            <td class="px-3 py-2 text-center">
+                                {{ optional($invoice->paid_date)->format('Y-m-d') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </x-filament::section>
+@endif
+
+
     <style>
         .animate-blink {
             animation: blink 1s infinite;

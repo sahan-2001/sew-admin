@@ -178,7 +178,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             TextInput::make('quantity')->label('Quantity')->disabled(),
                                             TextInput::make('price')->label('Price')->disabled(),
                                             TextInput::make('arrived_quantity')->label('Arrived Quantity')->disabled(),
-                                            TextInput::make('total_sale')->label('Total Sale')->disabled(),
+                                            TextInput::make('item_subtotal')->label('Total Sale')->disabled(),
                                         ])
                                         ->disabled(),          
                                         
@@ -186,7 +186,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             ->label('Grand Total')
                                             ->content(function (Get $get) {
                                                 $items = $get('purchase_order_items') ?? [];
-                                                $sum = collect($items)->sum('total_sale');
+                                                $sum = collect($items)->sum('item_subtotal');
                                                 return 'Rs. ' . number_format((float) $sum, 2);
                                             }),
 
@@ -205,7 +205,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->disabled()
                                         ->content(function (Get $get) {
                                             $items = $get('purchase_order_items') ?? [];
-                                            $sum = collect($items)->sum('total_sale');
+                                            $sum = collect($items)->sum('item_subtotal');
                                             return 'Rs. ' . number_format((float) $sum, 2);
                                         }),
 

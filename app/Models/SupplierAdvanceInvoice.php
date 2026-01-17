@@ -76,6 +76,10 @@ class SupplierAdvanceInvoice extends Model
     protected static function booted()
     {
         static::creating(function ($invoice) {
+            if (session()->has('site_id')) {
+                $invoice->site_id = session('site_id');
+            }
+
             // Set created_by and updated_by
             $invoice->created_by = auth()->id();
             $invoice->updated_by = auth()->id();

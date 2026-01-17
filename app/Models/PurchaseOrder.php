@@ -154,7 +154,7 @@ class PurchaseOrder extends Model
 
     public function supplierAdvanceInvoices()
     {
-        return $this->hasMany(SupplierAdvanceInvoice::class);
+        return $this->hasMany(SupplierAdvanceInvoice::class, 'purchase_order_id');
     }
 
     public function invoice()

@@ -145,6 +145,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
             // Debit – Supplier Control Account
             SupplierLedgerEntry::create([
+                'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'supplier_id' => $invoice->supplier_id,
                 'chart_of_account_id' => null,
@@ -161,6 +162,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
             // Credit – Advance Liability to Supplier
             SupplierLedgerEntry::create([
+                'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'supplier_id' => null,
                 'chart_of_account_id' => $advanceAccountId,
@@ -183,6 +185,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
             // Debit – Supplier Control Account
             GeneralLedgerEntry::create([
+                'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'account_id' => null, 
                 'entry_date' => $now,
@@ -200,6 +203,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
             // Credit – Advance liability to Supplier
             GeneralLedgerEntry::create([
+                'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'account_id' => $advanceAccountId,
                 'entry_date' => $now,

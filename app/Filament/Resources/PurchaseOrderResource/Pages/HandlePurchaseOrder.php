@@ -6,29 +6,48 @@ use App\Filament\Resources\PurchaseOrderResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use App\Models\PurchaseOrder;
+use App\Models\SupplierAdvanceInvoice;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Collection;
+
 
 class HandlePurchaseOrder extends Page
 {
     protected static string $resource = PurchaseOrderResource::class;
-
     protected static string $view = 'filament.resources.purchase-order.handle-purchase-order';
-
     protected static ?string $title = 'Handle Purchase Order';
 
     public PurchaseOrder $record;
-    public $items = []; 
+    public $items = [];
+
+    // ✅ Declare the supplier advance invoices property
+    public Collection $supplierAdvanceInvoices;
 
     public function mount(PurchaseOrder $record)
     {
         $this->record = $record;
         $this->loadItems(); 
+        // ✅ Load supplier advance invoices here
+        $this->loadSupplierAdvanceInvoices();
     }
 
     protected function loadItems()
     {
-        $this->items = $this->record->items()->with('inventoryItem')->get();
+        $this->items = $this->record->items()
+            ->with('inventoryItem')
+            ->get();
     }
+
+    protected function loadSupplierAdvanceInvoices()
+    {
+        $this->supplierAdvanceInvoices = $this->record
+            ->supplierAdvanceInvoices()
+            ->with('supplier')
+            ->latest()
+            ->get();
+    }
+
+
 
     // Release Purchase Order
     public function releasePurchaseOrder()
