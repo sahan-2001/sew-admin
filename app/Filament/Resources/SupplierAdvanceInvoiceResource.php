@@ -87,6 +87,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $set('supplier_email', $supplier?->email ?? null);
 
                                                 $set('wanted_date', $purchaseOrder->wanted_date ?? null);
+                                                $set('grand_total', $purchaseOrder->grand_total ?? 0);
                                                 $set('remaining_balance', $purchaseOrder->remaining_balance ?? 0);
                                                 $set('status', $purchaseOrder->status ?? null);
                                                 $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
@@ -127,6 +128,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $set('supplier_phone', null);
                                                 $set('supplier_email', null);
                                                 $set('wanted_date', null);
+                                                $set('grand_total', 0);
                                                 $set('remaining_balance', 0);
                                                 $set('status', null);
                                                 $set('purchase_order_items', []);
@@ -198,7 +200,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                     Tabs\Tab::make('Payment for Purchase Order Items')
                         ->schema([
                             Section::make('Grand Total of Purchase Order Items')
-                                ->columns(2)
+                                ->columns(3)
                                 ->schema([
                                     Placeholder::make('grand_total')
                                         ->label('Grand Total')
@@ -216,14 +218,35 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $remaining = $get('remaining_balance') ?? 0;
                                             return 'Rs. ' . number_format((float) $remaining, 2);
                                         }),
+
+                                    Placeholder::make('vat_amount')
+                                        ->label('VAT Amount')
+                                        ->disabled()
+                                        ->content(fn (Get $get) => 
+                                            'Rs. ' . number_format(
+                                                max(
+                                                    ($get('remaining_balance') ?? 0) 
+                                                    - collect($get('purchase_order_items') ?? [])->sum('item_subtotal'), 
+                                                    0
+                                                ), 
+                                                2
+                                            )
+                                        ),
                                 ]),
 
                             Section::make('Make the Payment')
                                 ->columns(3)
+                                ->description('Select payment type and enter the corresponding amount or percentage to pay towards the Purchase Order. Order Vat amount will be added to the final payment if applicable. Advance payments will be deducted from the supplier advance account.')
                                 ->schema([
+                                    TextInput::make('grand_total')
+                                        ->label('Grand Total')
+                                        ->disabled()
+                                        ->hidden(),    
+
                                     Select::make('payment_type')
                                         ->label('Payment Type')
                                         ->dehydrated()
+                                        ->helperText('Your amount will be calculated without VAT.')
                                         ->options([
                                             'fixed' => 'Fixed Amount',
                                             'percentage' => 'Percentage',
@@ -236,7 +259,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $set('calculated_payment', null);
                                         }),
 
-                                    // Amount input for fixed payment - CHANGED TO 'payment_amount'
+                                    // Fixed amount payment
                                     TextInput::make('payment_amount')
                                         ->label('Enter Amount')
                                         ->dehydrated()
@@ -245,15 +268,15 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->required(fn ($get) => $get('payment_type') === 'fixed')
                                         ->visible(fn ($get) => $get('payment_type') === 'fixed')
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $remainingBalance = (float) ($get('remaining_balance') ?? 0);
+                                            $grandTotal = (float) ($get('grand_total') ?? 0); // ✅ use grand_total now
 
-                                            if ($state > $remainingBalance) {
+                                            if ($state > $grandTotal) {
                                                 $set('payment_amount', null);
                                                 $set('calculated_payment', null);
 
                                                 Notification::make()
                                                     ->title('Invalid Payment')
-                                                    ->body('The entered amount exceeds the remaining balance.')
+                                                    ->body('The entered amount exceeds the PO grand total.')
                                                     ->danger()
                                                     ->send();
                                                 return;
@@ -262,8 +285,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                             $set('calculated_payment', $state);
                                         }),
 
-
-                                    // Percentage input for percentage-based payment
+                                    // Percentage-based payment
                                     TextInput::make('payment_percentage')
                                         ->label('Enter Percentage')
                                         ->dehydrated()
@@ -272,16 +294,16 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->visible(fn ($get) => $get('payment_type') === 'percentage')
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $remainingBalance = (float) ($get('remaining_balance') ?? 0);
-                                            $calculated = $remainingBalance * ($state / 100);
+                                            $grandTotal = (float) ($get('grand_total') ?? 0); // ✅ use grand_total
+                                            $calculated = $grandTotal * ($state / 100);
 
-                                            if ($calculated > $remainingBalance) {
+                                            if ($calculated > $grandTotal) {
                                                 $set('payment_percentage', null);
                                                 $set('percent_calculated_payment', null);
 
                                                 Notification::make()
                                                     ->title('Invalid Percentage')
-                                                    ->body('Calculated payment exceeds the remaining balance.')
+                                                    ->body('Calculated payment exceeds the PO grand total.')
                                                     ->danger()
                                                     ->send();
                                                 return;
@@ -289,6 +311,7 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                                             $set('percent_calculated_payment', $calculated); 
                                         }),
+
 
                                     // Common display field for calculated amount
                                     TextInput::make('percent_calculated_payment')
@@ -304,7 +327,7 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                                             $calculated = $remainingBalance * ($percentage / 100);
 
-                                            return $calculated && $calculated <= $remainingBalance ? $calculated : null;
+                                            return $calculated && $calculated <= $remainingBalance ? round($calculated, 2) : null;
                                         }),
                                 ]),
 
@@ -312,10 +335,11 @@ class SupplierAdvanceInvoiceResource extends Resource
                             Hidden::make('final_payment_amount')
                                 ->dehydrated()
                                 ->default(function (Get $get) {
+                                    $grandTotal = (float) ($get('grand_total') ?? 0);
                                     if ($get('payment_type') === 'fixed') {
-                                        return (float) ($get('payment_amount') ?? 0);
+                                        return min((float) ($get('payment_amount') ?? 0), $grandTotal);
                                     } elseif ($get('payment_type') === 'percentage') {
-                                        return (float) ($get('percent_calculated_payment') ?? 0);
+                                        return min((float) ($get('percent_calculated_payment') ?? 0), $grandTotal);
                                     }
                                     return 0;
                                 }),

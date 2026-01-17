@@ -32,18 +32,22 @@ class PurchaseOrderItem extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            if (isset($model->site_id) && session()->has('site_id')) {
+            // Set site_id
+            if (session()->has('site_id')) {
                 $model->site_id = session('site_id');
             }
 
+            // Set created/updated by
             $model->created_by = Auth::id() ?? 1;
             $model->updated_by = Auth::id() ?? 1;
 
+            // Calculate subtotal, VAT, grand total
             if (method_exists($model, 'calculateAndSetValues')) {
                 $model->calculateAndSetValues();
             }
 
-            if (isset($model->quantity) && isset($model->remaining_quantity)) {
+            // ✅ Set remaining_quantity = quantity initially
+            if (isset($model->quantity)) {
                 $model->remaining_quantity = $model->quantity;
             }
         });

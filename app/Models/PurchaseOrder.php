@@ -43,7 +43,7 @@ class PurchaseOrder extends Model
     {
         static::creating(function ($model) {
             // Set site_id if column exists
-            if (isset($model->site_id) && session()->has('site_id')) {
+            if (session()->has('site_id')) {
                 $model->site_id = session('site_id');
             }
 
