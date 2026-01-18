@@ -82,6 +82,12 @@ class CashBankControlAccount extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::saving(function ($model) {
+            // 🔒 ALWAYS calculate balance
+            $model->balance =
+                ($model->debit_balance ?? 0) - ($model->credit_balance ?? 0);
+        });
     }
 
     /**

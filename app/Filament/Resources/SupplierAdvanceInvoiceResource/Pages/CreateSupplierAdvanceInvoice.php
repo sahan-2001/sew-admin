@@ -9,7 +9,6 @@ use App\Models\{
     SupplierLedgerEntry,
     GeneralLedgerEntry,
     ChartOfAccount,
-    Supplier,
     SupplierControlAccount,
     SupplierAdvanceInvoice
 };
@@ -21,9 +20,6 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 {
     protected static string $resource = SupplierAdvanceInvoiceResource::class;
 
-    /**
-     * Mutate form data before saving the record.
-     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // 1️⃣ Find Purchase Order
@@ -118,15 +114,13 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
         return $data;
     }
 
-    /**
-     * Create supplier ledger entries for the advance.
-     */
     private function createLedgerEntries($invoice, $advanceAmount): void
     {
         $entryCode = 'SUP_ADV_INV_' . now()->format('YmdHis');
         $now = now();
         $userId = Auth::id();
 
+        // Fetch Supplier Control Account + Advance Account
         $supplierControl = SupplierControlAccount::with('supplierAdvanceAccount')
             ->find($invoice->supplier_control_account_id);
 
@@ -136,102 +130,113 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
         $advanceAccountId = $supplierControl->supplier_advance_account_id;
 
-        try {
-            /**
-             * ===============================
-             * 1️⃣ SUPPLIER LEDGER (SUB LEDGER)
-             * ===============================
-             */
+        // ✅ Fetch the correct Supplier Control Chart of Account
+        $supplierControlChart = ChartOfAccount::where('is_control_account', true)
+            ->where('control_account_type', 'supplier')
+            ->first();
 
-            // Debit – Supplier Control Account
+        if (!$supplierControlChart) {
+            throw new \Exception('No Supplier Control Chart of Account found.');
+        }
+
+        $supplierControlChartId = $supplierControlChart->id;
+
+        try {
+            // -----------------------------
+            // 1️⃣ Supplier Ledger (Sub Ledger)
+            // -----------------------------
+
+            // Debit – Supplier Advance Account
             SupplierLedgerEntry::create([
                 'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'supplier_id' => $invoice->supplier_id,
-                'chart_of_account_id' => null,
+                'chart_of_account_id' => $advanceAccountId,
+                'source_table' => 'supplier_advance_invoices account',
+                'source_id' => $advanceAccountId,
                 'entry_date' => $now,
                 'debit' => $advanceAmount,
                 'credit' => 0,
                 'transaction_name' => 'Supplier Advance Invoice Created',
-                'description' => "Advance Invoice ID: {$invoice->id}",
-                'invoice_id' => $invoice->id,
-                'purchase_order_id' => $invoice->purchase_order_id,
+                'description' => "Advance Invoice Created under supplier advance account ID: {$advanceAccountId}",
+                'reference_table' => 'supplier_advance_invoices',
+                'reference_record_id' => $invoice->id,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
 
-            // Credit – Advance Liability to Supplier
+            // Credit – Supplier Control Account
             SupplierLedgerEntry::create([
                 'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
-                'supplier_id' => null,
-                'chart_of_account_id' => $advanceAccountId,
+                'supplier_id' => $invoice->supplier_id,
+                'chart_of_account_id' => $supplierControlChartId,
+                'source_table' => 'supplier_control_accounts',
+                'source_id' => $supplierControl->id,
                 'entry_date' => $now,
                 'debit' => 0,
                 'credit' => $advanceAmount,
                 'transaction_name' => 'Supplier Advance Invoice Created',
-                'description' => "Advance Invoice ID: {$invoice->id}",
-                'invoice_id' => $invoice->id,
-                'purchase_order_id' => $invoice->purchase_order_id,
+                'description' => "Advance Invoice Created under supplier control account ID: {$supplierControlChartId}",
+                'reference_table' => 'supplier_advance_invoices',
+                'reference_record_id' => $invoice->id,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
 
-            /**
-             * ===============================
-             * 2️⃣ GENERAL LEDGER (MAIN LEDGER)
-             * ===============================
-             */
+            // -----------------------------
+            // 2️⃣ General Ledger (Main Ledger)
+            // -----------------------------
 
-            // Debit – Supplier Control Account
-            GeneralLedgerEntry::create([
-                'site_id' => $invoice->site_id,
-                'entry_code' => $entryCode,
-                'account_id' => null, 
-                'entry_date' => $now,
-                'Control_account_table' => 'supplier_control_accounts',
-                'control_account_record_id' => $supplierControl->id,
-                'debit' => $advanceAmount,
-                'credit' => 0,
-                'transaction_name' => 'Supplier Advance Invoice',
-                'description' => "Advance Invoice ID: {$invoice->id}",
-                'source_table' => 'supplier_advance_invoices',
-                'source_id' => $invoice->id,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-
-            // Credit – Advance liability to Supplier
+            // Debit – Supplier Advance Account
             GeneralLedgerEntry::create([
                 'site_id' => $invoice->site_id,
                 'entry_code' => $entryCode,
                 'account_id' => $advanceAccountId,
+                'source_table' => 'supplier_advance_invoices account',
+                'source_id' => $advanceAccountId,
                 'entry_date' => $now,
-                'Control_account_table' =>null,
-                'control_account_record_id' => null,
-                'debit' => 0,
-                'credit' => $advanceAmount,
-                'transaction_name' => 'Supplier Advance Invoice',
-                'description' => "Advance Invoice ID: {$invoice->id}",
-                'source_table' => 'supplier_advance_invoices',
-                'source_id' => $invoice->id,
+                'debit' => $advanceAmount,
+                'credit' => 0,
+                'transaction_name' => 'Supplier Advance Invoice Created',
+                'description' => "Advance Invoice Created under supplier advance account ID: {$advanceAccountId}",
+                'reference_table' => 'supplier_advance_invoices',
+                'reference_record_id' => $invoice->id,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
 
-            /**
-             * ===============================
-             * 3️⃣ UPDATE TOTALS
-             * ===============================
-             */
+            // Credit – Supplier Control Account
+            GeneralLedgerEntry::create([
+                'site_id' => $invoice->site_id,
+                'entry_code' => $entryCode,
+                'account_id' => $supplierControlChartId,
+                'source_table' => 'supplier_control_accounts',
+                'source_id' => $supplierControl->id,
+                'entry_date' => $now,
+                'debit' => 0,
+                'credit' => $advanceAmount,
+                'transaction_name' => 'Supplier Advance Invoice Created',
+                'description' => "Advance Invoice Created under supplier control account ID: {$supplierControlChartId}",
+                'reference_table' => 'supplier_advance_invoices',
+                'reference_record_id' => $invoice->id,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            // -----------------------------
+            // 3️⃣ Update totals
+            // -----------------------------
             ChartOfAccount::where('id', $advanceAccountId)->update([
-                'credit_total' => \DB::raw("credit_total + $advanceAmount"),
-                'credit_total_vat' => \DB::raw("credit_total_vat + $advanceAmount"),
+                'debit_total' => \DB::raw("debit_total + $advanceAmount"),
+                'debit_total_vat' => \DB::raw("debit_total_vat + $advanceAmount"),
+                'balance' => \DB::raw("balance + $advanceAmount"),
+                'balance_vat' => \DB::raw("balance_vat + $advanceAmount"),
             ]);
 
             $supplierControl->update([
-                'debit_total' => $supplierControl->debit_total + $advanceAmount,
-                'debit_total_vat' => $supplierControl->debit_total_vat + $advanceAmount,
+                'credit_total' => $supplierControl->credit_total + $advanceAmount,
+                'credit_total_vat' => $supplierControl->credit_total_vat + $advanceAmount,
             ]);
 
         } catch (\Exception $e) {
@@ -248,6 +253,7 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
         }
     }
 
+
     protected function afterCreate(): void
     {
         $invoice = $this->record;
@@ -255,7 +261,6 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
 
         if (!$po) return;
 
-        // Determine advance amount
         $advanceAmount = $invoice->payment_type === 'fixed'
             ? $invoice->fix_payment_amount
             : $invoice->percent_calculated_payment;
@@ -264,7 +269,6 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
             $this->createLedgerEntries($invoice, $advanceAmount);
         }
 
-        // Prepare summary
         $summary = [
             'Invoice ID' => $invoice->id,
             'Supplier' => $invoice->supplier->name ?? '-',
@@ -274,7 +278,6 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
             'Status' => ucfirst($invoice->status),
         ];
 
-        // Build HTML table
         $message = '<table style="width:100%;border-collapse:collapse;">';
         foreach ($summary as $label => $value) {
             $message .= "<tr>
@@ -284,7 +287,6 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
         }
         $message .= '</table>';
 
-        // Show notification
         Notification::make()
             ->title('Supplier Advance Invoice Summary')
             ->body($message)

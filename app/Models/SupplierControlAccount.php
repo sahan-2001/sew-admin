@@ -164,5 +164,14 @@ class SupplierControlAccount extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::saving(function ($model) {
+            // 🔒 ALWAYS calculate balances
+            $model->balance =
+                ($model->credit_total ?? 0) - ($model->debit_total ?? 0);
+
+            $model->balance_vat =
+                ($model->credit_total_vat ?? 0) - ($model->debit_total_vat ?? 0);
+        });
     }
 }

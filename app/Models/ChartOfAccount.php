@@ -36,6 +36,7 @@ class ChartOfAccount extends Model
     ];
 
     protected static $logName = 'chart_of_account';
+    protected $guarded = ['balance', 'balance_vat'];
 
     /**
      * Activity Log Options
@@ -99,20 +100,50 @@ class ChartOfAccount extends Model
      */
     protected static function booted()
     {
-        static::creating(function ($model) {
-            // Set site_id from session
-            if (session()->has('site_id')) {
+        static::saving(function ($model) {
+
+            // Set site_id once
+            if (!$model->site_id && session()->has('site_id')) {
                 $model->site_id = session('site_id');
             }
 
+            // Audit fields
             if (auth()->check()) {
-                $model->created_by = auth()->id();
                 $model->updated_by = auth()->id();
-            }
-        });
 
-        static::updating(function ($model) {
-            $model->updated_by = auth()->id();
+                if (!$model->exists) {
+                    $model->created_by = auth()->id();
+                }
+            }
+
+            // -----------------------------
+            // Balance calculation by type
+            // -----------------------------
+            $debit  = $model->debit_total ?? 0;
+            $credit = $model->credit_total ?? 0;
+
+            $debitVat  = $model->debit_total_vat ?? 0;
+            $creditVat = $model->credit_total_vat ?? 0;
+
+            switch ($model->account_type) {
+                case 'asset':
+                case 'expense':
+                    $model->balance     = $debit - $credit;
+                    $model->balance_vat = $debitVat - $creditVat;
+                    break;
+
+                case 'liability':
+                case 'equity':
+                case 'income':
+                    $model->balance     = $credit - $debit;
+                    $model->balance_vat = $creditVat - $debitVat;
+                    break;
+
+                default:
+                    // Safe fallback
+                    $model->balance     = $debit - $credit;
+                    $model->balance_vat = $debitVat - $creditVat;
+            }
         });
     }
 

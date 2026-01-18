@@ -18,8 +18,8 @@ class CreateGeneralLedgerEntriesTable extends Migration
             $table->unsignedBigInteger('source_id')->nullable();
 
             $table->date('entry_date');
-            $table->string('control_account_table')->nullable();
-            $table->unsignedBigInteger('control_account_record_id')->nullable();
+            $table->string('reference_table')->nullable();
+            $table->unsignedBigInteger('reference_record_id')->nullable();
             
             $table->decimal('debit', 15, 2)->default(0);
             $table->decimal('credit', 15, 2)->default(0);

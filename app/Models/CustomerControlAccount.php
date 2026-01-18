@@ -121,6 +121,16 @@ class CustomerControlAccount extends Model
             }
         });
 
+        static::saving(function ($model) {
+
+            // 🔒 ALWAYS calculate balances
+            $model->balance =
+                ($model->debit_total ?? 0) - ($model->credit_total ?? 0);
+
+            $model->balance_vat =
+                ($model->debit_total_vat ?? 0) - ($model->credit_total_vat ?? 0);
+        });
+
         static::saved(function ($model) {
             $model->updateChartOfAccountTotals();
         });

@@ -32,7 +32,6 @@ class SupplierControlAccounts extends ListRecords
             ->query(SupplierControlAccount::query())
             ->columns([
                 Tables\Columns\TextColumn::make('supplier.supplier_id')
-                    ->toggleable(isToggledHiddenByDefault: true)
                     ->label('Supplier ID')
                     ->sortable()
                     ->searchable(),
@@ -60,7 +59,8 @@ class SupplierControlAccounts extends ListRecords
                 Tables\Columns\TextColumn::make('balance_vat')
                     ->label('Balance (with VAT)')
                     ->money('LKR', true)
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')

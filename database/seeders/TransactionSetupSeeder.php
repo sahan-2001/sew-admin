@@ -61,7 +61,7 @@ class TransactionSetupSeeder extends Seeder
             ],
             ['code' => '2010', 'name' => 'Trade Payables', 'account_type' => 'liability', 'sub_category' => 'current'],
             ['code' => '2020', 'name' => 'Customer Advances', 'account_type' => 'liability', 'sub_category' => 'current'],
-            ['code' => '2030', 'name' => 'Supplier Advances', 'account_type' => 'liability', 'sub_category' => 'current'],
+            ['code' => '2030', 'name' => 'Supplier Advances', 'account_type' => 'asset', 'sub_category' => 'current'],
             ['code' => '2040', 'name' => 'GRNI', 'account_type' => 'liability', 'sub_category' => 'current'],
             ['code' => '2050', 'name' => 'VAT Output', 'account_type' => 'liability', 'sub_category' => 'current'],
             ['code' => '2060', 'name' => 'VAT Suspense', 'account_type' => 'liability', 'sub_category' => 'current'],
