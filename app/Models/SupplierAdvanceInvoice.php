@@ -132,6 +132,8 @@ class SupplierAdvanceInvoice extends Model
             if ($advanceAccount) {
                 $advanceAccount->decrement('debit_total', $amount);
                 $advanceAccount->decrement('debit_total_vat', $amount);
+                $advanceAccount->decrement('balance', $amount);
+                $advanceAccount->decrement('balance_vat', $amount);
             }
 
             // 🧾 Delete related ledger entries
