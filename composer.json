@@ -8,6 +8,7 @@
         "php": "^8.1",
         "barryvdh/laravel-dompdf": "^3.1",
         "blade-ui-kit/blade-icons": "^1.8",
+        "charrafimed/global-search-modal": "^3.7",
         "eightynine/filament-excel-import": "^3.1",
         "endroid/qr-code": "^6.0",
         "filament/actions": "3.3",
@@ -21,16 +22,18 @@
         "maatwebsite/excel": "^3.1",
         "milon/barcode": "^11.0",
         "picqer/php-barcode-generator": "^3.2",
+<<<<<<< HEAD
         "pxlrbt/filament-excel": "2.5",
+=======
+>>>>>>> 9de0f10d0b99ab12dee7355ee1517e6e98342bcf
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.16"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
+        "filament/upgrade": "^3.3",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.18",
-        "mockery/mockery": "^1.4.4",
-        "nunomaduro/collision": "^7.0",
         "phpunit/phpunit": "^10.1",
         "spatie/laravel-ignition": "^2.0"
     },

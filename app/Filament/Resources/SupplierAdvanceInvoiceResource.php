@@ -599,76 +599,107 @@ class SupplierAdvanceInvoiceResource extends Resource
         $cashBankAccount = CashBankControlAccount::find($creditAccountId);
         if (!$cashBankAccount) throw new \Exception('Selected cash/bank account does not exist.');
 
-        // Debit – Supplier
+        // -----------------------------
+        // 1️⃣ Supplier Ledger (subsidiary ledger)
+        // -----------------------------
+
+        // Debit – Supplier (increase advance paid)
         \App\Models\SupplierLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
+            'chart_of_account_id' => $cashBankAccount->chart_of_account_id,
+
+            'source_table' => 'supplier_control_accounts',
+            'source_id' => $invoice->supplier_id,
             'supplier_id' => $invoice->supplier_id,
-            'chart_of_account_id' => null,
+
             'entry_date' => $now,
             'debit' => $paymentAmount,
             'credit' => 0,
+
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Advance Invoice ID: {$invoice->id}",
-            'invoice_id' => $invoice->id,
-            'purchase_order_id' => $invoice->purchase_order_id,
+            'description' => "Supplier Advance Payment | Debit Account ID: {$invoice->supplier_id}",
+
+            'reference_table' => 'Advance Invoice Payments',
+            'reference_record_id' => $invoice->id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
-        // Credit – Cash / Bank
+        // Credit – Cash/Bank Account (decrease cash/bank)
         \App\Models\SupplierLedgerEntry::create([
             'site_id' => $invoice->site_id,
-            'entry_code' => $entryCode,
-            'supplier_id' => null,
-            'cash_bank_control_account_id' => $cashBankAccount->id,
+            'entry_code' => $entryCode, 
+            'chart_of_account_id' => $supplierControl->chart_of_account_id,
+
+            'source_table' => 'cash_bank_control_accounts',
+            'source_id' => $cashBankAccount->id,
+            'supplier_id' => $invoice->supplier_id,
+
             'entry_date' => $now,
             'debit' => 0,
             'credit' => $paymentAmount,
+
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Advance Invoice ID: {$invoice->id}",
-            'invoice_id' => $invoice->id,
-            'purchase_order_id' => $invoice->purchase_order_id,
+            'description' => "Cash/Bank Payment | Credit Account ID: {$cashBankAccount->id}",
+
+            'reference_table' => 'Advance Invoice Payments',
+            'reference_record_id' => $invoice->id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
-        // General Ledger
+        // -----------------------------
+        // 2️⃣ General Ledger (double-entry)
+        // -----------------------------
+
+        // Debit – Supplier Control Account
         \App\Models\GeneralLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
-            'account_id' => null,
-            'Control_account_table' => 'supplier_control_accounts', 
-            'control_account_record_id' => $supplierControl->id,
+            'account_id' => $cashBankAccount->chart_of_account_id,
+
+            'source_table' => 'supplier_control_accounts',
+            'source_id' => $invoice->supplier_id,
+
             'entry_date' => $now,
             'debit' => $paymentAmount,
             'credit' => 0,
+
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Advance Payment | Invoice ID: {$invoice->id}",
-            'source_table' => 'supplier_advance_invoices',
-            'source_id' => $invoice->id,
+            'description' => "Supplier Advance Payment | Debit Account ID: {$invoice->supplier_id}",
+
+            'reference_table' => 'Advance Invoice Payments',
+            'reference_record_id' => $invoice->id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
+        // Credit – Cash/Bank Account
         \App\Models\GeneralLedgerEntry::create([
             'site_id' => $invoice->site_id,
-            'entry_code' => $entryCode,
-            'account_id' => null,
-            'Control_account_table' => 'cash_bank_control_account', 
-            'control_account_record_id' => $cashBankAccount->id,
+            'entry_code' => $entryCode, 
+            'account_id' => $supplierControl->chart_of_account_id,
+
+            'source_table' => 'cash_bank_control_accounts',
+            'source_id' => $cashBankAccount->id,
+
             'entry_date' => $now,
             'debit' => 0,
             'credit' => $paymentAmount,
+
             'transaction_name' => 'Supplier Advance Payment',
-            'description' => "Cash/Bank Payment | Invoice ID: {$invoice->id}",
-            'source_table' => 'supplier_advance_invoices',
-            'source_id' => $invoice->id,
+            'description' => "Cash/Bank Payment | Credit Account ID: {$cashBankAccount->id}",
+
+            'reference_table' => 'Advance Invoice Payments',
+            'reference_record_id' => $invoice->id,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
 
-        // Update totals
+        // -----------------------------
+        // 3️⃣ Update control account balances
+        // -----------------------------
         $supplierControl->increment('debit_total', $paymentAmount);
         $supplierControl->increment('debit_total_vat', $paymentAmount);
 

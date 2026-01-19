@@ -27,8 +27,11 @@ return new class extends Migration
                   ->nullOnDelete()
                   ->after('supplier_id'); 
 
-            $table->unsignedBigInteger('vat_control_account_id')->nullable();
-            $table->unsignedBigInteger('cash_bank_control_account_id')->nullable();
+            $table->string('source_table')->nullable();
+            $table->unsignedBigInteger('source_id')->nullable();
+
+            $table->string('reference_table')->nullable();
+            $table->unsignedBigInteger('reference_record_id')->nullable();
 
             $table->date('entry_date');
             $table->decimal('debit', 15, 2)->default(0);

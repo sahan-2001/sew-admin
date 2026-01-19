@@ -4,17 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
 class SupplierAdvanceInvoice extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'site_id',
         'purchase_order_id',
-        'supplier_id', // Changed from provider_id
+        'supplier_id',
         'status',
         'grand_total',
         'payment_type',
@@ -42,6 +43,9 @@ class SupplierAdvanceInvoice extends Model
         'paid_date' => 'date',
     ];
 
+    // -----------------------------
+    // Relationships
+    // -----------------------------
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
@@ -49,7 +53,7 @@ class SupplierAdvanceInvoice extends Model
     
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id'); // Changed from provider_id
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
     public function supplierControlAccount()
@@ -62,17 +66,14 @@ class SupplierAdvanceInvoice extends Model
         return $this->belongsTo(ChartOfAccount::class, 'supplier_advance_account_id');
     }
 
-    public function purchaseOrderAdvInvDeduction()
-    {
-        return $this->belongsTo(PurchaseOrderAdvInvDeduction::class);
-    }
-
     public function payments()
     {
-        return $this->hasMany(SuppAdvInvoicePayment::class);
+        return $this->hasMany(SuppAdvInvoicePayment::class, 'supplier_advance_invoice_id');
     }
 
-
+    // -----------------------------
+    // Booted Hooks
+    // -----------------------------
     protected static function booted()
     {
         static::creating(function ($invoice) {
@@ -80,28 +81,23 @@ class SupplierAdvanceInvoice extends Model
                 $invoice->site_id = session('site_id');
             }
 
-            // Set created_by and updated_by
             $invoice->created_by = auth()->id();
             $invoice->updated_by = auth()->id();
 
-            // Set random 16-digit code
+            // Generate random 16-digit code
             $invoice->random_code = '';
             for ($i = 0; $i < 16; $i++) {
                 $invoice->random_code .= mt_rand(0, 9);
             }
 
-            // Set initial status
             $invoice->status = 'pending';
-            
-            // Set initial paid amount
+            $invoice->paid_amount = 0;
+
             if ($invoice->payment_type === 'fixed' && $invoice->fix_payment_amount) {
-                $invoice->paid_amount = 0; // Initial paid amount is 0
                 $invoice->remaining_amount = $invoice->fix_payment_amount;
             } elseif ($invoice->payment_type === 'percentage' && $invoice->percent_calculated_payment) {
-                $invoice->paid_amount = 0; // Initial paid amount is 0
                 $invoice->remaining_amount = $invoice->percent_calculated_payment;
             } else {
-                $invoice->paid_amount = 0;
                 $invoice->remaining_amount = 0;
             }
         });
@@ -109,8 +105,52 @@ class SupplierAdvanceInvoice extends Model
         static::updating(function ($invoice) {
             $invoice->updated_by = auth()->id();
         });
+
+        // -----------------------------
+        // Soft delete adjustments
+        // -----------------------------
+        static::deleting(function ($invoice) {
+            // ❌ Prevent deleting if payments exist
+            if ($invoice->payments()->exists()) {
+                throw new \Exception('Cannot delete Supplier Advance Invoice with payments.');
+            }
+
+            // ✅ Get the amount to reverse
+            $amount = $invoice->remaining_amount;
+
+            // 🔄 Reverse Supplier Control Account (liability → credit)
+            $supplierControl = $invoice->supplierControlAccount;
+            if ($supplierControl) {
+                $supplierControl->decrement('credit_total', $amount);
+                $supplierControl->decrement('credit_total_vat', $amount);
+                $supplierControl->decrement('balance', $amount);
+                $supplierControl->decrement('balance_vat', $amount);
+            }
+
+            // 🔄 Reverse Supplier Advance Account (asset → debit)
+            $advanceAccount = $invoice->supplierAdvanceAccount;
+            if ($advanceAccount) {
+                $advanceAccount->decrement('debit_total', $amount);
+                $advanceAccount->decrement('debit_total_vat', $amount);
+                $advanceAccount->decrement('balance', $amount);
+                $advanceAccount->decrement('balance_vat', $amount);
+            }
+
+            // 🧾 Delete related ledger entries
+            \App\Models\SupplierLedgerEntry::where('reference_table', 'supplier_advance_invoices')
+                ->where('reference_record_id', $invoice->id)
+                ->delete();
+
+            \App\Models\GeneralLedgerEntry::where('reference_table', 'supplier_advance_invoices')
+                ->where('reference_record_id', $invoice->id)
+                ->delete();
+        });
+
     }
 
+    // -----------------------------
+    // Activity Log
+    // -----------------------------
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

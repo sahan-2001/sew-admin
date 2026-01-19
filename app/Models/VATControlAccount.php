@@ -44,5 +44,11 @@ class VATControlAccount extends Model
         static::updating(function ($model) {
             $model->updated_by = auth()->id();
         });
+
+        static::saving(function ($model) {
+            // 🔒 ALWAYS calculate balance_vat
+            $model->balance_vat =
+                ($model->credit_total_vat ?? 0) - ($model->debit_total_vat ?? 0);
+        });
     }
 }
