@@ -267,17 +267,17 @@ class PurchaseOrderResource extends Resource
                                                         ->dehydrated(false),
 
                                                     // FIXED: Changed field names to match model
-                                                    TextInput::make('item_subtotal')  // Changed from 'sub_total'
+                                                    TextInput::make('item_subtotal') 
                                                         ->prefix('Rs.')
                                                         ->disabled()
                                                         ->dehydrated(true),
 
-                                                    TextInput::make('item_vat_amount')  // Changed from 'vat_amount'
+                                                    TextInput::make('item_vat_amount') 
                                                         ->prefix('Rs.')
                                                         ->disabled()
                                                         ->dehydrated(true),
 
-                                                    TextInput::make('item_grand_total')  // Changed from 'total_with_vat'
+                                                    TextInput::make('item_grand_total')  
                                                         ->prefix('Rs.')
                                                         ->disabled()
                                                         ->dehydrated(true),
