@@ -22,10 +22,7 @@
         "maatwebsite/excel": "^3.1",
         "milon/barcode": "^11.0",
         "picqer/php-barcode-generator": "^3.2",
-<<<<<<< HEAD
         "pxlrbt/filament-excel": "2.5",
-=======
->>>>>>> 9de0f10d0b99ab12dee7355ee1517e6e98342bcf
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.16"
     },

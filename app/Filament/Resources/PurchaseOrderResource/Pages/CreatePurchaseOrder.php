@@ -61,10 +61,19 @@ class CreatePurchaseOrder extends CreateRecord
             $grandTotal = $orderSubtotal + $itemVatTotal;
         }
 
+        $discountPercent = (float) ($data['final_discount_percentage'] ?? 0);
+        $discountAmount  = round(($grandTotal * $discountPercent) / 100, 2);
+        $finalPayable    = round($grandTotal - $discountAmount, 2);
+
         $data['order_subtotal']    = round($orderSubtotal, 2);
         $data['vat_amount']        = $vatAmount;
         $data['grand_total']       = $grandTotal;
-        $data['remaining_balance'] = $grandTotal;
+
+        $data['final_discount_percentage'] = $discountPercent;
+        $data['final_discount_amount']     = $discountAmount;
+        $data['final_payable_amount']      = max($finalPayable, 0);
+
+        $data['remaining_balance'] = $data['final_payable_amount'];
 
         return $data;
     }

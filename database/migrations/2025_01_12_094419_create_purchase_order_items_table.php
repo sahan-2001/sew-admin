@@ -18,6 +18,7 @@ class CreatePurchaseOrderItemsTable extends Migration
             $table->integer('quantity')->default(0);
             $table->decimal('price', 10, 2)->default(0);
             $table->decimal('item_subtotal', 12, 2)->default(0);
+            $table->decimal('line_discount', 12, 2)->default(0);
             $table->decimal('item_vat_amount', 12, 2)->default(0);
             $table->decimal('item_grand_total', 12, 2)->default(0);
             $table->integer('arrived_quantity')->default(0); 

@@ -40,7 +40,7 @@ class PurchaseOrderInvoiceResource extends Resource
     protected static ?string $model = PurchaseOrderInvoice::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'PO Invoices';
+    protected static ?string $navigationGroup = 'Purchase Orders';
     protected static ?string $label = 'Final PO Invoice';
     protected static ?string $pluralLabel = 'Final PO Invoices';
     protected static ?string $navigationLabel = 'Final PO Invoices';

@@ -28,6 +28,10 @@ class CreatePurchaseOrdersTable extends Migration
             $table->decimal('order_subtotal', 12, 2)->default(0);
             $table->decimal('vat_amount', 12, 2)->default(0);
             $table->decimal('grand_total', 12, 2)->default(0);
+            $table->string('order_discount_type'); 
+            $table->decimal('order_discount_value', 12, 2)->default(0);
+            $table->decimal('final_grand_total', 12, 2)->default(0);
+
             $table->text('vat_base')->nullable();
             $table->decimal('remaining_balance', 12, 2)->default(0);
             $table->string('random_code')->nullable(); 

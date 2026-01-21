@@ -33,7 +33,7 @@ class PurchaseOrderResource extends Resource
 {
     protected static ?string $model = PurchaseOrder::class;
 
-    protected static ?string $navigationGroup = 'Orders';
+    protected static ?string $navigationGroup = 'Purchase Orders';
     protected static ?string $navigationLabel = 'Purchase Orders';
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-on-square';
     protected static ?int $navigationSort = 3;
@@ -65,6 +65,7 @@ class PurchaseOrderResource extends Resource
                                             })
                                             ->searchable()
                                             ->reactive()
+                                            ->required()
                                             ->disabled(fn (string $operation) => $operation === 'edit')
                                             ->afterStateUpdated(function ($state, callable $set) {
 
@@ -272,11 +273,19 @@ class PurchaseOrderResource extends Resource
                                                         ->disabled()
                                                         ->dehydrated(true),
 
+                                                    TextInput::make('line_discount')
+                                                        ->label('Discount')
+                                                        ->numeric()
+                                                        ->reactive()
+                                                        ->default(0)
+                                                        ->prefix('Rs.')
+                                                        ->afterStateUpdated(fn ($state, $set, $get) => self::recalculate($set, $get)),
+
                                                     TextInput::make('item_vat_amount') 
                                                         ->prefix('Rs.')
                                                         ->disabled()
                                                         ->dehydrated(true),
-
+                                                        
                                                     TextInput::make('item_grand_total')  
                                                         ->prefix('Rs.')
                                                         ->disabled()
@@ -302,7 +311,7 @@ class PurchaseOrderResource extends Resource
                                 Section::make('Order Summary')
                                     ->schema([
                                         Grid::make(2)->schema([
-                                            Grid::make(3)->schema([
+                                            Grid::make(4)->schema([
                                                 TextInput::make('items_sub_total_sum')
                                                     ->label('Sub Total of all Items')
                                                     ->prefix('Rs.')
@@ -316,7 +325,14 @@ class PurchaseOrderResource extends Resource
                                                     ->disabled()
                                                     ->dehydrated(false)
                                                     ->default(0.00),
-                                                
+
+                                                TextInput::make('items_discount_sum')
+                                                    ->label('Total Discount')
+                                                    ->prefix('Rs.')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->default(0.00),
+
                                                 TextInput::make('items_total_with_vat_sum')
                                                     ->label('Grand Total of all Items')
                                                     ->prefix('Rs.')
@@ -420,6 +436,46 @@ class PurchaseOrderResource extends Resource
                                             ->dehydrated(false)
                                             ->visible(fn (callable $get) => $get('vat_base') === 'supplier_vat'),
                                     ]),
+
+                                Section::make('Final Order Summary')
+                                    ->columns(4)
+                                    ->schema([
+
+                                        Select::make('order_discount_type')
+                                            ->label('Discount Type')
+                                            ->options([
+                                                'amount' => 'Fixed Amount',
+                                                'percent' => 'Percentage (%)',
+                                            ])
+                                            ->default('amount')
+                                            ->reactive()
+                                            ->afterStateUpdated(fn ($set, $get) =>
+                                                self::recalculateFinalSummary($set, $get)
+                                            ),
+
+                                        TextInput::make('order_discount_value')
+                                            ->label('Discount Value')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->reactive()
+                                            ->afterStateUpdated(fn ($set, $get) =>
+                                                self::recalculateFinalSummary($set, $get)
+                                            ),
+
+                                        TextInput::make('order_discount_amount')
+                                            ->label('Final Discount Amount')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->default(0)
+                                            ->dehydrated(false),
+
+                                        TextInput::make('final_grand_total')
+                                            ->label('FINAL ORDER TOTAL')
+                                            ->prefix('Rs.')
+                                            ->disabled()
+                                            ->reactive()
+                                            ->dehydrated(true),
+                                    ]),
                             ]),
                     ])
                     ->columnSpan('full'),
@@ -428,95 +484,132 @@ class PurchaseOrderResource extends Resource
 
     protected static function recalculate(callable $set, callable $get): void
     {
-        $qty   = (float) $get('quantity');
-        $price = (float) $get('price');
-        $rate  = (float) $get('vat_rate');
+        $qty      = (float) ($get('quantity') ?? 0);
+        $price    = (float) ($get('price') ?? 0);
+        $vatRate  = (float) ($get('vat_rate') ?? 0);
+        $discount = (float) ($get('line_discount') ?? 0);
 
+        // 1️⃣ Subtotal before discount
         $subTotal = $qty * $price;
-        $vat      = ($subTotal * $rate) / 100;
-        $total    = $subTotal + $vat;
 
-        // Set hidden fields that WILL be saved
-        $set('item_subtotal', round($subTotal, 2));      
-        $set('item_vat_amount', round($vat, 2));         
-        $set('item_grand_total', round($total, 2));      
-        
-        // Set display fields (not saved)
-        $set('display_subtotal', round($subTotal, 2));   // Display only
-        $set('display_vat_amount', round($vat, 2));      
-        $set('display_grand_total', round($total, 2));   
-        
-        // Recalculate both summaries
+        // 2️⃣ Apply discount FIRST
+        $discountedSubTotal = max($subTotal - $discount, 0);
+
+        // 3️⃣ VAT on discounted amount
+        $vatAmount = ($discountedSubTotal * $vatRate) / 100;
+
+        // 4️⃣ Final grand total
+        $grandTotal = $discountedSubTotal + $vatAmount;
+
+        // 🔒 Persisted values
+        $set('item_subtotal', round($subTotal, 2));
+        $set('item_vat_amount', round($vatAmount, 2));
+        $set('item_grand_total', round($grandTotal, 2));
+
+        // 🔄 Update summaries
         self::calculateSummary($set, $get);
         self::recalculateFinalSummary($set, $get);
     }
 
+
     protected static function calculateSummary(callable $set, callable $get): void
     {
-        $items = $get('items');
+        $items = $get('items') ?? [];
         
         $subTotalSum = 0;
         $vatSum = 0;
         $totalWithVatSum = 0;
-        
-        if (is_array($items)) {
-            foreach ($items as $item) {
-                // FIXED: Using correct field names
-                $subTotalSum += (float) ($item['item_subtotal'] ?? 0);       
-                $vatSum += (float) ($item['item_vat_amount'] ?? 0);           
-                $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0);
-            }
+        $discountSum = 0; // NEW
+
+        foreach ($items as $item) {
+            $subTotalSum += (float) ($item['item_subtotal'] ?? 0);
+            $vatSum += (float) ($item['item_vat_amount'] ?? 0);
+            $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0);
+            $discountSum += (float) ($item['line_discount'] ?? 0); // NEW
         }
-        
+
         $set('items_sub_total_sum', round($subTotalSum, 2));
         $set('items_vat_sum', round($vatSum, 2));
         $set('items_total_with_vat_sum', round($totalWithVatSum, 2));
-        
-        // Also update display fields in VAT tab
+        $set('items_discount_sum', round($discountSum, 2)); // NEW
+
+        // Update display fields in VAT tab
         $set('display_sub_total_sum', round($subTotalSum, 2));
         $set('display_vat_sum', round($vatSum, 2));
+        $set('display_discount_sum', round($discountSum, 2)); // NEW
     }
+
 
     protected static function recalculateFinalSummary(callable $set, callable $get): void
     {
-        $subTotal     = (float) $get('items_sub_total_sum');
-        $itemVat      = (float) $get('items_vat_sum');
-        $itemGrand    = (float) $get('items_total_with_vat_sum');
-        $supplierRate = (float) $get('supplier_vat_rate');
-        $vatBase      = $get('vat_base');
+        $subTotal      = (float) ($get('items_sub_total_sum') ?? 0);
+        $itemVat       = (float) ($get('items_vat_sum') ?? 0);
+        $supplierRate  = (float) ($get('supplier_vat_rate') ?? 0);
+        $vatBase       = $get('vat_base');
 
-        $supplierVat   = round(($subTotal * $supplierRate) / 100, 2);
-        $supplierTotal = round($subTotal + $supplierVat, 2);
+        $discountType  = $get('order_discount_type') ?? 'amount';
+        $discountValue = (float) ($get('order_discount_value') ?? 0);
 
-        if ($vatBase === 'item_vat') {
-            $set('final_vat_amount', $itemVat);
-            $set('final_grand_total', $itemGrand);
-        }
-
+        // ✅ 1. Base Grand Total (VAT INCLUDED)
         if ($vatBase === 'supplier_vat') {
-            $set('final_vat_amount', $supplierVat);
-            $set('final_grand_total', $supplierTotal);
+            $vatAmount  = round(($subTotal * $supplierRate) / 100, 2);
+            $baseTotal  = round($subTotal + $vatAmount, 2);
+        } else {
+            $vatAmount  = round($itemVat, 2);
+            $baseTotal  = round($subTotal + $itemVat, 2);
         }
+
+        // ✅ 2. Discount from GRAND TOTAL
+        if ($discountType === 'percent') {
+            $discountAmount = round(($baseTotal * $discountValue) / 100, 2);
+        } else {
+            $discountAmount = round($discountValue, 2);
+        }
+
+        $discountAmount = min($discountAmount, $baseTotal);
+
+        // ✅ 3. Final Payable
+        $finalTotal = round($baseTotal - $discountAmount, 2);
+
+        // ✅ 4. Set values
+        $set('order_discount_amount', $discountAmount);
+        $set('final_vat_amount', $vatAmount);
+        $set('final_grand_total', $finalTotal);
     }
 
     protected static function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['order_subtotal'] = $data['items_sub_total_sum'] ?? 0;
-        $data['vat_amount']     = $data['items_vat_sum'] ?? 0;
-        $data['grand_total']    = $data['items_total_with_vat_sum'] ?? 0;
-        $data['vat_base']       = $data['vat_base'] ?? 'item_vat';
+        $subTotal = $data['items_sub_total_sum'] ?? 0;
+        $itemVat  = $data['items_vat_sum'] ?? 0;
+        $supplierRate = $data['supplier_vat_rate'] ?? 0;
+        $vatBase = $data['vat_base'] ?? 'item_vat';
+
+        $discountAmount = $data['order_discount_amount'] ?? 0;
+
+        $taxableAmount = max($subTotal - $discountAmount, 0);
+
+        if ($vatBase === 'supplier_vat') {
+            $vatAmount = round(($taxableAmount * $supplierRate) / 100, 2);
+        } else {
+            $vatAmount = $itemVat;
+        }
+
+        $finalGrandTotal = round($taxableAmount + $vatAmount, 2);
+
+        // ✅ Persisted DB values
+        $data['order_subtotal']    = $subTotal;
+        $data['discount_amount']   = $discountAmount;
+        $data['vat_amount']        = $vatAmount;
+        $data['final_grand_total'] = $finalGrandTotal;
+        $data['grand_total']       = $finalGrandTotal;
+        $data['vat_base']          = $vatBase;
 
         return $data;
     }
 
     protected static function mutateFormDataBeforeSave(array $data): array
     {
-        $data['order_subtotal'] = $data['items_sub_total_sum'] ?? 0;
-        $data['vat_amount']     = $data['items_vat_sum'] ?? 0;
-        $data['grand_total']    = $data['items_total_with_vat_sum'] ?? 0;
-        $data['vat_base']       = $data['vat_base'] ?? 'item_vat';
-
-        return $data;
+        return self::mutateFormDataBeforeCreate($data);
     }
 
     public static function table(Table $table): Table
