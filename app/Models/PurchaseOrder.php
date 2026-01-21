@@ -105,7 +105,7 @@ class PurchaseOrder extends Model
      |---------------------------------*/
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id'); // foreignKey, ownerKey
     }
 
     public function items(): HasMany
@@ -156,6 +156,27 @@ class PurchaseOrder extends Model
         $this->attributes['remaining_balance'] =
             $value ?? ($this->final_payable_amount ?? 0);
     }
+
+    public function deliveryTerm()
+    {
+        return $this->belongsTo(DeliveryTerm::class, 'delivery_term_id');
+    }
+
+    public function deliveryMethod()
+    {
+        return $this->belongsTo(DeliveryMethod::class, 'delivery_method_id');
+    }
+
+    public function paymentTerm()
+    {
+        return $this->belongsTo(PaymentTerm::class, 'payment_term_id');
+    }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_code_id');
+    }
+
 
     /* ---------------------------------
      | Totals Recalculation
