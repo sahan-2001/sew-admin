@@ -232,7 +232,8 @@ class PurchaseOrderResource extends Resource
                                                                 $set('vat_rate', 0);
                                                             }
 
-                                                            self::recalculate($set, $get);
+                                                            self::recalculateItem($set, $get);
+                                                            self::calculateSummary($set, $get);
                                                         }),
 
                                                     Hidden::make('inventory_vat_group_id'),
@@ -248,7 +249,7 @@ class PurchaseOrderResource extends Resource
                                                         ->reactive()
                                                         ->required()
                                                         ->afterStateUpdated(fn ($state, $set, $get) =>
-                                                            self::recalculate($set, $get)
+                                                            self::recalculateItem($set, $get)
                                                         ),
 
                                                     TextInput::make('price')
@@ -257,7 +258,7 @@ class PurchaseOrderResource extends Resource
                                                         ->required()
                                                         ->prefix('Rs.')
                                                         ->afterStateUpdated(fn ($state, $set, $get) =>
-                                                            self::recalculate($set, $get)
+                                                            self::recalculateItem($set, $get)
                                                         ),
 
                                                     TextInput::make('vat_rate')
@@ -279,7 +280,10 @@ class PurchaseOrderResource extends Resource
                                                         ->reactive()
                                                         ->default(0)
                                                         ->prefix('Rs.')
-                                                        ->afterStateUpdated(fn ($state, $set, $get) => self::recalculate($set, $get)),
+                                                        ->afterStateUpdated(fn ($state, $set, $get) => [
+                                                            self::recalculateItem($set, $get),
+                                                            self::calculateSummary($set, $get),
+                                                        ]),
 
                                                     TextInput::make('item_vat_amount') 
                                                         ->prefix('Rs.')
@@ -482,222 +486,94 @@ class PurchaseOrderResource extends Resource
             ]);
     }
 
-    protected static function recalculate(callable $set, callable $get): void
+    /* -----------------------------------------------------------------
+     |  CALCULATIONS
+     | -----------------------------------------------------------------
+     */
+    protected static function recalculateItem(callable $set, callable $get): void
     {
-        $qty      = (float) ($get('quantity') ?? 0);
-        $price    = (float) ($get('price') ?? 0);
-        $vatRate  = (float) ($get('vat_rate') ?? 0);
-        $discount = (float) ($get('line_discount') ?? 0);
+        $qty        = (float) ($get('quantity') ?? 0);
+        $price      = (float) ($get('price') ?? 0);
+        $vatRate    = (float) ($get('vat_rate') ?? 0);
+        $discount   = (float) ($get('line_discount') ?? 0);
 
-        // 1️⃣ Subtotal before discount
-        $subTotal = $qty * $price;
+        $subTotal   = round($qty * $price, 2);
+        $subAfterDis = max($subTotal - $discount, 0);
 
-        // 2️⃣ Apply discount FIRST
-        $discountedSubTotal = max($subTotal - $discount, 0);
+        $vatAmount  = round(($subAfterDis * $vatRate) / 100, 2);
+        $grandTotal = round($subAfterDis + $vatAmount, 2);
 
-        // 3️⃣ VAT on discounted amount
-        $vatAmount = ($discountedSubTotal * $vatRate) / 100;
-
-        // 4️⃣ Final grand total
-        $grandTotal = $discountedSubTotal + $vatAmount;
-
-        // 🔒 Persisted values
-        $set('item_subtotal', round($subTotal, 2));
-        $set('item_vat_amount', round($vatAmount, 2));
-        $set('item_grand_total', round($grandTotal, 2));
-
-        // 🔄 Update summaries
-        self::calculateSummary($set, $get);
-        self::recalculateFinalSummary($set, $get);
+        $set('item_subtotal', $subTotal);
+        $set('item_vat_amount', $vatAmount);
+        $set('item_grand_total', $grandTotal);
     }
-
 
     protected static function calculateSummary(callable $set, callable $get): void
     {
         $items = $get('items') ?? [];
-        
-        $subTotalSum = 0;
-        $vatSum = 0;
-        $totalWithVatSum = 0;
-        $discountSum = 0; // NEW
 
-        foreach ($items as $item) {
-            $subTotalSum += (float) ($item['item_subtotal'] ?? 0);
-            $vatSum += (float) ($item['item_vat_amount'] ?? 0);
-            $totalWithVatSum += (float) ($item['item_grand_total'] ?? 0);
-            $discountSum += (float) ($item['line_discount'] ?? 0); // NEW
-        }
+        $subTotal = collect($items)->sum(fn ($i) => (float) ($i['item_subtotal'] ?? 0));
+        $vatTotal = collect($items)->sum(fn ($i) => (float) ($i['item_vat_amount'] ?? 0));
+        $discount = collect($items)->sum(fn ($i) => (float) ($i['line_discount'] ?? 0));
+        $grand    = collect($items)->sum(fn ($i) => (float) ($i['item_grand_total'] ?? 0));
 
-        $set('items_sub_total_sum', round($subTotalSum, 2));
-        $set('items_vat_sum', round($vatSum, 2));
-        $set('items_total_with_vat_sum', round($totalWithVatSum, 2));
-        $set('items_discount_sum', round($discountSum, 2)); // NEW
+        $set('items_sub_total_sum', round($subTotal, 2));
+        $set('items_vat_sum', round($vatTotal, 2));
+        $set('items_discount_sum', round($discount, 2));
+        $set('items_total_with_vat_sum', round($grand, 2));
 
-        // Update display fields in VAT tab
-        $set('display_sub_total_sum', round($subTotalSum, 2));
-        $set('display_vat_sum', round($vatSum, 2));
-        $set('display_discount_sum', round($discountSum, 2)); // NEW
+        // ✅ THIS WAS MISSING
+        self::recalculateFinalSummary($set, $get);
     }
-
 
     protected static function recalculateFinalSummary(callable $set, callable $get): void
     {
-        $subTotal      = (float) ($get('items_sub_total_sum') ?? 0);
-        $itemVat       = (float) ($get('items_vat_sum') ?? 0);
-        $supplierRate  = (float) ($get('supplier_vat_rate') ?? 0);
-        $vatBase       = $get('vat_base');
+        $subTotal = (float) ($get('items_sub_total_sum') ?? 0);
+        $itemVat  = (float) ($get('items_vat_sum') ?? 0);
 
-        $discountType  = $get('order_discount_type') ?? 'amount';
-        $discountValue = (float) ($get('order_discount_value') ?? 0);
+        $vatBase  = $get('vat_base');
+        $supRate  = (float) ($get('supplier_vat_rate') ?? 0);
 
-        // ✅ 1. Base Grand Total (VAT INCLUDED)
-        if ($vatBase === 'supplier_vat') {
-            $vatAmount  = round(($subTotal * $supplierRate) / 100, 2);
-            $baseTotal  = round($subTotal + $vatAmount, 2);
-        } else {
-            $vatAmount  = round($itemVat, 2);
-            $baseTotal  = round($subTotal + $itemVat, 2);
-        }
+        $vatAmount = $vatBase === 'supplier_vat'
+            ? round(($subTotal * $supRate) / 100, 2)
+            : round($itemVat, 2);
 
-        // ✅ 2. Discount from GRAND TOTAL
-        if ($discountType === 'percent') {
-            $discountAmount = round(($baseTotal * $discountValue) / 100, 2);
-        } else {
-            $discountAmount = round($discountValue, 2);
-        }
+        $gross = round($subTotal + $vatAmount, 2);
 
-        $discountAmount = min($discountAmount, $baseTotal);
+        $discType = $get('order_discount_type');
+        $discVal  = (float) ($get('order_discount_value') ?? 0);
 
-        // ✅ 3. Final Payable
-        $finalTotal = round($baseTotal - $discountAmount, 2);
+        $discount = $discType === 'percent'
+            ? round(($gross * $discVal) / 100, 2)
+            : round($discVal, 2);
 
-        // ✅ 4. Set values
-        $set('order_discount_amount', $discountAmount);
+        $discount = min($discount, $gross);
+
+        $final = round($gross - $discount, 2);
+
+        // ✅ THIS WAS MISSING
+        $set('order_discount_amount', $discount);
         $set('final_vat_amount', $vatAmount);
-        $set('final_grand_total', $finalTotal);
+        $set('final_grand_total', $final);
     }
 
-    protected static function mutateFormDataBeforeCreate(array $data): array
+    protected static function recalculate(callable $set, callable $get): void
     {
-        $subTotal = $data['items_sub_total_sum'] ?? 0;
-        $itemVat  = $data['items_vat_sum'] ?? 0;
-        $supplierRate = $data['supplier_vat_rate'] ?? 0;
-        $vatBase = $data['vat_base'] ?? 'item_vat';
-
-        $discountAmount = $data['order_discount_amount'] ?? 0;
-
-        $taxableAmount = max($subTotal - $discountAmount, 0);
-
-        if ($vatBase === 'supplier_vat') {
-            $vatAmount = round(($taxableAmount * $supplierRate) / 100, 2);
-        } else {
-            $vatAmount = $itemVat;
-        }
-
-        $finalGrandTotal = round($taxableAmount + $vatAmount, 2);
-
-        // ✅ Persisted DB values
-        $data['order_subtotal']    = $subTotal;
-        $data['discount_amount']   = $discountAmount;
-        $data['vat_amount']        = $vatAmount;
-        $data['final_grand_total'] = $finalGrandTotal;
-        $data['grand_total']       = $finalGrandTotal;
-        $data['vat_base']          = $vatBase;
-
-        return $data;
-    }
-
-    protected static function mutateFormDataBeforeSave(array $data): array
-    {
-        return self::mutateFormDataBeforeCreate($data);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('id')
-                    ->label('Order ID')
-                    ->sortable()
-                    ->searchable()
-                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
-                TextColumn::make('supplier_id')->label('Supplier ID')->searchable(),
-                TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date')->date(),
-                TextColumn::make('promised_delivery_date')->label('Promised Delivery Date')->date(),
-                TextColumn::make('vat_base')->label('VAT Base')->sortable(),
-                TextColumn::make('status')->label('Status')
-                    ->badge()
-                    ->colors([
-                        'planned' => 'gray',
-                        'released' => 'blue',
-                        'cancelled' => 'red',
-                        'completed' => 'green',
-                    ]),
-                ...(
-                    Auth::user()->can('view audit columns')
-                        ? [
-                            TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
-                            TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
-                            TextColumn::make('created_at')->label('Created At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
-                            TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
-                        ]
-                        : []
-                        ),
-            ])
-            ->filters([
-                SelectFilter::make('provider_type')
-                    ->label('Provider Type')
-                    ->options([
-                        'supplier' => 'Supplier',
-                        'customer' => 'Customer',
-                    ])
-                    ->placeholder('All Types'),
-
-                Filter::make('wanted_date')
-                    ->label('Wanted Delivery Date')
-                    ->form([
-                        DatePicker::make('date')
-                            ->label('Wanted Delivery Date')
-                            ->closeOnDateSelection(),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query->when($data['date'], fn ($q, $date) =>
-                            $q->whereDate('wanted_date', $date)
-                        );
-                    }),
-            ])
-            ->actions([
-                Action::make('handle')
-                    ->label('Handle')
-                    ->url(fn ($record) => PurchaseOrderResource::getUrl('handle', ['record' => $record]))
-                    ->openUrlInNewTab(false),
-
-                EditAction::make()
-                    ->visible(fn ($record) => 
-                        auth()->user()->can('edit purchase orders') &&
-                        $record->status === 'planned'
-                    ),
-
-                DeleteAction::make()
-                    ->visible(fn ($record) => 
-                        auth()->user()->can('delete purchase orders') &&
-                        $record->status === 'planned'
-                    ),
-                
-            ])
-            ->defaultSort('id', 'desc')
-            ->recordUrl(null);
+        self::recalculateItem($set, $get);
+        self::calculateSummary($set, $get);
     }
 
 
-
-
+    /* -----------------------------------------------------------------
+     |  PAGES
+     | -----------------------------------------------------------------
+     */
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPurchaseOrders::route('/'),
+            'index'  => Pages\ListPurchaseOrders::route('/'),
             'create' => Pages\CreatePurchaseOrder::route('/create'),
-            'edit' => Pages\EditPurchaseOrder::route('/{record}/edit'),
+            'edit'   => Pages\EditPurchaseOrder::route('/{record}/edit'),
             'handle' => Pages\HandlePurchaseOrder::route('/{record}/handle'),
         ];
     }

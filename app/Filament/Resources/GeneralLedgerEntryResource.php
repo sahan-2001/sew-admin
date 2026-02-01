@@ -142,6 +142,7 @@ class GeneralLedgerEntryResource extends Resource
             'index' => Pages\ListGeneralLedgerEntries::route('/'),
             'create' => Pages\CreateGeneralLedgerEntry::route('/create'),
             'edit' => Pages\EditGeneralLedgerEntry::route('/{record}/edit'),
+            'supplier-ledger-entries' => Pages\SupplierLedgerEntries::route('/supplier-ledger-entries'),
         ];
     }
 }

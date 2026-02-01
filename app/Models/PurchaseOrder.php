@@ -48,64 +48,44 @@ class PurchaseOrder extends Model
 
     protected static function booted()
     {
+        // When creating a new PO
         static::creating(function ($model) {
+            $model->site_id ??= session('site_id');
+            $model->created_by ??= auth()->id() ?: 1;
+            $model->updated_by ??= auth()->id() ?: 1;
+            $model->random_code ??= strtoupper(str()->random(16));
 
-            if (session()->has('site_id')) {
-                $model->site_id = session('site_id');
-            }
-
-            if (auth()->check()) {
-                $model->created_by = Auth::id();
-                $model->updated_by = Auth::id();
-            } else {
-                $model->created_by ??= 1;
-                $model->updated_by ??= 1;
-            }
-
-            // Random code
-            if (empty($model->random_code)) {
-                $model->random_code = strtoupper(str()->random(16));
-            }
-
-            // Defaults
-            $model->order_subtotal ??= 0;
-            $model->vat_amount ??= 0;
-            $model->grand_total ??= 0;
-            $model->vat_base ??= 'item_vat';
-
-            // Final grand total after order discount
-            $model->final_grand_total ??= $model->grand_total - ($model->order_discount_amount ?? 0);
-
-            // Remaining balance defaults to final grand total
+            // Initialize totals
+            $model->final_grand_total ??= ($model->grand_total - ($model->order_discount_amount ?? 0));
             $model->remaining_balance ??= $model->final_grand_total;
         });
 
+        // When updating a PO
         static::updating(function ($model) {
-
-            if (auth()->check()) {
-                $model->updated_by = Auth::id();
-            }
+            $model->updated_by = auth()->id() ?: $model->updated_by;
 
             if ($model->isDirty('grand_total') || $model->isDirty('order_discount_amount')) {
                 $model->final_grand_total = $model->grand_total - ($model->order_discount_amount ?? 0);
 
+                // Update remaining_balance only if no payment made yet
                 if ($model->remaining_balance == $model->getOriginal('final_grand_total')) {
                     $model->remaining_balance = $model->final_grand_total;
                 }
             }
 
+            // If PO is closed, remaining balance = 0
             if ($model->isDirty('status') && $model->status === 'closed') {
                 $model->remaining_balance = 0;
             }
         });
     }
 
-    /* ---------------------------------
-     | Relationships
-     |---------------------------------*/
+    /* -------------------------------
+       Relationships
+    ------------------------------- */
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id'); // foreignKey, ownerKey
+        return $this->belongsTo(Supplier::class, 'supplier_id', 'supplier_id');
     }
 
     public function items(): HasMany
@@ -128,35 +108,6 @@ class PurchaseOrder extends Model
         return $this->belongsTo(VatGroup::class, 'supplier_vat_group_id');
     }
 
-    /* ---------------------------------
-     | Mutators
-     |---------------------------------*/
-    public function setOrderSubtotalAttribute($value)
-    {
-        $this->attributes['order_subtotal'] = $value ?? 0;
-    }
-
-    public function setVatAmountAttribute($value)
-    {
-        $this->attributes['vat_amount'] = $value ?? 0;
-    }
-
-    public function setGrandTotalAttribute($value)
-    {
-        $this->attributes['grand_total'] = $value ?? 0;
-    }
-
-    public function setVatBaseAttribute($value)
-    {
-        $this->attributes['vat_base'] = $value ?? 'item_vat';
-    }
-
-    public function setRemainingBalanceAttribute($value)
-    {
-        $this->attributes['remaining_balance'] =
-            $value ?? ($this->final_payable_amount ?? 0);
-    }
-
     public function deliveryTerm()
     {
         return $this->belongsTo(DeliveryTerm::class, 'delivery_term_id');
@@ -177,10 +128,9 @@ class PurchaseOrder extends Model
         return $this->belongsTo(Currency::class, 'currency_code_id');
     }
 
-
-    /* ---------------------------------
-     | Totals Recalculation
-     |---------------------------------*/
+    /* -------------------------------
+       Totals Recalculation
+    ------------------------------- */
     public function recalculateTotals(): void
     {
         $items = $this->items()->get();
@@ -189,7 +139,6 @@ class PurchaseOrder extends Model
         if ($this->vat_base === 'supplier_vat') {
             $vatAmount  = round(($subTotal * $this->supplier_vat_rate) / 100, 2);
             $grandTotal = round($subTotal + $vatAmount, 2);
-
             $this->vat_amount  = $vatAmount;
             $this->grand_total = $grandTotal;
         } else {
@@ -199,16 +148,20 @@ class PurchaseOrder extends Model
 
         $this->order_subtotal = $subTotal;
 
-        if ($this->remaining_balance == $this->getOriginal('final_payable_amount')) {
-            $this->remaining_balance = $this->final_payable_amount;
+        // Recalculate final grand total
+        $this->final_grand_total = $this->grand_total - ($this->order_discount_amount ?? 0);
+
+        // Initialize remaining balance if no payment yet
+        if (is_null($this->remaining_balance) || $this->remaining_balance == $this->getOriginal('final_grand_total')) {
+            $this->remaining_balance = $this->final_grand_total;
         }
 
         $this->saveQuietly();
     }
 
-    /* ---------------------------------
-     | Activity Log
-     |---------------------------------*/
+    /* -------------------------------
+       Activity Log
+    ------------------------------- */
     protected static $logName = 'purchase_order';
 
     public function getActivitylogOptions(): LogOptions
@@ -224,8 +177,8 @@ class PurchaseOrder extends Model
                 'order_subtotal',
                 'vat_amount',
                 'grand_total',
-                'final_discount_amount',
-                'final_payable_amount',
+                'order_discount_amount',
+                'final_grand_total',
                 'remaining_balance',
             ])
             ->useLogName('purchase_order');

@@ -5,9 +5,11 @@ namespace App\Filament\Resources\ControlAccountResource\Pages;
 use App\Filament\Resources\ControlAccountResource;
 use App\Models\SupplierControlAccount;
 use Filament\Resources\Pages\ListRecords;
+use App\Models\ChartOfAccount;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Actions;
+use Filament\Pages\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -26,6 +28,214 @@ class SupplierControlAccounts extends ListRecords
         ];
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('set_accounts_bulk')
+            ->label('Set Accounts for all Suppliers')
+            ->icon('heroicon-o-rectangle-stack')
+            ->button()
+            ->color('info')
+            ->form([
+                // -----------------------------
+                // SECTION 1: Supplier Selection
+                // -----------------------------
+                Forms\Components\Section::make('Supplier Selection')
+                    ->schema([
+                        Forms\Components\MultiSelect::make('supplier_ids')
+                            ->label('Select Suppliers')
+                            ->options(SupplierControlAccount::with('supplier')
+                                ->get()
+                                ->pluck('supplier.name', 'id'))
+                            ->required(fn ($get) => !$get('select_all'))
+                            ->searchable(),
+
+                        Forms\Components\Checkbox::make('select_all')
+                            ->label('Apply to All Suppliers'),
+                    ]),
+
+                // -----------------------------
+                // SECTION 2: Account Selection
+                // -----------------------------
+                Forms\Components\Section::make('Account Selection')
+                    ->columns(2)
+                    ->schema([
+                        // Core Payables
+                        Forms\Components\Select::make('supplier_advance_account_id')
+                            ->label('Supplier Advance Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        // Purchase Related Accounts
+                        Forms\Components\Select::make('purchase_account_id')
+                            ->label('Purchase Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable()
+                            ->required(),
+
+                        Forms\Components\Select::make('purchase_return_account_id')
+                            ->label('Purchase Return Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('purchase_discount_account_id')
+                            ->label('Purchase Discount Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('freight_in_account_id')
+                            ->label('Freight In Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('grni_account_id')
+                            ->label('GRNI Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        // VAT / Tax Accounts
+                        Forms\Components\Select::make('vat_input_account_id')
+                            ->label('Input VAT Account')
+                            ->options(\App\Models\VATControlAccount::where('vat_account_type','purchase')
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable()
+                            ->required(),
+
+                        Forms\Components\Select::make('vat_suspense_account_id')
+                            ->label('VAT Suspense Account')
+                            ->options(\App\Models\VATControlAccount::where('vat_account_type','purchase')
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        // Manufacturing Accounts
+                        Forms\Components\Select::make('direct_material_purchase_account_id')
+                            ->label('Direct Material Purchase Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('indirect_material_purchase_account_id')
+                            ->label('Indirect Material Purchase Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('production_supplies_account_id')
+                            ->label('Production Supplies Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('subcontracting_expense_account_id')
+                            ->label('Subcontracting Expense Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        // Adjustments / Write-offs
+                        Forms\Components\Select::make('bad_debt_recovery_account_id')
+                            ->label('Bad Debt Recovery Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('supplier_writeoff_account_id')
+                            ->label('Supplier Write-off Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+
+                        Forms\Components\Select::make('purchase_price_variance_account_id')
+                            ->label('Purchase Price Variance Account')
+                            ->options(ChartOfAccount::where('is_control_account', false)
+                                ->get()
+                                ->mapWithKeys(fn($c) => [$c->id => "{$c->code} | {$c->name}"])
+                                ->toArray())
+                            ->searchable(),
+                    ]),
+            ])
+            ->action(function (array $data) {
+                $supplierIds = $data['select_all']
+                    ? SupplierControlAccount::when(session()->has('site_id'), fn($q) => $q->where('site_id', session('site_id')))
+                        ->pluck('id')
+                        ->toArray()
+                    : $data['supplier_ids'] ?? [];
+
+                if (empty($supplierIds)) {
+                    Notification::make()
+                        ->title('No Suppliers Selected')
+                        ->body('Please select suppliers or check "Apply to All Suppliers".')
+                        ->warning()
+                        ->send();
+                    return;
+                }
+
+                $updateData = [
+                    'supplier_advance_account_id' => $data['supplier_advance_account_id'] ?? null,
+                    'purchase_account_id' => $data['purchase_account_id'] ?? null,
+                    'purchase_return_account_id' => $data['purchase_return_account_id'] ?? null,
+                    'purchase_discount_account_id' => $data['purchase_discount_account_id'] ?? null,
+                    'freight_in_account_id' => $data['freight_in_account_id'] ?? null,
+                    'grni_account_id' => $data['grni_account_id'] ?? null,
+                    'vat_input_account_id' => $data['vat_input_account_id'] ?? null,
+                    'vat_suspense_account_id' => $data['vat_suspense_account_id'] ?? null,
+                    'direct_material_purchase_account_id' => $data['direct_material_purchase_account_id'] ?? null,
+                    'indirect_material_purchase_account_id' => $data['indirect_material_purchase_account_id'] ?? null,
+                    'production_supplies_account_id' => $data['production_supplies_account_id'] ?? null,
+                    'subcontracting_expense_account_id' => $data['subcontracting_expense_account_id'] ?? null,
+                    'bad_debt_recovery_account_id' => $data['bad_debt_recovery_account_id'] ?? null,
+                    'supplier_writeoff_account_id' => $data['supplier_writeoff_account_id'] ?? null,
+                    'purchase_price_variance_account_id' => $data['purchase_price_variance_account_id'] ?? null,
+                    'updated_by' => auth()->id(),
+                ];
+
+                SupplierControlAccount::whereIn('id', $supplierIds)->update($updateData);
+
+                Notification::make()
+                    ->title('Accounts Updated')
+                    ->body('Accounts successfully updated for selected suppliers.')
+                    ->success()
+                    ->send();
+            }),
+
+        ];
+    }
+
+    
     public function table(Table $table): Table
     {
         return $table
