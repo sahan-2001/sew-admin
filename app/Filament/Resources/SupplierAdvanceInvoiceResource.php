@@ -7,6 +7,8 @@ use App\Models\SupplierAdvanceInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\SuppAdvInvoicePayment;
 use App\Models\CashBankControlAccount;
+use App\Models\SupplierLedgerEntry;
+use App\Models\GeneralLedgerEntry;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -433,6 +435,22 @@ class SupplierAdvanceInvoiceResource extends Resource
                         Section::make('Payment Information')
                             ->columns(2)
                             ->schema([
+                               Placeholder::make('cash_bank_chart_account_code')
+                                    ->label('Cash & Bank Chart of Account Code')
+                                    ->content(function () {
+                                        $account = \App\Models\ChartOfAccount::where('is_control_account', 1)
+                                            ->where('control_account_type', 'Cash & Bank')
+                                            ->first();
+
+                                        if (!$account) {
+                                            // Return a clear error message in red
+                                            return 'Cash & Bank Chart of Account not configured!';
+                                        }
+
+                                        return $account->code;
+                                    })
+                                    ->columnSpanFull(),
+
                                 Placeholder::make('current_remaining_amount')
                                     ->label('Remaining Amount')
                                     ->content(fn (SupplierAdvanceInvoice $record): string =>
@@ -464,12 +482,6 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $fail('Payment amount cannot exceed invoice remaining amount of Rs. ' . number_format($record->remaining_amount, 2));
                                             }
 
-                                            if ($record->purchase_order_id) {
-                                                $poRemaining = \App\Models\PurchaseOrder::find($record->purchase_order_id)?->remaining_balance ?? 0;
-                                                if ($amount > $poRemaining) {
-                                                    $fail('Payment cannot exceed PO remaining balance of Rs. ' . number_format($poRemaining, 2));
-                                                }
-                                            }
                                         },
                                     ]),
 
@@ -534,7 +546,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                 'remaining_amount_before' => $remainingBefore,
                                 'remaining_amount_after' => $remainingAfter,
                                 'payment_method' => $data['payment_method'],
-                                'credit_account_id' => $data['credit_account_id'], // use selected account from form
+                                'credit_account_id' => $data['credit_account_id'], 
                                 'payment_reference' => $data['payment_reference'] ?? null,
                                 'notes' => $data['notes'] ?? null,
                                 'paid_by' => Auth::id(),
@@ -604,6 +616,16 @@ class SupplierAdvanceInvoiceResource extends Resource
         $cashBankAccount = CashBankControlAccount::findOrFail($creditAccountId);
         $cashBankChartAccountId = $cashBankAccount->chart_of_account_id;
 
+        $cashBankAccountGL = \App\Models\ChartOfAccount::where('is_control_account', 1)
+            ->where('control_account_type', 'Cash & Bank')
+            ->first();
+
+        if (!$cashBankAccountGL) {
+            throw new \Exception('Cash & Bank Chart of Account not configured!');
+        }
+
+        $CashBankaccountId = $cashBankAccount->id;
+
         /*
         |--------------------------------------------------------------------------
         | 1️⃣ Supplier Ledger (Subsidiary Ledger)
@@ -641,7 +663,7 @@ class SupplierAdvanceInvoiceResource extends Resource
             'entry_code' => $entryCode,
             'supplier_id' => $invoice->supplier_id,
 
-            'chart_of_account_id' => $cashBankChartAccountId,
+            'chart_of_account_id' => $cashBankAccountGL->id,
 
             'source_table' => 'cash_bank_control_accounts',
             'source_id' => $cashBankAccount->id,
@@ -673,7 +695,6 @@ class SupplierAdvanceInvoiceResource extends Resource
             'account_id' => $supplierAdvanceAccountId,
 
             'source_table' => 'supplier_advance_invoices',
-            'source_id' => $invoice->id,
 
             'entry_date' => $now,
             'debit' => $paymentAmount,
@@ -693,10 +714,10 @@ class SupplierAdvanceInvoiceResource extends Resource
         GeneralLedgerEntry::create([
             'site_id' => $invoice->site_id,
             'entry_code' => $entryCode,
-            'account_id' => $cashBankChartAccountId,
+            'account_id' => $cashBankAccountGL->id,
 
             'source_table' => 'cash_bank_control_accounts',
-            'source_id' => $cashBankAccount->id,
+            'source_id' => $creditAccountId,
 
             'entry_date' => $now,
             'debit' => 0,
