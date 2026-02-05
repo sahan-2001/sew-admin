@@ -177,6 +177,32 @@
     </x-filament::section>
     @endif
 
+    {{-- PURCHASE ORDER INVOICE SECTION --}}
+    @if($purchaseOrderInvoice)
+    <x-filament::section heading="Purchase Order Invoice" icon="heroicon-o-document-currency-dollar" class="mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+
+            <div class="space-y-1">
+                <p><strong>Invoice ID:</strong> {{ str_pad($purchaseOrderInvoice->id, 5, '0', STR_PAD_LEFT) }}</p>
+                <p><strong>Status:</strong> {{ ucfirst($purchaseOrderInvoice->status) }}</p>
+                <p><strong>Grand Total:</strong> Rs. {{ number_format($purchaseOrderInvoice->grand_total,2) }}</p>
+                <p><strong>Advance Paid:</strong> Rs. {{ number_format($purchaseOrderInvoice->adv_paid,2) }}</p>
+                <p><strong>Additional Cost:</strong> Rs. {{ number_format($purchaseOrderInvoice->additional_cost,2) }}</p>
+            </div>
+
+            <div class="space-y-1">
+                <p><strong>Discount:</strong> Rs. {{ number_format($purchaseOrderInvoice->discount,2) }}</p>
+                <p><strong>Total Calculation Method:</strong> {{ $purchaseOrderInvoice->total_calculation_method ?? 'N/A' }}</p>
+                <p><strong>Due Payment:</strong> Rs. {{ number_format($purchaseOrderInvoice->due_payment,2) }}</p>
+                <p><strong>Due Payment (For Now):</strong> Rs. {{ number_format($purchaseOrderInvoice->due_payment_for_now,2) }}</p>
+                <p><strong>Created At:</strong> {{ $purchaseOrderInvoice->created_at?->format('Y-m-d H:i') }}</p>
+            </div>
+
+        </div>
+    </x-filament::section>
+    @endif
+
+
     <style>
         .animate-blink { animation: blink 1s infinite; font-weight:bold; }
         @keyframes blink { 50% { opacity:0.5; } }

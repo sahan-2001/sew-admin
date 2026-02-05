@@ -96,6 +96,19 @@ class ChartOfAccount extends Model
     }
 
     /**
+     * Get the Chart of Account ID for Supplier Control Account
+     */
+        public static function supplierControlAccountId(): ?int
+        {
+            $account = self::where('is_control_account', 1)
+                ->where('control_account_type', 'Supplier')
+                ->first();
+
+            return $account?->id;
+        }
+
+
+    /**
      * Automatically assign created_by and updated_by users
      */
     protected static function booted()

@@ -55,9 +55,12 @@ class PurchaseOrder extends Model
             $model->updated_by ??= auth()->id() ?: 1;
             $model->random_code ??= strtoupper(str()->random(16));
 
-            // Initialize totals
-            $model->final_grand_total ??= ($model->grand_total - ($model->order_discount_amount ?? 0));
-            $model->remaining_balance ??= $model->final_grand_total;
+            // ✅ Calculate final total FIRST
+            $model->final_grand_total =
+                ($model->grand_total ?? 0) - ($model->order_discount_amount ?? 0);
+
+            // ✅ IMPORTANT: always match on creation
+            $model->remaining_balance = $model->final_grand_total;
         });
 
         // When updating a PO
@@ -65,20 +68,22 @@ class PurchaseOrder extends Model
             $model->updated_by = auth()->id() ?: $model->updated_by;
 
             if ($model->isDirty('grand_total') || $model->isDirty('order_discount_amount')) {
-                $model->final_grand_total = $model->grand_total - ($model->order_discount_amount ?? 0);
+                $model->final_grand_total =
+                    $model->grand_total - ($model->order_discount_amount ?? 0);
 
-                // Update remaining_balance only if no payment made yet
+                // ✅ Only update balance if NO payment was made yet
                 if ($model->remaining_balance == $model->getOriginal('final_grand_total')) {
                     $model->remaining_balance = $model->final_grand_total;
                 }
             }
 
-            // If PO is closed, remaining balance = 0
+            // ✅ If PO is closed → balance = 0
             if ($model->isDirty('status') && $model->status === 'closed') {
                 $model->remaining_balance = 0;
             }
         });
     }
+
 
     /* -------------------------------
        Relationships

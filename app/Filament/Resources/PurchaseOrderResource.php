@@ -18,6 +18,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
+use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Tabs;
 use Illuminate\Support\Carbon;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 
 class PurchaseOrderResource extends Resource
@@ -484,6 +486,108 @@ class PurchaseOrderResource extends Resource
                     ])
                     ->columnSpan('full'),
             ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('id')
+                    ->label('Order ID')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT)),
+                TextColumn::make('supplier.name')->label('Supplier Name')->searchable(),
+                TextColumn::make('wanted_delivery_date')->label('Wanted Delivery Date'),
+                BadgeColumn::make('status')
+                    ->label('Status')
+                    ->colors([
+                        'gray' => fn ($state): bool => $state === 'planned',
+                        'blue' => fn ($state): bool => $state === 'in_progress',
+                        'green' => fn ($state): bool => $state === 'completed',
+                    ])
+                    ->getStateUsing(fn ($record) => $record->status),
+                TextColumn::make('order_subtotal')->label('Subtotal')
+                    ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
+                TextColumn::make('grand_total')->label('Order Grand Total')
+                    ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2)),
+
+                TextColumn::make('remaining_balance')->label('Remaining Balance')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                ...(
+                Auth::user()->can('view audit columns')
+                    ? [
+                        TextColumn::make('created_by')->label('Created By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_by')->label('Updated By')->toggleable(isToggledHiddenByDefault: true)->sortable(),
+                        TextColumn::make('updated_at')->label('Updated At')->toggleable(isToggledHiddenByDefault: true)->dateTime()->sortable(),
+                    ]
+                    : []
+                    ),
+            ])
+            ->filters([
+                // Filter by Status
+                SelectFilter::make('status')
+                    ->label('Order Status')
+                    ->options([
+                        'planned' => 'Planned',
+                        'arrived' => 'Arrived',
+                        'partially_arrived' => 'Partially Arrived',
+                        'invoiced' => 'Invoiced',
+                        'closed' => 'Closed',
+                        'rejected' => 'Rejected',
+                    ])
+                    ->searchable(),
+
+                // Filter by Created Date
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('date')
+                            ->label('Created Date')
+                            ->maxDate(today())
+                            ->closeOnDateSelection()
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['date'], fn ($q, $date) =>
+                                $q->whereDate('created_at', $date)
+                            );
+                    }),
+                Filter::make('wanted_delivery_date')
+                    ->label('Wanted Delivery Date')
+                    ->form([
+                        DatePicker::make('date')
+                            ->label('Wanted Delivery Date')
+                            ->closeOnDateSelection()
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['date'], fn ($q, $date) =>
+                                $q->whereDate('wanted_delivery_date', $date)
+                            );
+                    }),
+            ])
+            ->actions([
+                
+                Action::make('handle')
+                        ->label('Handle')
+                        ->url(fn ($record) => PurchaseOrderResource::getUrl('handle', ['record' => $record]))
+                        ->openUrlInNewTab(false),
+
+                EditAction::make()
+                ->visible(fn ($record) => 
+                    auth()->user()->can('edit purchase orders') &&
+                    in_array($record->status, ['planned', 'released'])
+                ),
+                DeleteAction::make()
+                ->visible(fn ($record) => 
+                    auth()->user()->can('delete purchase orders') &&
+                    $record->status === 'planned'
+                ),
+            ])
+        ->defaultSort('id', 'desc') 
+        ->recordUrl(null);
+            
     }
 
     /* -----------------------------------------------------------------

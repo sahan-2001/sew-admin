@@ -95,6 +95,25 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $set('status', $purchaseOrder->status);
                                                 $set('purchase_order_items', $purchaseOrder->items?->toArray() ?? []);
 
+                                                // FETCH AVAILABLE ADVANCE INVOICES FOR THIS PO
+                                                $advanceInvoices = \App\Models\SupplierAdvanceInvoice::query()
+                                                    ->where('purchase_order_id', $state)
+                                                    ->orderByDesc('id')
+                                                    ->get()
+                                                    ->map(function ($inv) {
+                                                        return [
+                                                            'adv_invoice_id' => $inv->id,
+                                                            'paid_amount' => $inv->paid_amount,
+                                                            'remaining_amount' => $inv->remaining_amount,
+                                                            'status' => $inv->status,
+                                                            'created_at' => $inv->created_at->format('Y-m-d'),
+                                                        ];
+                                                    })
+                                                    ->toArray();
+
+                                                $set('available_advance_invoices', $advanceInvoices);
+
+                                                
                                                 // Supplier Control Account
                                                 $supplierControlAccount = \App\Models\SupplierControlAccount::with('supplierAdvanceAccount')
                                                     ->where('supplier_id', $supplier->supplier_id)
@@ -135,6 +154,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                                 $set('supplier_control_account_id', null);
                                                 $set('supplier_advance_account_id', null);
                                                 $set('supplier_advance_account_display', 'Select a PO to see advance account');
+                                                $set('available_advance_invoices', []);
                                             }
                                         }),
 
@@ -195,6 +215,40 @@ class SupplierAdvanceInvoiceResource extends Resource
 
                                         Hidden::make('grand_total')
                                             ->dehydrated(),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Available Advance Invoices')
+                        ->schema([
+                            Section::make('Advance Invoices for Selected PO')
+                                ->schema([
+                                    Repeater::make('available_advance_invoices')
+                                        ->columns(5)
+                                        ->schema([
+                                            TextInput::make('adv_invoice_id')
+                                                ->label('Adv Invoice ID')
+                                                ->formatStateUsing(fn ($state) => str_pad($state, 5, '0', STR_PAD_LEFT))
+                                                ->disabled(),
+
+                                            TextInput::make('paid_amount')
+                                                ->label('Paid Amount')
+                                                ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2))
+                                                ->disabled(),
+
+                                            TextInput::make('remaining_amount')
+                                                ->label('Remaining')
+                                                ->formatStateUsing(fn ($state) => 'Rs. ' . number_format((float) $state, 2))
+                                                ->disabled(),
+
+                                            TextInput::make('status')
+                                                ->label('Status')
+                                                ->disabled(),
+
+                                            TextInput::make('created_at')
+                                                ->label('Created Date')
+                                                ->disabled(),
+                                        ])
+                                        ->disabled(),
                                 ]),
                         ]),
 

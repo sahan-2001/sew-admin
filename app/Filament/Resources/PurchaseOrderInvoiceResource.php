@@ -65,7 +65,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->get()
                                                 ->mapWithKeys(fn ($po) => [
                                                     $po->id => 'PO-' . str_pad($po->id, 5, '0', STR_PAD_LEFT)
-                                                        . ' | Date: ' . $po->wanted_date
+                                                        . ' | Date: ' . $po->wanted_delivery_date
                                                 ])
                                                 ->toArray();
                                                 })
@@ -93,7 +93,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                             $set('supplier_id', $purchaseOrder->supplier_id);
                                             $set('email', $purchaseOrder->supplier->email);
                                             $set('phone_1', $purchaseOrder->supplier->phone_1);
-                                            $set('wanted_date', $purchaseOrder->wanted_date);
+                                            $set('wanted_date', $purchaseOrder->wanted_delivery_date);
 
                                             // Fetch ALL register arrivals for this purchase order
                                             $registerArrivals = \App\Models\RegisterArrival::where('purchase_order_id', $numericId)->get();
@@ -247,29 +247,57 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     ->where('supplier_id', $supplierId)
                                                     ->first();
 
-                                                if ($supplierControlAccount) {
-                                                    // Set the control account ID and display with balance info
-                                                    $set('supplier_control_account_id', $supplierControlAccount->id);
-                                                    $controlAccount = \App\Models\ChartOfAccount::find($supplierControlAccount->id);
-                                                    $set('supplier_control_account_display', 
-                                                        $controlAccount 
-                                                        ? ('ID: ' . str_pad($controlAccount->id, 5, '0', STR_PAD_LEFT) . 
-                                                        ' | Balance: Rs. ' . number_format($controlAccount->balance ?? 0, 2) .
-                                                        ' | Balance with VAT: Rs. ' . number_format($controlAccount->balance_vat ?? 0, 2))
-                                                        : 'N/A'
+                                                if ($supplierControlAccount && $supplierControlAccount->chart_of_account_id) {
+                                                    $set(
+                                                        'supplier_control_chart_account_id',
+                                                        str_pad($supplierControlAccount->chart_of_account_id, 5, '0', STR_PAD_LEFT)
                                                     );
+                                                } else {
+                                                    $set('supplier_control_chart_account_id', 'Not Configured');
+                                                }
 
-                                                    // Helper function to get account display info
-                                                    $getAccountDisplay = function($accountId) {
-                                                        if (!$accountId) return 'N/A';
+                                                
+                                                if ($supplierControlAccount) {
+                                                    // Set the control account ID
+                                                    $set('supplier_control_account_id', $supplierControlAccount->id);
+
+                                                    $controlAccount = \App\Models\ChartOfAccount::find($supplierControlAccount->id);
+
+                                                    $set(
+                                                        'supplier_control_account_display',
+                                                        $controlAccount
+                                                            ? (
+                                                                'ID: ' . str_pad($controlAccount->id, 5, '0', STR_PAD_LEFT) .
+                                                                ' | Balance: Rs. ' . number_format($controlAccount->balance ?? 0, 2)
+                                                            )
+                                                            : 'N/A'
+                                                    );
+                                                }
+                                                
+
+                                                    if ($supplierControlAccount) {
+                                                        // Set the control account ID
+                                                        $set('supplier_control_account_id', $supplierControlAccount->id);
                                                         
-                                                        $account = \App\Models\ChartOfAccount::find($accountId);
-                                                        return $account 
-                                                            ? ('ID: ' . str_pad($account->id, 5, '0', STR_PAD_LEFT) . 
-                                                            ' | Balance: Rs. ' . number_format($account->balance ?? 0, 2) .
-                                                            ' | Balance with VAT: Rs. ' . number_format($account->balance_vat ?? 0, 2))
-                                                            : 'N/A';
-                                                    };
+                                                        // Display SupplierControlAccount info directly (not ChartOfAccount)
+                                                        $set(
+                                                            'supplier_control_account_display',
+                                                            'Supplier Control Account ID: ' . str_pad($supplierControlAccount->id, 5, '0', STR_PAD_LEFT) .
+                                                            ' | Balance: Rs. ' . number_format($supplierControlAccount->balance ?? 0, 2)
+                                                        );
+
+
+                                                        // Helper function to get account display info
+                                                        $getAccountDisplay = function($accountId) {
+                                                            if (!$accountId) return 'N/A';
+                                                            
+                                                            $account = \App\Models\ChartOfAccount::find($accountId);
+                                                            return $account 
+                                                                ? ('ID: ' . str_pad($account->id, 5, '0', STR_PAD_LEFT) . 
+                                                                ' | Balance: Rs. ' . number_format($account->balance ?? 0, 2) .
+                                                                ' | Balance with VAT: Rs. ' . number_format($account->balance_vat ?? 0, 2))
+                                                                : 'N/A';
+                                                        };
 
                                                     // Set linked purchase accounts and their displays
                                                     $set('purchase_account_id', $supplierControlAccount->purchase_account_id);
@@ -327,7 +355,6 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                         }),
 
-
                                     TextInput::make('supplier_id')->label('Supplier ID')->disabled()->dehydrated(true),
                                     TextInput::make('supplier_name')->label('Supplier Name')->disabled(),
                                     TextInput::make('email')->label('Email')->disabled(),
@@ -365,6 +392,20 @@ class PurchaseOrderInvoiceResource extends Resource
                                     ),
                             ]),
 
+                            Section::make('Supplier Control Account of G/L')
+                                ->columns(2)
+                                ->schema([
+                                    TextInput::make('supplier_control_chart_account_id')
+                                        ->label('Supplier Control Chart of Account ID')
+                                        ->disabled()
+                                        ->default(fn() => \App\Models\ChartOfAccount::supplierControlAccountId() ? 
+                                            str_pad(\App\Models\ChartOfAccount::supplierControlAccountId(), 5, '0', STR_PAD_LEFT) 
+                                            : 'Not Configured'
+                                        )
+                                        ->dehydrated(false),
+                                ]),
+                                
+                                    
                             Section::make('Related Ledger Accounts')
                                 ->columns(2)
                                 ->schema([
@@ -375,7 +416,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                     Hidden::make('purchase_discount_account_id')->dehydrated(true),
                                     Hidden::make('freight_in_account_id')->dehydrated(true),
 
-                                    // Display fields
+                                    // Display fields  
                                     Placeholder::make('supplier_control_account_display')
                                         ->label('Supplier Control Account')
                                         ->columns(1)

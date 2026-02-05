@@ -6,6 +6,7 @@ use App\Filament\Resources\PurchaseOrderResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderInvoice;
 use App\Models\SupplierAdvanceInvoice;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
@@ -17,6 +18,7 @@ class HandlePurchaseOrder extends Page
     protected static string $view = 'filament.resources.purchase-order.handle-purchase-order';
     protected static ?string $title = 'Handle Purchase Order';
 
+    public ?PurchaseOrderInvoice $purchaseOrderInvoice = null;
     public PurchaseOrder $record;
     public $items = [];
 
@@ -27,8 +29,9 @@ class HandlePurchaseOrder extends Page
     {
         $this->record = $record;
         $this->loadItems(); 
-        // ✅ Load supplier advance invoices here
+
         $this->loadSupplierAdvanceInvoices();
+        $this->purchaseOrderInvoice = $this->record->invoice;
     }
 
     protected function loadItems()
