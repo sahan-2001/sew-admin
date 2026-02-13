@@ -10,7 +10,7 @@ class PoAddCost extends Model
     protected $fillable = [
         'site_id',
         'purchase_order_invoice_id',
-        'debit_account_id',
+        'debit_chart_of_account_id',
         'description',
         'unit_rate',
         'quantity',

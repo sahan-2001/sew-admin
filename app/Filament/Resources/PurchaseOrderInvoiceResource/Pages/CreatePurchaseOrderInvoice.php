@@ -109,11 +109,11 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             
             // Create supplier advance invoice deductions and update their status
             foreach ($data['advance_invoices'] ?? [] as $advInvoice) {
-#                \App\Models\PoAdvInvDeduct::create([
- #                   'purchase_order_invoice_id' => $invoice->id,
-  #                  'advance_invoice_id' => $advInvoice['id'],
-   #                 'deduction_amount' => $advInvoice['paid_amount'],
-    #            ]);
+                \App\Models\PoAdvInvDeduct::create([
+                    'purchase_order_invoice_id' => $invoice->id,
+                    'advance_invoice_id' => $advInvoice['id'],
+                    'deduction_amount' => $advInvoice['paid_amount'],
+                ]);
                 
                 // Update the SupplierAdvanceInvoice status to 'deducted'
                 \App\Models\SupplierAdvanceInvoice::where('id', $advInvoice['id'])
@@ -125,7 +125,7 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 \App\Models\PoAddCost::create([
                     'site_id' => $invoice->site_id,
                     'purchase_order_invoice_id' => $invoice->id,
-                    'debit_account_id' =>  $cost['debit_account_id_c'],
+                    'chart_of_account_id' =>  $cost['debit_account_id_c'],
                     'description' => $cost['description_c'],
                     'unit_rate' => $cost['unit_rate_c'],
                     'quantity' => $cost['quantity_c'],
@@ -141,7 +141,7 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                 \App\Models\PurchaseOrderDiscount::create([
                     'site_id' => $invoice->site_id,
                     'purchase_order_invoice_id' => $invoice->id,
-                    'credit_account_id_d' => $discount['credit_account_id_d'], 
+                    'chart_of_account_id_d' => $discount['credit_account_id_d'], 
                     'description' => $discount['description_d'],
                     'unit_rate' => $discount['unit_rate_d'],
                     'quantity' => $discount['quantity_d'],
