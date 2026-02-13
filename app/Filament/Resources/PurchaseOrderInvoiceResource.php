@@ -8,6 +8,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderInvoice;
 use App\Models\PurchaseOrderInvoiceItem;
 use App\Models\PoInvoicePayment;
+use App\Models\ChartOfAccount;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -239,6 +240,7 @@ class PurchaseOrderInvoiceResource extends Resource
 
                                             $set('advance_invoices', $advanceInvoices->toArray());
 
+
                                             // --- Add Supplier Control & Advance Account logic ---
                                             $supplierId = $purchaseOrder->supplier_id;
 
@@ -392,19 +394,31 @@ class PurchaseOrderInvoiceResource extends Resource
                                     ),
                             ]),
 
-                            Section::make('Supplier Control Account of G/L')
+                            
+                            Section::make('Supplier Control Account of General Ledger')
                                 ->columns(2)
                                 ->schema([
-                                    TextInput::make('supplier_control_chart_account_id')
-                                        ->label('Supplier Control Chart of Account ID')
-                                        ->disabled()
-                                        ->default(fn() => \App\Models\ChartOfAccount::supplierControlAccountId() ? 
-                                            str_pad(\App\Models\ChartOfAccount::supplierControlAccountId(), 5, '0', STR_PAD_LEFT) 
-                                            : 'Not Configured'
-                                        )
-                                        ->dehydrated(false),
+                                    Forms\Components\Select::make('supplier_account_id_gl')
+                                        ->label('Supplier Control Account of G/L')
+                                        ->required()
+                                        ->options(function () {
+                                            return ChartOfAccount::where('is_control_account', 1)
+                                                ->where('control_account_type', 'Supplier')
+                                                ->orderBy('code')
+                                                ->get()
+                                                ->mapWithKeys(fn($acc) => [$acc->id => "{$acc->code} - {$acc->name}"]);
+                                        })
+                                        ->default(function () {
+                                            $accounts = ChartOfAccount::where('is_control_account', 1)
+                                                ->where('control_account_type', 'Supplier')
+                                                ->get();
+
+                                            // If only one account, set it as default
+                                            return $accounts->count() === 1 ? $accounts->first()->id : null;
+                                        })
+                                        ->searchable(),
                                 ]),
-                                
+
                                     
                             Section::make('Related Ledger Accounts')
                                 ->columns(2)
@@ -563,10 +577,11 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ->columnSpanFull()
                                         ->minItems(0)
                                         ->disableItemCreation()
+                                        ->disableItemDeletion()
                                         ->dehydrated(true),
 
                                     Placeholder::make('total_paid_amount')
-                                        ->label('Total Paid Amount')
+                                        ->label('Total Paid Amount (Advance Invoices)')
                                         ->content(fn (Get $get): string => 
                                             'Rs. ' . number_format(
                                                 collect($get('advance_invoices') ?? [])
@@ -576,7 +591,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                         ),
 
                                     Placeholder::make('total_remaining_amount')
-                                        ->label('Total Remaining Amount')
+                                        ->label('Total Remaining Amount (Advance Invoices)')
                                         ->content(fn (Get $get): string => 
                                             'Rs. ' . number_format(
                                                 collect($get('advance_invoices') ?? [])
@@ -590,7 +605,7 @@ class PurchaseOrderInvoiceResource extends Resource
                     Tab::make('Payment Details')
                         ->schema([
                             Section::make('Summary')
-                                ->columns(2)
+                                ->columns(4)
                                 ->schema([
                                     Placeholder::make('grand_total')
                                     ->label('Grand Total of Invoicing Items')
@@ -611,6 +626,17 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 2
                                             )
                                         ),
+                                    
+
+                                    Placeholder::make('total_remaining_amount')
+                                        ->label('Total Remaining Amount')
+                                        ->content(fn (Get $get): string => 
+                                            'Rs. ' . number_format(
+                                                collect($get('advance_invoices') ?? [])
+                                                    ->sum(fn ($item) => floatval($item['remaining_amount'] ?? 0)),
+                                                2
+                                            )
+                                        ),
                                     ]),
 
                             Section::make('Additional Costs')
@@ -619,8 +645,30 @@ class PurchaseOrderInvoiceResource extends Resource
                                     Repeater::make('additional_costs')
                                         ->label('Additional Cost Items')
                                         ->schema([
+                                            Select::make('debit_account_id_c')
+                                                ->label('Debit Account for Additional Cost')
+                                                ->options(function () {
+                                                    return ChartOfAccount::query()
+                                                        ->where('account_type', 'expense')
+                                                        ->where('statement_type', 'income_statement')
+                                                        ->orderBy('code')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($account) => [
+                                                            $account->id => $account->code . ' - ' . $account->name
+                                                        ]);
+                                                })
+                                                ->searchable()
+                                                ->preload()
+                                                ->required()
+                                                ->columnSpan(2),
+    
                                             TextInput::make('description_c')
                                                 ->label('Description')
+                                                ->required()
+                                                ->columnSpan(3),
+
+                                            DatePicker::make('date_c')
+                                                ->label('Date')
                                                 ->required()
                                                 ->columnSpan(1),
 
@@ -633,7 +681,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $qty = (float) $get('quantity_c');
                                                     $set('total_c', $qty * $state);
                                                 })
-                                                ->columnSpan(1),
+                                                ->columnSpan(2),
 
                                             TextInput::make('quantity_c')
                                                 ->label('Quantity')
@@ -644,7 +692,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $rate = (float) $get('unit_rate_c');
                                                     $set('total_c', $rate * $state);
                                                 })
-                                                ->columnSpan(1),
+                                                ->columnSpan(2),
 
                                             TextInput::make('uom_c')
                                                 ->label('UOM')
@@ -656,11 +704,6 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->disabled()
                                                 ->dehydrated()
                                                 ->numeric()
-                                                ->columnSpan(1),
-
-                                            DatePicker::make('date_c')
-                                                ->label('Date')
-                                                ->required()
                                                 ->columnSpan(1),
 
                                             TextInput::make('remarks_c')
@@ -692,8 +735,30 @@ class PurchaseOrderInvoiceResource extends Resource
                                     Repeater::make('discounts_deductions')
                                         ->label('Discounts / Deductions')
                                         ->schema([
+                                            Select::make('credit_account_id_d')
+                                                ->label('credit Account for Discount/Deduction')
+                                                ->options(function () {
+                                                    return ChartOfAccount::query()
+                                                        ->where('account_type', 'income')
+                                                        ->where('statement_type', 'income_statement')
+                                                        ->orderBy('code')
+                                                        ->get()
+                                                        ->mapWithKeys(fn ($account) => [
+                                                            $account->id => $account->code . ' - ' . $account->name
+                                                        ]);
+                                                })
+                                                ->searchable()
+                                                ->preload()
+                                                ->required()
+                                                ->columnSpan(2),
+
                                             TextInput::make('description_d')
                                                 ->label('Description')
+                                                ->required()
+                                                ->columnSpan(3),
+
+                                            DatePicker::make('date_d')
+                                                ->label('Date')
                                                 ->required()
                                                 ->columnSpan(1),
 
@@ -706,7 +771,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $qty = (float) $get('quantity_d');
                                                     $set('total_d', $qty * $state);
                                                 })
-                                                ->columnSpan(1),
+                                                ->columnSpan(2),
 
                                             TextInput::make('quantity_d')
                                                 ->label('Quantity')
@@ -717,7 +782,7 @@ class PurchaseOrderInvoiceResource extends Resource
                                                     $rate = (float) $get('unit_rate_d');
                                                     $set('total_d', $rate * $state);
                                                 })
-                                                ->columnSpan(1),
+                                                ->columnSpan(2),
 
                                             TextInput::make('uom_d')
                                                 ->label('UOM')
@@ -729,11 +794,6 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 ->disabled()
                                                 ->dehydrated()
                                                 ->numeric()
-                                                ->columnSpan(1),
-
-                                            DatePicker::make('date_d')
-                                                ->label('Date')
-                                                ->required()
                                                 ->columnSpan(1),
 
                                             TextInput::make('remarks_d')
@@ -771,6 +831,8 @@ class PurchaseOrderInvoiceResource extends Resource
                                                 (collect($get('additional_costs') ?? [])->sum(fn ($item) => floatval($item['total_c'] ?? 0)))
                                                 -
                                                 (collect($get('advance_invoices') ?? [])->sum(fn ($item) => floatval($item['paid_amount'] ?? 0)))
+                                                -
+                                                (collect($get('advance_invoices') ?? [])->sum(fn ($item) => floatval($item['remaining_amount'] ?? 0)))
                                                 -
                                                 (collect($get('discounts_deductions') ?? [])->sum(fn ($item) => floatval($item['total_d'] ?? 0))),
                                                 2

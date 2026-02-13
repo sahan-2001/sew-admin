@@ -159,6 +159,23 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
         }
     }
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $advanceAmount = $data['payment_type'] === 'fixed'
+            ? ($data['fix_payment_amount'] ?? 0)
+            : ($data['percent_calculated_payment'] ?? 0);
+
+        $remaining = max(
+            ($data['remaining_balance'] ?? 0) - $advanceAmount,
+            0
+        );
+
+        return array_merge($data, [
+            'paid_amount' => $advanceAmount,
+            'remaining_amount' => $remaining,
+            'status' => $remaining <= 0 ? 'paid' : 'partially_paid',
+        ]);
+    }
 
     protected function afterCreate(): void
     {
@@ -199,4 +216,5 @@ class CreateSupplierAdvanceInvoice extends CreateRecord
             ->success()
             ->send();
     }
+    
 }

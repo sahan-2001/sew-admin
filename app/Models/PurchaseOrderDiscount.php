@@ -10,6 +10,7 @@ class PurchaseOrderDiscount extends Model
     protected $fillable = [
         'site_id',
         'purchase_order_invoice_id',
+        'credit_account_id_d',
         'description',
         'unit_rate',
         'quantity',

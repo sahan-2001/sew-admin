@@ -95,18 +95,6 @@ class ChartOfAccount extends Model
         return $this->hasMany(VATControlAccount::class, 'chart_of_account_id');
     }
 
-    /**
-     * Get the Chart of Account ID for Supplier Control Account
-     */
-        public static function supplierControlAccountId(): ?int
-        {
-            $account = self::where('is_control_account', 1)
-                ->where('control_account_type', 'Supplier')
-                ->first();
-
-            return $account?->id;
-        }
-
 
     /**
      * Automatically assign created_by and updated_by users

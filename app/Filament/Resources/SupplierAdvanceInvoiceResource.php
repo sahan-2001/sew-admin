@@ -315,7 +315,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         }),
 
                                     // Fixed amount payment
-                                    TextInput::make('payment_amount')
+                                    TextInput::make('fix_payment_amount')
                                         ->label('Enter Amount')
                                         ->dehydrated()
                                         ->suffix('Rs.')
@@ -323,7 +323,7 @@ class SupplierAdvanceInvoiceResource extends Resource
                                         ->required(fn ($get) => $get('payment_type') === 'fixed')
                                         ->visible(fn ($get) => $get('payment_type') === 'fixed')
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $grandTotal = (float) ($get('grand_total') ?? 0); // ✅ use grand_total now
+                                            $grandTotal = (float) ($get('grand_total') ?? 0); 
 
                                             if ($state > $grandTotal) {
                                                 $set('payment_amount', null);
@@ -482,9 +482,10 @@ class SupplierAdvanceInvoiceResource extends Resource
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (SupplierAdvanceInvoice $record): bool =>
                         auth()->user()?->can('pay supp adv invoice') &&
-                        in_array($record->status, ['pending', 'partially_paid', 'paid']) &&
+                        $record->status !== 'paid' &&
                         $record->remaining_amount > 0
                     )
+
                     ->form([
                         Section::make('Payment Information')
                             ->columns(2)

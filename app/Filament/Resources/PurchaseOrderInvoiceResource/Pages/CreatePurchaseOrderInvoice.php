@@ -41,6 +41,7 @@ class CreatePurchaseOrderInvoice extends CreateRecord
                     ->sum(fn ($item) => floatval($item['total_d'] ?? 0));
 
             $invoice = PurchaseOrderInvoice::create([
+                'site_id' => session('site_id'),
                 'purchase_order_id' => $data['purchase_order_id'],
                 'supplier_id' => $data['supplier_id'] ?? null,
                 'wanted_date' => $data['wanted_date'] ?? null,
@@ -96,6 +97,7 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             // Create invoice items
             foreach ($data['invoice_items'] ?? [] as $item) {
                 PurchaseOrderInvoiceItem::create([
+                    'site_id' => $invoice->site_id,
                     'purchase_order_invoice_id' => $invoice->id,
                     'register_arrival_id' => $item['register_arrival_id'],
                     'item_id' => $item['item_id_i'],
@@ -107,11 +109,11 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             
             // Create supplier advance invoice deductions and update their status
             foreach ($data['advance_invoices'] ?? [] as $advInvoice) {
-                \App\Models\PoAdvInvDeduct::create([
-                    'purchase_order_invoice_id' => $invoice->id,
-                    'advance_invoice_id' => $advInvoice['id'],
-                    'deduction_amount' => $advInvoice['paid_amount'],
-                ]);
+#                \App\Models\PoAdvInvDeduct::create([
+ #                   'purchase_order_invoice_id' => $invoice->id,
+  #                  'advance_invoice_id' => $advInvoice['id'],
+   #                 'deduction_amount' => $advInvoice['paid_amount'],
+    #            ]);
                 
                 // Update the SupplierAdvanceInvoice status to 'deducted'
                 \App\Models\SupplierAdvanceInvoice::where('id', $advInvoice['id'])
@@ -121,7 +123,9 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             // Create additional costs
             foreach ($data['additional_costs'] ?? [] as $cost) {
                 \App\Models\PoAddCost::create([
+                    'site_id' => $invoice->site_id,
                     'purchase_order_invoice_id' => $invoice->id,
+                    'debit_account_id' =>  $cost['debit_account_id_c'],
                     'description' => $cost['description_c'],
                     'unit_rate' => $cost['unit_rate_c'],
                     'quantity' => $cost['quantity_c'],
@@ -135,7 +139,9 @@ class CreatePurchaseOrderInvoice extends CreateRecord
             // Create discounts and deductions
             foreach ($data['discounts_deductions'] ?? [] as $discount) {
                 \App\Models\PurchaseOrderDiscount::create([
+                    'site_id' => $invoice->site_id,
                     'purchase_order_invoice_id' => $invoice->id,
+                    'credit_account_id_d' => $discount['credit_account_id_d'], 
                     'description' => $discount['description_d'],
                     'unit_rate' => $discount['unit_rate_d'],
                     'quantity' => $discount['quantity_d'],

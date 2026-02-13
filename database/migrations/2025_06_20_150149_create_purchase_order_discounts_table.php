@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('site_id')->constrained()->onDelete('cascade');
             $table->id();
             $table->foreignId('purchase_order_invoice_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('credit_account_id_d');
             $table->string('description');
             $table->decimal('unit_rate', 12, 2);
             $table->decimal('quantity', 12, 2);
